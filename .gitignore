@@ -1,0 +1,43 @@
+# --- Unity: генерируемое, восстанавливается само -------------------------
+# Library — кэш импорта и сборки. У нас он доходил до 6 ГБ (одна только
+# папка Bee от IL2CPP — 3.3 ГБ), и именно он забил диск во время сборки.
+# В репозиторий такое класть нельзя ни при каких условиях.
+/WarfareSurvivor/[Ll]ibrary/
+/WarfareSurvivor/[Tt]emp/
+/WarfareSurvivor/[Oo]bj/
+/WarfareSurvivor/[Bb]uild/
+/WarfareSurvivor/[Bb]uilds/
+/WarfareSurvivor/[Ll]ogs/
+/WarfareSurvivor/[Mm]emoryCaptures/
+/WarfareSurvivor/[Rr]ecordings/
+
+# UserSettings — раскладка окон и личные настройки редактора.
+# Они у каждого свои и в общей истории только мешают.
+/WarfareSurvivor/[Uu]ser[Ss]ettings/
+
+# Сборки под устройство
+/Builds/
+
+# --- Служебное ------------------------------------------------------------
+# Скриншоты, которые я снимаю для проверки: рабочий мусор, не результат.
+/WarfareSurvivor/Assets/Screenshots/
+/WarfareSurvivor/Assets/Screenshots.meta
+
+# Проекты IDE — Unity генерирует их заново при каждом открытии
+.vs/
+.idea/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+.DS_Store
