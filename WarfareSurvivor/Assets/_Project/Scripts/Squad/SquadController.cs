@@ -15,6 +15,9 @@ namespace WarfareSurvivor
     /// </summary>
     public class SquadController : MonoBehaviour
     {
+        /// <summary>Отношение шага между рядами к шагу между соседями в ряду (sqrt(3)/2).</summary>
+        const float HexRowFactor = 0.866f;
+
         struct Ring
         {
             public float Radius;
@@ -149,12 +152,18 @@ namespace WarfareSurvivor
         ///
         /// Именно живых, а не изначальный состав: иначе на месте погибшего
         /// остаётся дыра, а оставшиеся продолжают стоять по старым углам.
-        /// После пересборки они расходятся по кольцу равномерно — каждый
-        /// доходит до нового слота сам, обычным движением.
+        ///
+        /// Роль занимает НЕСКОЛЬКО вложенных колец, а не одно. Одно кольцо
+        /// на роль раздувало строй: его радиус растёт вместе с числом бойцов,
+        /// десять стрелков растягивались в широкий обод, ближний бой уезжал
+        /// ещё дальше — и всё это приходилось компенсировать отъездом камеры.
+        /// Заполняя каждое кольцо до вместимости и лишь потом заводя
+        /// следующее, получаем плотную упаковку: радиус растёт как корень
+        /// из числа бойцов, а не линейно.
         ///
         /// Побочное следствие правила «кольца только по присутствующим
-        /// ролям»: когда последний медик погиб, стрелки переезжают
-        /// на внутреннее кольцо. Так и задумано — пустых колец не бывает.
+        /// ролям»: когда последний медик погиб, стрелки переезжают внутрь.
+        /// Так и задумано — пустых колец не бывает.
         /// </summary>
         void RebuildFormation()
         {
@@ -170,37 +179,49 @@ namespace WarfareSurvivor
                 else { order.Add(role); counts.Add(1); }
             }
 
-            rings = new Ring[counts.Count];
+            var built = new List<Ring>();
             float diameter = UnitRadius * 2f;
-            float minGap = config.formationRingGap * diameter;
-            float previous = 0f;
+            float roleGap = config.formationRingGap * diameter;
+            float radius = 0f;
 
             for (int i = 0; i < counts.Count; i++)
             {
-                int count = counts[i];
                 float spacing = (config.formationRingSpacingMin + config.formationRingSpacingStep * i) * diameter;
+                if (i > 0) radius += roleGap;
 
-                // Радиус выводится из спейсинга и числа бойцов на кольце:
-                // задавать радиус напрямую нельзя — на многолюдном кольце
-                // бойцы встали бы друг в друга.
-                float radius = count > 1
-                    ? spacing / (2f * Mathf.Sin(Mathf.PI / count))
-                    : 0f;
-
-                // Зазор между кольцами обязателен: без него внешнее кольцо
-                // с тремя бойцами окажется внутри внутреннего с десятью.
-                if (i > 0) radius = Mathf.Max(radius, previous + minGap);
-                previous = radius;
-
-                rings[i] = new Ring
+                int placed = 0;
+                while (placed < counts[i])
                 {
-                    Radius = radius,
-                    Count = count,
-                    // Соседние кольца сдвинуты на полшага, чтобы бойцы не
-                    // выстраивались в спицы и строй читался толпой.
-                    AngleOffset = count > 0 && i % 2 == 1 ? Mathf.PI / count : 0f
-                };
+                    // Вместимость кольца — сколько бойцов помещается по его
+                    // длине с заданным зазором. В центре помещается ровно один.
+                    int capacity = radius <= 0.0001f
+                        ? 1
+                        : Mathf.Max(1, Mathf.FloorToInt(2f * Mathf.PI * radius / spacing));
+
+                    int take = Mathf.Min(capacity, counts[i] - placed);
+
+                    built.Add(new Ring
+                    {
+                        Radius = radius,
+                        Count = take,
+                        // Каждое следующее кольцо сдвинуто на полшага, чтобы
+                        // бойцы не выстраивались в спицы и строй читался толпой.
+                        AngleOffset = built.Count % 2 == 1 ? Mathf.PI / Mathf.Max(1, take) : 0f
+                    });
+
+                    placed += take;
+
+                    // Шаг между кольцами меньше шага между соседями в кольце:
+                    // ряды в шестиугольной упаковке отстоят на sqrt(3)/2 от
+                    // расстояния между соседями. Работает это потому, что
+                    // соседние кольца сдвинуты по углу на полшага — боец
+                    // встаёт в просвет между двумя из соседнего кольца,
+                    // а не строго за одним из них.
+                    if (placed < counts[i]) radius += spacing * HexRowFactor;
+                }
             }
+
+            rings = built.ToArray();
 
             livingRing.Clear();
             livingSlot.Clear();
