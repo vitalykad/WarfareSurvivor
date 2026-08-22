@@ -117,10 +117,14 @@ namespace WarfareSurvivor
         /// летящий проходит сквозь других: удерживать его снаружи чужих тел
         /// значило бы гасить весь отброс о первого же встречного, и удар
         /// перестал бы читаться.
+        ///
+        /// Работает и на убитом. Смертельный удар должен отбрасывать так же,
+        /// как несмертельный: иначе самый сильный удар выглядит самым слабым —
+        /// зомби, которого добили, оседает на месте, а выживший улетает.
         /// </summary>
         public void Knockback(Vector3 direction, float distance, float duration)
         {
-            if (dying || duration <= 0f) return;
+            if (duration <= 0f) return;
 
             direction.y = 0f;
             if (direction.sqrMagnitude < 0.0001f) return;
@@ -161,7 +165,8 @@ namespace WarfareSurvivor
         void OnDied()
         {
             dying = true;
-            knockbackUntil = 0f;
+            // Начатый полёт НЕ сбрасываем: тело должно долететь и упасть там,
+            // куда его отбросило, а не замереть в точке смерти.
             // Из реестра убираем сразу, чтобы бойцы не расстреливали труп.
             Registry.Zombies.Remove(this);
             if (animator != null) animator.SetTrigger(DieParam);
@@ -180,14 +185,16 @@ namespace WarfareSurvivor
 
             if (dying)
             {
+                // Труп продолжает лететь, пока не выйдет время отброса,
+                // и только потом ждёт своей очереди в пул.
+                if (Time.time < knockbackUntil) FlyBack();
                 if (Time.time >= despawnTime) Released?.Invoke(this);
                 return;
             }
 
             if (Time.time < knockbackUntil)
             {
-                var flight = transform.position + knockbackVelocity * Time.deltaTime;
-                transform.position = ignoresObstacles ? flight : Obstacle.Resolve(flight, BodyRadius);
+                FlyBack();
                 return;
             }
 
@@ -217,6 +224,13 @@ namespace WarfareSurvivor
             // стоят на месте, и именно они образуют неподвижную стену, в которую
             // спрессовывается всё, что подходит следом.
             ResolveOverlap();
+        }
+
+        /// <summary>Шаг полёта от удара. В стену не пускаем и живого, и мёртвого.</summary>
+        void FlyBack()
+        {
+            var flight = transform.position + knockbackVelocity * Time.deltaTime;
+            transform.position = ignoresObstacles ? flight : Obstacle.Resolve(flight, BodyRadius);
         }
 
         /// <summary>
