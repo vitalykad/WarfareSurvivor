@@ -30,8 +30,26 @@ namespace WarfareSurvivor
         [Header("Кто это")]
         public string displayName = "Класс";
 
-        [Tooltip("Префаб бойца. Собирается меню WarfareSurvivor/Setup.")]
+        [Tooltip("Варианты внешности одного и того же класса. Роль, здоровье, " +
+                 "оружие и всё остальное у них общее — отличается только модель. " +
+                 "Собираются меню WarfareSurvivor/Setup.")]
+        public GameObject[] prefabVariants = new GameObject[0];
+
+        [Tooltip("Какой вариант показывать — номер в списке выше, с нуля. " +
+                 "Меняется на ходу в редакторе; отряд создаётся при старте " +
+                 "сцены, поэтому смена видна с начала следующего забега.")]
+        public int variant;
+
+        [Tooltip("Запасной префаб на случай пустого списка вариантов. " +
+                 "Остался от времён, когда у класса была ровно одна модель; " +
+                 "новые классы заполняют список вариантов.")]
         public GameObject prefab;
+
+        /// <summary>Модель, которую показываем. Список вариантов главнее одиночного префаба.</summary>
+        public GameObject ActivePrefab =>
+            prefabVariants != null && prefabVariants.Length > 0
+                ? prefabVariants[Mathf.Clamp(variant, 0, prefabVariants.Length - 1)]
+                : prefab;
 
         [Tooltip("Роль. Определяет, на каком кольце строя стоит боец, " +
                  "и как он ведёт бой.")]

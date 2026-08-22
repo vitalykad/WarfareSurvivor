@@ -77,7 +77,7 @@ namespace WarfareSurvivor
             for (int i = 0; i < plan.Count; i++)
             {
                 var klass = plan[i];
-                var prefab = klass.prefab.GetComponent<Survivor>();
+                var prefab = klass.ActivePrefab.GetComponent<Survivor>();
 
                 var member = Instantiate(prefab, anchor, Quaternion.identity, transform);
                 member.name = $"{klass.displayName}_{i:00}";
@@ -113,9 +113,11 @@ namespace WarfareSurvivor
             foreach (var entry in config.squadComposition)
             {
                 if (entry.Class == null || entry.Count <= 0) continue;
-                if (entry.Class.prefab == null || entry.Class.prefab.GetComponent<Survivor>() == null)
+                var prefab = entry.Class.ActivePrefab;
+                if (prefab == null || prefab.GetComponent<Survivor>() == null)
                 {
-                    Debug.LogError($"[{name}] У класса {entry.Class.name} нет префаба с компонентом Survivor.", this);
+                    Debug.LogError($"[{name}] У класса {entry.Class.name} нет префаба с компонентом Survivor " +
+                                   $"(вариант {entry.Class.variant}).", this);
                     continue;
                 }
 

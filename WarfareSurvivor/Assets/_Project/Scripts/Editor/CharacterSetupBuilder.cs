@@ -20,12 +20,14 @@ namespace WarfareSurvivor.EditorTools
         const string MonstersDir = "Assets/_Project/Prefabs/Monsters";
 
         const string FarmerModel = "Assets/Models/Characters/ShovelFarmer/ShovelFarmer.fbx";
+        const string SouthPoliceModel = "Assets/Models/Characters/SouthPoliceman/SouthPoliceman.fbx";
         const string PoliceModel = "Assets/Models/police+officer+3d+model/police+officer+3d+model.fbx";
         const string ZombieModel = "Assets/Models/zombie+3d+model/zombie+3d+model.fbx";
 
         const string PoliceController = AnimatorsDir + "/Survivor_Police.controller";
         const string ZombieController = AnimatorsDir + "/Monster_Zombie.controller";
         const string PolicePrefab = SurvivorsDir + "/Survivor_Police.prefab";
+        const string SouthPolicePrefab = SurvivorsDir + "/Survivor_SouthPoliceman.prefab";
         const string FarmerController = AnimatorsDir + "/Survivor_ShovelFarmer.controller";
         const string FarmerPrefab = SurvivorsDir + "/Survivor_ShovelFarmer.prefab";
         const string UpperBodyMask = AnimatorsDir + "/UpperBody.mask";
@@ -61,6 +63,7 @@ namespace WarfareSurvivor.EditorTools
             {
                 if (EditorApplication.isCompiling || EditorApplication.isUpdating) return;
                 if (AssetDatabase.LoadAssetAtPath<GameObject>(PolicePrefab) != null &&
+                    AssetDatabase.LoadAssetAtPath<GameObject>(SouthPolicePrefab) != null &&
                     AssetDatabase.LoadAssetAtPath<GameObject>(FarmerPrefab) != null &&
                     AssetDatabase.LoadAssetAtPath<GameObject>(ZombiePrefab) != null)
                     return;
@@ -121,6 +124,10 @@ namespace WarfareSurvivor.EditorTools
             }
 
             BuildPrefab(PoliceModel, PoliceController, PolicePrefab, force);
+
+            // Второй облик того же класса. Контроллер общий: клипы те же,
+            // риг тот же — отличается только модель.
+            BuildPrefab(SouthPoliceModel, PoliceController, SouthPolicePrefab, force);
         }
 
         static void BuildFarmer(Dictionary<string, AnimationClip> clips, bool force)
