@@ -59,6 +59,9 @@ namespace WarfareSurvivor
         public Health Health => health;
         public SurvivorClassSO Class => klass;
 
+        /// <summary>Боец выбыл. Отряд по этому событию пересобирает строй.</summary>
+        public event System.Action<Survivor> Lost;
+
         public void Bind(SquadController owner, ArenaConfig cfg, SurvivorClassSO survivorClass)
         {
             squad = owner;
@@ -104,6 +107,7 @@ namespace WarfareSurvivor
         {
             Registry.Survivors.Remove(this);
             gameObject.SetActive(false);
+            Lost?.Invoke(this);
         }
 
         /// <summary>

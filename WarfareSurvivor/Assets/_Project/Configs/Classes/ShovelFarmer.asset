@@ -17,8 +17,8 @@ MonoBehaviour:
   role: 2
   maxHealth: 150
   attackRange: 2.4
-  attackInterval: 1.1
+  attackInterval: 0.5
   damage: 25
-  knockbackDistance: 2.5
+  knockbackDistance: 3
   attackHitTime: 0.5
   knockbackDuration: 0.22

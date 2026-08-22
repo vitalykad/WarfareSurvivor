@@ -33,10 +33,15 @@ namespace WarfareSurvivor
         /// <summary>Радиус бойца в метрах — от него считаются все размеры строя.</summary>
         public float UnitRadius { get; private set; } = 0.25f;
 
-        Survivor[] members;
-        int[] memberRing;
-        int[] memberSlot;
-        Ring[] rings;
+        // Живые бойцы, отсортированные по роли. Порядок сохраняется при
+        // удалении, поэтому пересборка строя — это пересчёт индексов,
+        // а не новая сортировка.
+        readonly List<Survivor> living = new List<Survivor>();
+        readonly List<int> livingRing = new List<int>();
+        readonly List<int> livingSlot = new List<int>();
+
+        Ring[] rings = new Ring[0];
+        bool formationDirty;
         Vector3 anchor;
 
         void Awake()
@@ -67,10 +72,6 @@ namespace WarfareSurvivor
                 return;
             }
 
-            members = new Survivor[plan.Count];
-            memberRing = new int[plan.Count];
-            memberSlot = new int[plan.Count];
-
             float unitRadius = 0f;
 
             for (int i = 0; i < plan.Count; i++)
@@ -81,7 +82,8 @@ namespace WarfareSurvivor
                 var member = Instantiate(prefab, anchor, Quaternion.identity, transform);
                 member.name = $"{klass.displayName}_{i:00}";
                 member.Bind(this, config, klass);
-                members[i] = member;
+                member.Lost += OnMemberLost;
+                living.Add(member);
 
                 unitRadius = Mathf.Max(unitRadius, MeasureUnitRadius(member));
             }
@@ -90,12 +92,12 @@ namespace WarfareSurvivor
             // по мелкому, посадит крупных друг в друга.
             UnitRadius = Mathf.Max(0.15f, unitRadius);
 
-            BuildRings(plan);
+            RebuildFormation();
 
             // Ставим на места сразу: иначе первый кадр отряд стоит в куче
             // и потом рывком расходится.
-            for (int i = 0; i < members.Length; i++)
-                members[i].transform.position = anchor + SlotOffset(i);
+            for (int i = 0; i < living.Count; i++)
+                living[i].transform.position = anchor + SlotOffset(i);
         }
 
         /// <summary>
@@ -130,15 +132,42 @@ namespace WarfareSurvivor
         /// с минимальным спейсингом, а появление медиков отодвигает стрелков
         /// наружу само собой — правило одно, частных случаев нет.
         /// </summary>
-        void BuildRings(List<SurvivorClassSO> plan)
+        /// <summary>
+        /// Боец выбыл — строй пересобираем. Не сразу: за один кадр погибнуть
+        /// может сразу несколько, и пересчитывать кольца на каждого по
+        /// отдельности незачем.
+        /// </summary>
+        void OnMemberLost(Survivor member)
         {
+            member.Lost -= OnMemberLost;
+            living.Remove(member);
+            formationDirty = true;
+        }
+
+        /// <summary>
+        /// Раскладывает ЖИВЫХ по кольцам заново.
+        ///
+        /// Именно живых, а не изначальный состав: иначе на месте погибшего
+        /// остаётся дыра, а оставшиеся продолжают стоять по старым углам.
+        /// После пересборки они расходятся по кольцу равномерно — каждый
+        /// доходит до нового слота сам, обычным движением.
+        ///
+        /// Побочное следствие правила «кольца только по присутствующим
+        /// ролям»: когда последний медик погиб, стрелки переезжают
+        /// на внутреннее кольцо. Так и задумано — пустых колец не бывает.
+        /// </summary>
+        void RebuildFormation()
+        {
+            formationDirty = false;
+
             var counts = new List<int>();
             var order = new List<SquadRole>();
 
-            foreach (var klass in plan)
+            foreach (var member in living)
             {
-                if (order.Count > 0 && order[order.Count - 1] == klass.role) counts[counts.Count - 1]++;
-                else { order.Add(klass.role); counts.Add(1); }
+                var role = member.Class.role;
+                if (order.Count > 0 && order[order.Count - 1] == role) counts[counts.Count - 1]++;
+                else { order.Add(role); counts.Add(1); }
             }
 
             rings = new Ring[counts.Count];
@@ -173,12 +202,13 @@ namespace WarfareSurvivor
                 };
             }
 
-            int cursor = 0;
+            livingRing.Clear();
+            livingSlot.Clear();
             for (int ring = 0; ring < rings.Length; ring++)
-                for (int slot = 0; slot < rings[ring].Count; slot++, cursor++)
+                for (int slot = 0; slot < rings[ring].Count; slot++)
                 {
-                    memberRing[cursor] = ring;
-                    memberSlot[cursor] = slot;
+                    livingRing.Add(ring);
+                    livingSlot.Add(slot);
                 }
         }
 
@@ -205,7 +235,8 @@ namespace WarfareSurvivor
 
         void Update()
         {
-            if (members == null) return;
+            if (living.Count == 0) return;
+            if (formationDirty) RebuildFormation();
 
             var input = joystick != null ? joystick.ReadWithKeyboardFallback() : Vector2.zero;
             if (input.sqrMagnitude < 0.0001f && config.debugAutoDrive) input = AutoDriveInput();
@@ -214,9 +245,8 @@ namespace WarfareSurvivor
             anchor += MoveDirection * (config.squadSpeed * Time.deltaTime);
             transform.position = anchor;
 
-            for (int i = 0; i < members.Length; i++)
-                if (members[i] != null)
-                    members[i].SlotPosition = anchor + SlotOffset(i);
+            for (int i = 0; i < living.Count; i++)
+                living[i].SlotPosition = anchor + SlotOffset(i);
         }
 
         /// <summary>
@@ -249,10 +279,14 @@ namespace WarfareSurvivor
         /// </summary>
         Vector3 SlotOffset(int index)
         {
-            var ring = rings[memberRing[index]];
-            if (ring.Count <= 1 || ring.Radius <= 0f) return Vector3.zero;
+            var ring = rings[livingRing[index]];
 
-            float angle = ring.AngleOffset + memberSlot[index] * Mathf.PI * 2f / ring.Count;
+            // Проверяем только радиус. Условие «на кольце один боец» тут было
+            // бы ошибкой: последний уцелевший из внешнего кольца уехал бы
+            // в центр, внутрь стрелков.
+            if (ring.Radius <= 0f) return Vector3.zero;
+
+            float angle = ring.AngleOffset + livingSlot[index] * Mathf.PI * 2f / Mathf.Max(1, ring.Count);
             return new Vector3(Mathf.Cos(angle) * ring.Radius, 0f, Mathf.Sin(angle) * ring.Radius);
         }
     }
