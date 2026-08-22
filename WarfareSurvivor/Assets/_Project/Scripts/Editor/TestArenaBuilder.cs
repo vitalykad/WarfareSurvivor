@@ -189,9 +189,6 @@ namespace WarfareSurvivor.EditorTools
                 c.knockbackDuration = 0.22f;
             });
 
-            EnsureVariants(police, PolicePrefab, SouthPolicePrefab);
-            EnsureVariants(farmer, FarmerPrefab);
-
             if (config.squadComposition != null && config.squadComposition.Length > 0) return;
 
             config.squadComposition = new[]
@@ -201,36 +198,6 @@ namespace WarfareSurvivor.EditorTools
             };
             EditorUtility.SetDirty(config);
             Debug.Log("[TestArena] Состав отряда заполнен по умолчанию: 6 стрелков + 4 лопаты");
-        }
-
-        /// <summary>
-        /// Дополняет список вариантов внешности недостающими префабами.
-        ///
-        /// Уже стоящие в списке не переставляем и выбранный вариант не сбрасываем:
-        /// порядок задаёт номера, а номер — это ручная настройка пользователя.
-        /// Добавляем только в конец и только то, чего в списке ещё нет.
-        /// </summary>
-        static void EnsureVariants(SurvivorClassSO klass, params string[] prefabPaths)
-        {
-            if (klass == null) return;
-
-            var list = new List<GameObject>(klass.prefabVariants ?? new GameObject[0]);
-            bool changed = false;
-
-            foreach (var path in prefabPaths)
-            {
-                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-                if (prefab == null || list.Contains(prefab)) continue;
-
-                list.Add(prefab);
-                changed = true;
-            }
-
-            if (!changed) return;
-
-            klass.prefabVariants = list.ToArray();
-            EditorUtility.SetDirty(klass);
-            Debug.Log($"[TestArena] {klass.name}: вариантов внешности — {list.Count}");
         }
 
         static SurvivorClassSO EnsureClass(string fileName, string display, SquadRole role,
