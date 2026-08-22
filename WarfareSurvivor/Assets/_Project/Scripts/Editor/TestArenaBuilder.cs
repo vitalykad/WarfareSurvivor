@@ -74,7 +74,43 @@ namespace WarfareSurvivor.EditorTools
             Debug.Log($"[TestArena] Сцена собрана: {ScenePath}");
         }
 
-        /// <summary>Гарантирует, что ассет конфига существует на диске.</summary>
+        [MenuItem("WarfareSurvivor/Setup/Reset Config to Defaults")]
+        public static void ResetConfig()
+        {
+            var config = AssetDatabase.LoadAssetAtPath<ArenaConfig>(ConfigPath);
+            if (config == null)
+            {
+                LoadOrCreateConfig();
+                return;
+            }
+
+            if (!EditorUtility.DisplayDialog(
+                    "Сбросить настройки арены",
+                    "Все числа в ArenaConfig вернутся к значениям из кода. " +
+                    "Ручная настройка — состав отряда, свет, камера, баланс — пропадёт.\n\n" +
+                    "Пересборка сцены этого НЕ делает: сбросить можно только отсюда.",
+                    "Сбросить", "Отмена"))
+                return;
+
+            // Копируем поля свежесозданного экземпляра поверх существующего:
+            // так сохраняется GUID ассета, а значит и все ссылки на него
+            // в сцене. Пересоздание ассета их бы обнулило.
+            var defaults = ScriptableObject.CreateInstance<ArenaConfig>();
+            EditorUtility.CopySerialized(defaults, config);
+            Object.DestroyImmediate(defaults);
+
+            EditorUtility.SetDirty(config);
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[TestArena] {ConfigPath} сброшен к умолчаниям кода");
+        }
+
+        /// <summary>
+        /// Гарантирует, что ассет конфига существует на диске.
+        ///
+        /// Существующий НЕ трогаем ни при каких условиях: пересборка сцены
+        /// не должна стирать настроенное руками. Новые поля Unity добавит
+        /// сама при следующем импорте, старые значения при этом сохранятся.
+        /// </summary>
         static ArenaConfig LoadOrCreateConfig()
         {
             var config = AssetDatabase.LoadAssetAtPath<ArenaConfig>(ConfigPath);

@@ -28,10 +28,10 @@ MonoBehaviour:
   ambientGround: {r: 0.35, g: 0.28, b: 0.2, a: 1}
   squadComposition:
   - Class: {fileID: 11400000, guid: d7934318956704e09acd034c08018278, type: 2}
-    Count: 6
+    Count: 10
   - Class: {fileID: 11400000, guid: 626208014da524a00b5ee0123e9acebc, type: 2}
-    Count: 4
-  squadSpeed: 4.5
+    Count: 10
+  squadSpeed: 7
   formationRingSpacingMin: 1.5
   formationRingSpacingStep: 1
   formationRingGap: 1.4

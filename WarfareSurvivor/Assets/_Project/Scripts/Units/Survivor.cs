@@ -15,6 +15,7 @@ namespace WarfareSurvivor
         static readonly int SpeedParam = Animator.StringToHash("Speed");
         static readonly int MoveDirParam = Animator.StringToHash("MoveDir");
         static readonly int AttackParam = Animator.StringToHash("Attack");
+        static readonly int AttackSpeedParam = Animator.StringToHash("AttackSpeed");
 
         /// <summary>Имя слоя удара — тот же, что заводит CharacterSetupBuilder.</summary>
         const string AttackLayerName = "UpperBody";
@@ -364,13 +365,25 @@ namespace WarfareSurvivor
 
         void StrikeMelee()
         {
-            if (animator != null) animator.SetTrigger(AttackParam);
+            // Анимацию ускоряем ровно настолько, чтобы замах уложился
+            // в заданный темп. Замедлять не нужно: при редких ударах клип
+            // играется в своей скорости, а разница уходит в паузу.
+            float playback = Mathf.Max(1f, attackClipLength / Mathf.Max(klass.attackInterval, 0.05f));
+
+            if (animator != null)
+            {
+                animator.SetFloat(AttackSpeedParam, playback);
+                animator.SetTrigger(AttackParam);
+            }
 
             // Урон не наносится сейчас: он наступит на середине замаха.
             // Иначе враг отлетает раньше, чем лопата до него дошла, и удар
             // читается как несвязанный с попаданием.
+            //
+            // Момент делится на ускорение: клип идёт быстрее — середина
+            // наступает раньше, иначе попадание отстанет от картинки.
             pendingVictim = target;
-            pendingHitTime = Time.time + attackClipLength * Mathf.Clamp01(klass.attackHitTime);
+            pendingHitTime = Time.time + attackClipLength * Mathf.Clamp01(klass.attackHitTime) / playback;
         }
 
         void ResolvePendingHit()
@@ -443,6 +456,11 @@ namespace WarfareSurvivor
                 attackClipLength = clip.length;
                 break;
             }
+
+            // Множитель скорости обязан быть ненулевым с самого начала:
+            // состояние Attack берёт скорость из этого параметра, и на нуле
+            // анимация замирает на первом кадре, так и не начавшись.
+            animator.SetFloat(AttackSpeedParam, 1f);
         }
 
         Vector3 MuzzlePosition()

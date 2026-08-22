@@ -20,4 +20,5 @@ MonoBehaviour:
   attackInterval: 1.1
   damage: 25
   knockbackDistance: 2.5
+  attackHitTime: 0.5
   knockbackDuration: 0.22

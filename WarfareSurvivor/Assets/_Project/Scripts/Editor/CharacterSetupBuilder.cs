@@ -215,6 +215,9 @@ namespace WarfareSurvivor.EditorTools
             if (!controller.parameters.Any(p => p.name == "Attack"))
                 controller.AddParameter("Attack", AnimatorControllerParameterType.Trigger);
 
+            if (!controller.parameters.Any(p => p.name == "AttackSpeed"))
+                controller.AddParameter("AttackSpeed", AnimatorControllerParameterType.Float);
+
             // Со старого базового слоя удар убираем: он там всё ломает.
             var baseMachine = controller.layers[0].stateMachine;
             foreach (var child in baseMachine.states)
@@ -245,6 +248,11 @@ namespace WarfareSurvivor.EditorTools
             var idle = machine.AddState("NoAttack");
             var attackState = machine.AddState("Attack");
             attackState.motion = attack;
+            // Темп удара задаётся в классе, а замах длится сколько длится клип.
+            // Без этого множителя интервал короче клипа ничего не ускоряет:
+            // следующий удар просто ждёт, пока доиграет предыдущий.
+            attackState.speedParameterActive = true;
+            attackState.speedParameter = "AttackSpeed";
             machine.defaultState = idle;
 
             var toAttack = machine.AddAnyStateTransition(attackState);
