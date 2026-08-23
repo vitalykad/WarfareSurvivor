@@ -34,6 +34,12 @@ namespace WarfareSurvivor
 
             /// <summary>Дальность теней. Ноль — не трогать.</summary>
             public float ShadowDistance;
+
+            /// <summary>HDR-буфер. null — не трогать.</summary>
+            public bool? Hdr;
+
+            /// <summary>Рисовать ли интерфейс.</summary>
+            public bool Ui;
         }
 
         [SerializeField] ArenaConfig config;
@@ -42,44 +48,41 @@ namespace WarfareSurvivor
 
         static readonly Stage[] Stages =
         {
-            // Ступень прогрева: в неё попадает загрузка сцены, её цифры
-            // выбрасываются. Без неё первая настоящая ступень показывала
-            // 187 мс вместо 35.
             Full("прогрев (не считается)", shadows: true),
 
-            Full("всё как есть", shadows: true),
-            Full("без теней", shadows: false),
-            Hide("без теней и зомби", LayerUtility.Zombies),
-            Hide("+ без отряда", LayerUtility.Zombies, LayerUtility.Survivors),
-            Hide("+ без руин", LayerUtility.Zombies, LayerUtility.Survivors, LayerUtility.Environment),
-            Hide("+ без земли (пустой экран)", LayerUtility.Zombies, LayerUtility.Survivors,
-                 LayerUtility.Environment, LayerUtility.Ground),
-            // Земля одна, без всего прочего: чистая цена заливки экрана.
-            Hide("только земля", LayerUtility.Zombies, LayerUtility.Survivors, LayerUtility.Environment),
+            Full("полная сцена, как есть", shadows: true),
 
-            // Дальше выключаем не картинку, а счёт: если время не падает
-            // и здесь, значит виновата не наша логика, а сам конвейер.
-            new Stage { Name = "ничего не рисуем, без расталкивания зомби", Shadows = false,
-                        HiddenLayers = All(), Zombies = true, Survivors = true, Separation = false },
-            new Stage { Name = "+ зомби не думают", Shadows = false,
-                        HiddenLayers = All(), Zombies = false, Survivors = true, Separation = false },
-            new Stage { Name = "+ отряд не думает", Shadows = false,
-                        HiddenLayers = All(), Zombies = false, Survivors = false, Separation = false },
+            // Дальше — охота за ПОЛОМ: экран пуст, логика выключена,
+            // и всё равно кадр стоит двадцать миллисекунд. Значит платит
+            // сам конвейер, и надо понять, за что именно.
+            Floor("пол: пустой экран"),
+            Floor("пол без интерфейса", ui: false),
+            Floor("пол, разрешение 1.0", ui: false, renderScale: 1f),
+            Floor("пол, разрешение 1.0 без HDR", ui: false, renderScale: 1f, hdr: false),
+            Floor("пол, разрешение 0.5", ui: false, renderScale: 0.5f),
+            Floor("пол, разрешение 0.5 без HDR", ui: false, renderScale: 0.5f, hdr: false),
 
-            // Теперь меряем сам конвейер: сцена целиком, меняются настройки.
-            Pipeline("тени 30 м вместо 70", shadowDistance: 30f),
-            Pipeline("разрешение 0.6", renderScale: 0.6f),
-            Pipeline("разрешение 0.5", renderScale: 0.5f),
-            Pipeline("разрешение 0.5 + тени 30", renderScale: 0.5f, shadowDistance: 30f),
+            // И то же на живой сцене, чтобы выбирать не вслепую.
+            Pipeline("сцена, разрешение 1.0 без HDR", renderScale: 1f, hdr: false),
+            Pipeline("сцена, разрешение 0.5 без HDR", renderScale: 0.5f, hdr: false),
+            Pipeline("сцена, без HDR", hdr: false),
 
             Full("всё обратно", shadows: true),
         };
 
-        static Stage Pipeline(string name, float renderScale = 0f, float shadowDistance = 0f) => new Stage
+        /// <summary>Ступень «пола»: не рисуем и не считаем ничего, меряем конвейер.</summary>
+        static Stage Floor(string name, bool ui = true, float renderScale = 0f, bool? hdr = null) => new Stage
+        {
+            Name = name, HiddenLayers = All(), Shadows = false,
+            Zombies = false, Survivors = false, Separation = false,
+            RenderScale = renderScale, Hdr = hdr, Ui = ui
+        };
+
+        static Stage Pipeline(string name, float renderScale = 0f, float shadowDistance = 0f, bool? hdr = null) => new Stage
         {
             Name = name, HiddenLayers = new string[0], Shadows = true,
             Zombies = true, Survivors = true, Separation = true,
-            RenderScale = renderScale, ShadowDistance = shadowDistance
+            RenderScale = renderScale, ShadowDistance = shadowDistance, Hdr = hdr, Ui = true
         };
 
         static string[] All() => new[]
@@ -91,16 +94,17 @@ namespace WarfareSurvivor
         static Stage Full(string name, bool shadows) => new Stage
         {
             Name = name, HiddenLayers = new string[0], Shadows = shadows,
-            Zombies = true, Survivors = true, Separation = true
+            Zombies = true, Survivors = true, Separation = true, Ui = true
         };
 
         static Stage Hide(string name, params string[] layers) => new Stage
         {
             Name = name, HiddenLayers = layers, Shadows = false,
-            Zombies = true, Survivors = true, Separation = true
+            Zombies = true, Survivors = true, Separation = true, Ui = true
         };
 
         int stage = -1;
+        int settleLeft;
         float stageEnds;
         int frames;
         float total;
@@ -111,6 +115,8 @@ namespace WarfareSurvivor
         float savedSeparation;
         float baseRenderScale;
         float baseShadowDistance;
+        bool baseHdr;
+        Canvas ui;
 
         static UniversalRenderPipelineAsset Pipe =>
             GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
@@ -130,10 +136,12 @@ namespace WarfareSurvivor
             }
 
             baseMask = view.cullingMask;
+            ui = FindFirstObjectByType<Canvas>();
             if (Pipe != null)
             {
                 baseRenderScale = Pipe.renderScale;
                 baseShadowDistance = Pipe.shadowDistance;
+                baseHdr = Pipe.supportsHDR;
             }
             Next();
         }
@@ -154,10 +162,24 @@ namespace WarfareSurvivor
             if (Pipe == null || baseRenderScale <= 0f) return;
             Pipe.renderScale = baseRenderScale;
             Pipe.shadowDistance = baseShadowDistance;
+            Pipe.supportsHDR = baseHdr;
+            if (ui != null) ui.enabled = true;
         }
 
         void Update()
         {
+            // Кадры устаканивания ПРОПУСКАЕМ целиком, а не считаем со знаком
+            // минус. Раньше счётчик кадров стартовал отрицательным, а сумма
+            // времени копилась с первого кадра — сумма по 348 кадрам делилась
+            // на 276, и среднее выходило на четверть выше настоящего.
+            // Признак вранья был на виду: худший кадр оказывался МЕНЬШЕ
+            // среднего, чего не бывает.
+            if (settleLeft > 0)
+            {
+                settleLeft--;
+                return;
+            }
+
             frames++;
             float ms = Time.unscaledDeltaTime * 1000f;
             total += ms;
@@ -207,13 +229,16 @@ namespace WarfareSurvivor
             {
                 Pipe.renderScale = current.RenderScale > 0f ? current.RenderScale : baseRenderScale;
                 Pipe.shadowDistance = current.ShadowDistance > 0f ? current.ShadowDistance : baseShadowDistance;
+                Pipe.supportsHDR = current.Hdr ?? baseHdr;
             }
+
+            if (ui != null) ui.enabled = current.Ui;
 
             // Первые кадры после переключения не считаем: там перестройка
             // теневых карт и прогрев, к установившейся стоимости отношения
-            // не имеющие.
-            stageEnds = Time.unscaledTime + Mathf.Max(2f, config.sweepStageSeconds);
-            frames = -Mathf.Max(5, Mathf.RoundToInt(config.sweepStageSeconds * 0.2f * 60f));
+            // не имеющие. Полсекунды хватает.
+            settleLeft = 30;
+            stageEnds = Time.unscaledTime + Mathf.Max(2f, config.sweepStageSeconds) + 0.5f;
         }
 
         void Report()
@@ -228,6 +253,9 @@ namespace WarfareSurvivor
                 .Append(", ").Append(Mathf.RoundToInt(frames * 1000f / Mathf.Max(total, 0.01f))).Append(" fps")
                 .Append(" | зомби ").Append(Registry.Zombies.Count)
                 .Append(", бойцов ").Append(Registry.Survivors.Count);
+
+            if (frames > 1 && total / frames > worst + 0.01f)
+                line.Append("  <- ЗАМЕР ВРЁТ: среднее больше худшего");
 
             Debug.Log(line.ToString());
         }
