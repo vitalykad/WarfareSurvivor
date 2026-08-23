@@ -218,12 +218,19 @@ namespace WarfareSurvivor
         /// </summary>
         static float MeasureUnitRadius(Survivor sample)
         {
-            var renderers = sample.GetComponentsInChildren<Renderer>();
+            // Только тело, без оружия. Лопата длиной полтора метра висит
+            // на кости руки и входит в общий габарит — строй, посчитанный
+            // по нему, разъезжается в несколько раз шире нужного.
+            // Тело — это скиннинг, оружие — обычный меш, и это надёжный
+            // признак: любое новое оружие отсеется само.
+            var renderers = sample.GetComponentsInChildren<SkinnedMeshRenderer>();
             if (renderers.Length == 0) return 0.25f;
 
             var bounds = renderers[0].bounds;
             for (int i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
 
+            // Меньший горизонтальный габарит: больший — это размах рук
+            // в бинд-позе, вчетверо шире реальной толщины тела.
             return Mathf.Max(0.15f, Mathf.Min(bounds.extents.x, bounds.extents.z));
         }
 

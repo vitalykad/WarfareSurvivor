@@ -61,7 +61,9 @@ namespace WarfareSurvivor
 
         float MeasureHeight()
         {
-            var renderers = GetComponentsInChildren<Renderer>();
+            // Тоже без оружия: с поднятой лопатой полоска улетала бы
+            // выше головы вслед за черенком.
+            var renderers = GetComponentsInChildren<SkinnedMeshRenderer>();
             if (renderers.Length == 0) return 2f;
 
             var bounds = renderers[0].bounds;
