@@ -101,6 +101,32 @@ namespace WarfareSurvivor
             // и потом рывком расходится.
             for (int i = 0; i < living.Count; i++)
                 living[i].transform.position = anchor + SlotOffset(i);
+
+            ReportSquad();
+        }
+
+        /// <summary>
+        /// Печатает, каким отряд получился. Нужно не в редакторе, а
+        /// на устройстве: там инспектора нет, и единственный способ понять,
+        /// почему строй выглядит не так, — прочитать это в логе.
+        /// </summary>
+        void ReportSquad()
+        {
+            int ranged = 0, melee = 0, support = 0;
+            foreach (var member in living)
+                switch (member.Class.role)
+                {
+                    case SquadRole.Melee: melee++; break;
+                    case SquadRole.Support: support++; break;
+                    default: ranged++; break;
+                }
+
+            float spread = 0f;
+            foreach (var offset in slotOffsets) spread = Mathf.Max(spread, offset.magnitude);
+
+            Debug.Log($"[Squad] бойцов {living.Count} (стрелков {ranged}, ближнего боя {melee}, " +
+                      $"поддержки {support}); радиус бойца {UnitRadius:F2}м; " +
+                      $"строй {spread * 2f:F2}м в поперечнике; слотов {slotOffsets.Count}");
         }
 
         /// <summary>
@@ -111,7 +137,11 @@ namespace WarfareSurvivor
         List<SurvivorClassSO> BuildPlan()
         {
             var plan = new List<SurvivorClassSO>();
-            if (config.squadComposition == null) return plan;
+            if (config.squadComposition == null || config.squadComposition.Length == 0)
+            {
+                Debug.LogError($"[{name}] Состав отряда пуст: squadComposition не заполнен в конфиге.", this);
+                return plan;
+            }
 
             foreach (var entry in config.squadComposition)
             {

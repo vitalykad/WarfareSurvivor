@@ -1,0 +1,17 @@
+/Users/Shared/Unity/Proto/WarfareSurvivor/WarfareSurvivor/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/src/main/cpp/GameActivity/GAToUnityCallbacks.h
+/Users/Shared/Unity/Proto/WarfareSurvivor/WarfareSurvivor/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/src/main/cpp/GameActivity/MacroEnd.h
+/Users/Shared/Unity/Proto/WarfareSurvivor/WarfareSurvivor/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/src/main/cpp/GameActivity/MacroHeaderBegin.h
+/Users/Shared/Unity/Proto/WarfareSurvivor/WarfareSurvivor/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/src/main/cpp/GameActivity/MacroSourceBegin.h
+/Users/Shared/Unity/Proto/WarfareSurvivor/WarfareSurvivor/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/src/main/cpp/GameActivity/UGAApplication.h
+/Users/Shared/Unity/Proto/WarfareSurvivor/WarfareSurvivor/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/src/main/cpp/GameActivity/UGAConfiguration.h
+/Users/Shared/Unity/Proto/WarfareSurvivor/WarfareSurvivor/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/src/main/cpp/GameActivity/UGADebug.h
+/Users/Shared/Unity/Proto/WarfareSurvivor/WarfareSurvivor/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/src/main/cpp/GameActivity/UGAEvents.h
+/Users/Shared/Unity/Proto/WarfareSurvivor/WarfareSurvivor/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/src/main/cpp/GameActivity/UGAInput.h
+/Users/Shared/Unity/Proto/WarfareSurvivor/WarfareSurvivor/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/src/main/cpp/GameActivity/UGASoftKeyboard.h
+/Users/Shared/Unity/Proto/WarfareSurvivor/WarfareSurvivor/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/src/main/cpp/GameActivity/UGASoftKeyboardCallbacks.h
+/Users/Shared/Unity/Proto/WarfareSurvivor/WarfareSurvivor/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/src/main/cpp/GameActivity/UGATypes.h
+/Users/Shared/Unity/Proto/WarfareSurvivor/WarfareSurvivor/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/src/main/cpp/GameActivity/UGAVersion.h
+/Users/Shared/Unity/Proto/WarfareSurvivor/WarfareSurvivor/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/src/main/cpp/GameActivity/UnityToGACallbacks.h
+/Users/Shared/Unity/Proto/WarfareSurvivor/WarfareSurvivor/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/src/main/cpp/GameActivity/UnityToGAConfigurationCallbacks.h
+/Users/Shared/Unity/Proto/WarfareSurvivor/WarfareSurvivor/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/src/main/cpp/GameActivity/UnityToGAKeyEventCallbacks.h
+/Users/Shared/Unity/Proto/WarfareSurvivor/WarfareSurvivor/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/src/main/cpp/GameActivity/UnityToGAMotionEventCallbacks.h

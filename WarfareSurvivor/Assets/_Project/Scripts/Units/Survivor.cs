@@ -83,7 +83,14 @@ namespace WarfareSurvivor
             if (torsoAim != null) torsoAim.Configure(config.torsoAimMaxAngle, config.torsoAimSpeed);
 
             var bar = GetComponent<HealthBarView>();
-            if (bar != null) bar.Bind(health, config);
+            if (bar != null)
+            {
+                // Полоска, трассы, вспышки — украшения. Любой их сбой не должен
+                // мешать бойцу появиться: именно так одно исключение внутри
+                // полоски оставило от отряда одного человека.
+                try { bar.Bind(health, config); }
+                catch (System.Exception e) { Debug.LogError($"[{name}] Полоска здоровья не собралась: {e.Message}", this); }
+            }
 
             health.Died += OnDied;
 

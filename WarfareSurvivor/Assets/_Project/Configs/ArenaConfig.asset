@@ -15,7 +15,7 @@ MonoBehaviour:
   cameraPitch: 58
   cameraYaw: 0
   cameraFieldOfView: 28
-  cameraDistance: 40
+  cameraDistance: 55
   cameraNearClip: 5
   cameraFarClip: 140
   cameraSmoothTime: 0.18
@@ -28,7 +28,7 @@ MonoBehaviour:
   ambientGround: {r: 0.35, g: 0.28, b: 0.2, a: 1}
   squadComposition:
   - Class: {fileID: 11400000, guid: d7934318956704e09acd034c08018278, type: 2}
-    Count: 10
+    Count: 5
   - Class: {fileID: 11400000, guid: 626208014da524a00b5ee0123e9acebc, type: 2}
     Count: 20
   squadSpeed: 7

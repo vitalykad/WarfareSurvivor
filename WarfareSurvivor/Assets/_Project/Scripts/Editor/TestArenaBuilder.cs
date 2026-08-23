@@ -31,6 +31,10 @@ namespace WarfareSurvivor.EditorTools
         [MenuItem("WarfareSurvivor/Build Test Arena")]
         public static void Build()
         {
+            // Шейдеры, которые ищутся через Shader.Find, надо явно включить
+            // в сборку — иначе на устройстве их не окажется.
+            ShaderInclusion.Ensure();
+
             LoadOrCreateConfig();
             PrepareSurvivorPrefab(PolicePrefab);
             PrepareSurvivorPrefab(SouthPolicePrefab);

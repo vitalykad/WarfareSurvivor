@@ -50,10 +50,18 @@ namespace WarfareSurvivor
             pivot.localPosition = Vector3.up * top;
 
             var background = CreateQuad("Background", ref backgroundMaterial, new Color(0.08f, 0.08f, 0.09f, 1f));
+            fill = CreateQuad("Fill", ref fillMaterial, new Color(0.35f, 0.85f, 0.35f, 1f));
+            if (background == null || fill == null)
+            {
+                Destroy(pivot.gameObject);
+                pivot = null;
+                fill = null;
+                return;
+            }
+
             background.SetParent(pivot, false);
             background.localScale = new Vector3(width, height, 1f);
 
-            fill = CreateQuad("Fill", ref fillMaterial, new Color(0.35f, 0.85f, 0.35f, 1f));
             fill.SetParent(pivot, false);
             fill.localPosition = new Vector3(0f, 0f, -0.01f);
             fill.localScale = new Vector3(width, height * 0.75f, 1f);
@@ -74,11 +82,23 @@ namespace WarfareSurvivor
             return bounds.size.y * 1.15f;
         }
 
+        /// <summary>Возвращает null, если материал собрать не удалось.</summary>
         static Transform CreateQuad(string name, ref Material shared, Color color)
         {
             if (shared == null)
             {
                 var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+                if (shader == null)
+                {
+                    // В сборке шейдер могли вырезать: на него не ссылается
+                    // ни один материал, а Shader.Find о таком не знает.
+                    // Полоска — украшение; ронять из-за неё создание бойца
+                    // нельзя, иначе отряд не соберётся вовсе.
+                    Debug.LogError("[HealthBarView] Нет шейдера для полоски — полоски не будет. " +
+                                   "Добавь шейдер в Always Included Shaders.");
+                    return null;
+                }
+
                 shared = new Material(shader) { name = "HealthBar_" + name };
                 // URP зовёт цвет _BaseColor, встроенный Unlit — _Color.
                 // Пишем в то, что шейдер реально объявляет.
@@ -97,13 +117,14 @@ namespace WarfareSurvivor
 
         void OnDamaged(float amount, Vector3 point)
         {
+            if (pivot == null) return;
             hideTime = Time.time + config.healthBarVisibleTime;
             SetVisible(true);
         }
 
         void LateUpdate()
         {
-            if (pivot == null || !pivot.gameObject.activeSelf) return;
+            if (pivot == null || fill == null || !pivot.gameObject.activeSelf) return;
 
             if (Time.time >= hideTime)
             {
