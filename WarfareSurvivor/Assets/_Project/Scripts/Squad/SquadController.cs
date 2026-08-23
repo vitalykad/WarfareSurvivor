@@ -15,15 +15,15 @@ namespace WarfareSurvivor
     /// </summary>
     public class SquadController : MonoBehaviour
     {
-        /// <summary>Отношение шага между рядами к шагу между соседями в ряду (sqrt(3)/2).</summary>
-        const float HexRowFactor = 0.866f;
+        /// <summary>
+        /// Золотой угол. Поворот на него между соседними бойцами — то самое,
+        /// по которому уложены семечки в подсолнухе: доли оборота никогда
+        /// не повторяются, поэтому не возникает ни рядов, ни спиц.
+        /// </summary>
+        const float GoldenAngle = 2.39996323f;
 
-        struct Ring
-        {
-            public float Radius;
-            public int Count;
-            public float AngleOffset;
-        }
+        /// <summary>Площадь на бойца при плотнейшей укладке — sqrt(3)/2 от квадрата шага.</summary>
+        const float HexAreaFactor = 0.866f;
 
         [SerializeField] ArenaConfig config;
         [SerializeField] VirtualJoystick joystick;
@@ -40,10 +40,10 @@ namespace WarfareSurvivor
         // удалении, поэтому пересборка строя — это пересчёт индексов,
         // а не новая сортировка.
         readonly List<Survivor> living = new List<Survivor>();
-        readonly List<int> livingRing = new List<int>();
-        readonly List<int> livingSlot = new List<int>();
 
-        Ring[] rings = new Ring[0];
+        /// <summary>Смещение слота от якоря, по одному на живого бойца.</summary>
+        readonly List<Vector3> slotOffsets = new List<Vector3>();
+
         bool formationDirty;
         Vector3 anchor;
 
@@ -153,13 +153,13 @@ namespace WarfareSurvivor
         /// Именно живых, а не изначальный состав: иначе на месте погибшего
         /// остаётся дыра, а оставшиеся продолжают стоять по старым углам.
         ///
-        /// Роль занимает НЕСКОЛЬКО вложенных колец, а не одно. Одно кольцо
-        /// на роль раздувало строй: его радиус растёт вместе с числом бойцов,
-        /// десять стрелков растягивались в широкий обод, ближний бой уезжал
-        /// ещё дальше — и всё это приходилось компенсировать отъездом камеры.
-        /// Заполняя каждое кольцо до вместимости и лишь потом заводя
-        /// следующее, получаем плотную упаковку: радиус растёт как корень
-        /// из числа бойцов, а не линейно.
+        /// Роль занимает КРУГ, а не кольцо: бойцы кладутся по спирали
+        /// с золотым углом — как семечки в подсолнухе. Кольцами строй
+        /// выглядел то крестом, то коробочкой: соседние кольца приходилось
+        /// сдвигать по углу, и через одно они снова оказывались в фазе,
+        /// а глаз читает такие совпадения как ряды и спицы. При золотом угле
+        /// доли оборота не повторяются никогда, поэтому рядов не возникает
+        /// вовсе, а круг заполняется равномерно.
         ///
         /// Побочное следствие правила «кольца только по присутствующим
         /// ролям»: когда последний медик погиб, стрелки переезжают внутрь.
@@ -169,68 +169,43 @@ namespace WarfareSurvivor
         {
             formationDirty = false;
 
-            var counts = new List<int>();
-            var order = new List<SquadRole>();
+            slotOffsets.Clear();
 
-            foreach (var member in living)
-            {
-                var role = member.Class.role;
-                if (order.Count > 0 && order[order.Count - 1] == role) counts[counts.Count - 1]++;
-                else { order.Add(role); counts.Add(1); }
-            }
-
-            var built = new List<Ring>();
             float diameter = UnitRadius * 2f;
             float roleGap = config.formationRingGap * diameter;
-            float radius = 0f;
+            float innerRadius = 0f;
+            int roleIndex = 0;
+            int cursor = 0;
 
-            for (int i = 0; i < counts.Count; i++)
+            while (cursor < living.Count)
             {
-                float spacing = (config.formationRingSpacingMin + config.formationRingSpacingStep * i) * diameter;
-                if (i > 0) radius += roleGap;
+                // living отсортирован по роли, поэтому одна роль — один отрезок.
+                var role = living[cursor].Class.role;
+                int count = 0;
+                while (cursor + count < living.Count && living[cursor + count].Class.role == role) count++;
 
-                int placed = 0;
-                while (placed < counts[i])
+                float spacing = (config.formationRingSpacingMin + config.formationRingSpacingStep * roleIndex) * diameter;
+
+                // Плотность задаём площадью на бойца — тогда круг заполняется
+                // равномерно, без разрежения к краю или сгущения в центре.
+                float areaPerUnit = spacing * spacing * HexAreaFactor;
+                float outerRadius = innerRadius;
+
+                for (int k = 0; k < count; k++)
                 {
-                    // Вместимость кольца — сколько бойцов помещается по его
-                    // длине с заданным зазором. В центре помещается ровно один.
-                    int capacity = radius <= 0.0001f
-                        ? 1
-                        : Mathf.Max(1, Mathf.FloorToInt(2f * Mathf.PI * radius / spacing));
+                    // Радиус растёт как корень: каждое следующее кольцо площади
+                    // вмещает больше бойцов, и плотность остаётся постоянной.
+                    float r = Mathf.Sqrt(innerRadius * innerRadius + k * areaPerUnit / Mathf.PI);
+                    float angle = k * GoldenAngle;
 
-                    int take = Mathf.Min(capacity, counts[i] - placed);
-
-                    built.Add(new Ring
-                    {
-                        Radius = radius,
-                        Count = take,
-                        // Каждое следующее кольцо сдвинуто на полшага, чтобы
-                        // бойцы не выстраивались в спицы и строй читался толпой.
-                        AngleOffset = built.Count % 2 == 1 ? Mathf.PI / Mathf.Max(1, take) : 0f
-                    });
-
-                    placed += take;
-
-                    // Шаг между кольцами меньше шага между соседями в кольце:
-                    // ряды в шестиугольной упаковке отстоят на sqrt(3)/2 от
-                    // расстояния между соседями. Работает это потому, что
-                    // соседние кольца сдвинуты по углу на полшага — боец
-                    // встаёт в просвет между двумя из соседнего кольца,
-                    // а не строго за одним из них.
-                    if (placed < counts[i]) radius += spacing * HexRowFactor;
+                    slotOffsets.Add(new Vector3(Mathf.Cos(angle) * r, 0f, Mathf.Sin(angle) * r));
+                    outerRadius = Mathf.Max(outerRadius, r);
                 }
+
+                innerRadius = outerRadius + roleGap;
+                cursor += count;
+                roleIndex++;
             }
-
-            rings = built.ToArray();
-
-            livingRing.Clear();
-            livingSlot.Clear();
-            for (int ring = 0; ring < rings.Length; ring++)
-                for (int slot = 0; slot < rings[ring].Count; slot++)
-                {
-                    livingRing.Add(ring);
-                    livingSlot.Add(slot);
-                }
         }
 
         /// <summary>
@@ -298,17 +273,7 @@ namespace WarfareSurvivor
         /// отряд крутится вокруг своей оси при каждом повороте джойстика,
         /// и бойцы наматывают круги вместо того, чтобы идти.
         /// </summary>
-        Vector3 SlotOffset(int index)
-        {
-            var ring = rings[livingRing[index]];
-
-            // Проверяем только радиус. Условие «на кольце один боец» тут было
-            // бы ошибкой: последний уцелевший из внешнего кольца уехал бы
-            // в центр, внутрь стрелков.
-            if (ring.Radius <= 0f) return Vector3.zero;
-
-            float angle = ring.AngleOffset + livingSlot[index] * Mathf.PI * 2f / Mathf.Max(1, ring.Count);
-            return new Vector3(Mathf.Cos(angle) * ring.Radius, 0f, Mathf.Sin(angle) * ring.Radius);
-        }
+        Vector3 SlotOffset(int index) =>
+            index >= 0 && index < slotOffsets.Count ? slotOffsets[index] : Vector3.zero;
     }
 }
