@@ -40,6 +40,9 @@ namespace WarfareSurvivor
 
             /// <summary>Рисовать ли интерфейс.</summary>
             public bool Ui;
+
+            /// <summary>Шейдер земли на время ступени. null — не трогать.</summary>
+            public string GroundShader;
         }
 
         [SerializeField] ArenaConfig config;
@@ -55,6 +58,13 @@ namespace WarfareSurvivor
             // Две встречные ступени: они отвечают на вопрос прямо, без
             // накопительного вычитания. Прежние ступени убирали объекты
             // по очереди, и «всё, кроме земли» ни разу не измерялось.
+            // Земля оказалась дороже всей остальной сцены. Выясняем, за что
+            // именно платим: за площадь заливки или за дорогой шейдер.
+            // URP/Lit считает полноценный PBR на КАЖДЫЙ пиксель экрана,
+            // Simple Lit — упрощённую модель, Unlit — только текстуру.
+            Ground("земля на Simple Lit", "Universal Render Pipeline/Simple Lit"),
+            Ground("земля на Unlit", "Universal Render Pipeline/Unlit"),
+
             Shadowed("всё, КРОМЕ земли", LayerUtility.Ground),
             Shadowed("только земля", LayerUtility.Zombies, LayerUtility.Survivors, LayerUtility.Environment),
             Hide("всё, кроме земли, без теней", LayerUtility.Ground),
@@ -104,6 +114,14 @@ namespace WarfareSurvivor
             Zombies = true, Survivors = true, Separation = true, Ui = true
         };
 
+        /// <summary>Полная сцена с подменённым шейдером земли.</summary>
+        static Stage Ground(string name, string shader) => new Stage
+        {
+            Name = name, HiddenLayers = new string[0], Shadows = true,
+            Zombies = true, Survivors = true, Separation = true, Ui = true,
+            GroundShader = shader
+        };
+
         /// <summary>Скрыть слои, оставив тени: сравнимо с «полной сценой».</summary>
         static Stage Shadowed(string name, params string[] layers) => new Stage
         {
@@ -128,11 +146,13 @@ namespace WarfareSurvivor
         int baseMask;
         float savedSeparation;
         int baseTargetRate;
+        Material groundMaterial;
+        Shader baseGroundShader;
         int baseMaxAlive;
         float baseSpawnInterval;
 
         /// <summary>Сколько зомби держим на сцене всё время прогона.</summary>
-        const int SweepZombies = 50;
+        const int SweepZombies = 30;
         float baseRenderScale;
         float baseShadowDistance;
         bool baseHdr;
@@ -157,6 +177,13 @@ namespace WarfareSurvivor
 
             baseMask = view.cullingMask;
             ui = FindFirstObjectByType<Canvas>();
+
+            var ground = GameObject.Find("Ground");
+            if (ground != null)
+            {
+                groundMaterial = ground.GetComponent<Renderer>().sharedMaterial;
+                baseGroundShader = groundMaterial.shader;
+            }
 
             // Снимаем ограничитель на время прогона. Под ним всё, что быстрее
             // 16.7 мс, читается как ровно 16.7 — то есть измеряется потолок,
@@ -203,6 +230,9 @@ namespace WarfareSurvivor
             Pipe.shadowDistance = baseShadowDistance;
             Pipe.supportsHDR = baseHdr;
             if (ui != null) ui.enabled = true;
+            // Материал земли — ассет проекта, подмена шейдера переживёт выход
+            // из игры. Вернуть обязательно.
+            if (groundMaterial != null && baseGroundShader != null) groundMaterial.shader = baseGroundShader;
         }
 
         void Update()
@@ -272,6 +302,12 @@ namespace WarfareSurvivor
             }
 
             if (ui != null) ui.enabled = current.Ui;
+
+            if (groundMaterial != null)
+            {
+                var shader = current.GroundShader != null ? Shader.Find(current.GroundShader) : baseGroundShader;
+                if (shader != null) groundMaterial.shader = shader;
+            }
 
             // Первые кадры после переключения не считаем: там перестройка
             // теневых карт и прогрев, к установившейся стоимости отношения
