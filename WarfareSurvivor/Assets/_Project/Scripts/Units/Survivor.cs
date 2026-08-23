@@ -132,6 +132,7 @@ namespace WarfareSurvivor
         void Update()
         {
             if (config == null || health.IsDead) return;
+            if (!config.simulateSurvivors) return;
 
             Move();
             UpdateTarget();

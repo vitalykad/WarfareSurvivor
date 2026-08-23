@@ -86,6 +86,7 @@ namespace WarfareSurvivor
                 member.name = $"{klass.displayName}_{i:00}";
                 member.Bind(this, config, klass);
                 member.Lost += OnMemberLost;
+                LayerUtility.Apply(member.gameObject, LayerUtility.Survivors);
                 living.Add(member);
 
                 unitRadius = Mathf.Max(unitRadius, MeasureUnitRadius(member));

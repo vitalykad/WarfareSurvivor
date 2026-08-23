@@ -176,6 +176,9 @@ namespace WarfareSurvivor
         void Update()
         {
             if (config == null) return;
+            // Отключается стендом нагрузки: так видно, сколько стоят мозги
+            // и расталкивание отдельно от отрисовки.
+            if (!config.simulateZombies) return;
 
             if (flashUntil > 0f && Time.time >= flashUntil)
             {

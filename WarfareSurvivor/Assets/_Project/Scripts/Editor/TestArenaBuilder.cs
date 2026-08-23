@@ -34,6 +34,7 @@ namespace WarfareSurvivor.EditorTools
             // Шейдеры, которые ищутся через Shader.Find, надо явно включить
             // в сборку — иначе на устройстве их не окажется.
             ShaderInclusion.Ensure();
+            LayerSetup.Ensure();
 
             // Без этого FrameTimingManager молчит и разделения CPU/GPU не будет.
             PlayerSettings.enableFrameTimingStats = true;
@@ -65,6 +66,11 @@ namespace WarfareSurvivor.EditorTools
 
             var frameRate = new GameObject("FrameRate").AddComponent<FrameRateController>();
             Wire(frameRate, nameof(config), config);
+
+            var sweep = new GameObject("PerformanceSweep").AddComponent<PerformanceSweep>();
+            Wire(sweep, nameof(config), config);
+            Wire(sweep, "view", camera.GetComponent<Camera>());
+            Wire(sweep, "sun", Object.FindFirstObjectByType<Light>());
 
             Wire(squad, nameof(config), config);
             Wire(squad, "joystick", joystick);
@@ -250,6 +256,8 @@ namespace WarfareSurvivor.EditorTools
 
             var material = AssetDatabase.LoadAssetAtPath<Material>(GroundMaterial);
             if (material != null) ground.GetComponent<MeshRenderer>().sharedMaterial = material;
+
+            LayerUtility.Apply(ground, LayerUtility.Environment);
         }
 
         /// <summary>
@@ -304,6 +312,7 @@ namespace WarfareSurvivor.EditorTools
                 instance.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
                 instance.transform.localScale = Vector3.one * scale;
                 instance.AddComponent<Obstacle>();
+                LayerUtility.Apply(instance, LayerUtility.Environment);
 
                 placed.Add(position);
                 radii.Add(radius);

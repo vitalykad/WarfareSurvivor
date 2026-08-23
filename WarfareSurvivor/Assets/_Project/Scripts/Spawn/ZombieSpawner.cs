@@ -151,6 +151,7 @@ namespace WarfareSurvivor
         {
             var zombie = Instantiate(zombiePrefab, pool);
             zombie.Released += Release;
+            LayerUtility.Apply(zombie.gameObject, LayerUtility.Zombies);
             zombie.gameObject.SetActive(false);
             return zombie;
         }
