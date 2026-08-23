@@ -13,15 +13,11 @@ MonoBehaviour:
   m_Name: Police
   m_EditorClassIdentifier: Assembly-CSharp::WarfareSurvivor.SurvivorClassSO
   displayName: "\u041F\u043E\u043B\u0438\u0446\u0435\u0439\u0441\u043A\u0438\u0439"
-  prefabVariants:
-  - {fileID: 4004322837743000134, guid: eb2f07e81b79c413196e2dceb3f27334, type: 3}
-  - {fileID: 8488970930614647125, guid: 84f907af3bf0d4be590383cae6ec39b2, type: 3}
-  variant: 0
   prefab: {fileID: 4004322837743000134, guid: eb2f07e81b79c413196e2dceb3f27334, type: 3}
   role: 1
   maxHealth: 100
   attackRange: 9
-  attackInterval: 0.9
+  attackInterval: 2
   damage: 10
   knockbackDistance: 0
   attackHitTime: 0.5

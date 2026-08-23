@@ -91,6 +91,7 @@ namespace WarfareSurvivor.EditorTools
 
             // Правим уже созданные контроллеры на месте, а не пересоздаём:
             // пересоздание меняет GUID, и префабы теряют ссылку на контроллер.
+            AttachWeapons();
             EnsureReverseRun(PoliceController);
             EnsureReverseRun(FarmerController);
             EnsureUpperBodyAttack(FarmerController, clips);
@@ -309,6 +310,122 @@ namespace WarfareSurvivor.EditorTools
             AssetDatabase.CreateAsset(mask, UpperBodyMask);
             Debug.Log($"[CharacterSetup] Создана маска {UpperBodyMask}");
             return AssetDatabase.LoadAssetAtPath<AvatarMask>(UpperBodyMask);
+        }
+
+        /// <summary>
+        /// Вешает оружие на кость правой руки. Уже навешенное не трогаем:
+        /// посадку в руке подгоняют вручную на префабе, и пересборка не должна
+        /// эту работу стирать.
+        /// </summary>
+        static void AttachWeapons()
+        {
+            var revolver = WeaponBuilder.EnsureWeapon(
+                "Assets/Models/Weapons/SM_Wep_Revolver_01 1.prefab", WeaponBuilder.RevolverPrefab, muzzle: true);
+            var spade = WeaponBuilder.EnsureWeapon(
+                "Assets/Models/Weapons/SM_Wep_Spade_01 1.prefab", WeaponBuilder.SpadePrefab, muzzle: false);
+
+            // Смещение хвата вдоль оси оружия. У револьвера пивот уже
+            // на рукояти, у лопаты — посреди черенка, поэтому её надо
+            // сдвинуть: полотно у неё на +Z, рукоять на -Z (померено
+            // по ширине половин меша).
+            Attach(PolicePrefab, revolver, gripAlongZ: 0f);
+            Attach(SouthPolicePrefab, revolver, gripAlongZ: 0f);
+            Attach(FarmerPrefab, spade, gripAlongZ: -0.55f);
+        }
+
+        [MenuItem("WarfareSurvivor/Setup/Reattach Weapons (overwrite)")]
+        public static void ReattachWeapons()
+        {
+            if (!EditorUtility.DisplayDialog(
+                    "Перевесить оружие",
+                    "Посадка оружия в руке будет пересчитана кодом. " +
+                    "Подгонка, сделанная руками на префабах, пропадёт.",
+                    "Перевесить", "Отмена"))
+                return;
+
+            foreach (var path in new[] { PolicePrefab, SouthPolicePrefab, FarmerPrefab })
+                RemoveWeapons(path);
+
+            AttachWeapons();
+            AssetDatabase.SaveAssets();
+        }
+
+        static void RemoveWeapons(string characterPath)
+        {
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(characterPath) == null) return;
+
+            var root = PrefabUtility.LoadPrefabContents(characterPath);
+            try
+            {
+                var doomed = new List<Transform>();
+                foreach (var t in root.GetComponentsInChildren<Transform>(true))
+                    if (t.name.StartsWith("Weapon_")) doomed.Add(t);
+
+                foreach (var t in doomed)
+                    if (t != null) Object.DestroyImmediate(t.gameObject);
+
+                if (doomed.Count > 0) PrefabUtility.SaveAsPrefabAsset(root, characterPath);
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
+        static void Attach(string characterPath, GameObject weapon, float gripAlongZ)
+        {
+            if (weapon == null) return;
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(characterPath) == null) return;
+
+            var root = PrefabUtility.LoadPrefabContents(characterPath);
+            try
+            {
+                var hand = FindHandBone(root.transform);
+                if (hand == null)
+                {
+                    Debug.LogWarning($"[CharacterSetup] У {characterPath} не найдена кость правой руки");
+                    return;
+                }
+
+                if (hand.Find(weapon.name) != null) return;   // уже висит, не трогаем
+
+                var instance = (GameObject)PrefabUtility.InstantiatePrefab(weapon, hand);
+                instance.name = weapon.name;
+                instance.transform.localScale = Vector3.one;
+
+                // Оси кости кисти произвольные — у нашего рига это поворот
+                // примерно на 105° по крену. Нулевой поворот направлял оружие
+                // вдоль взгляда камеры, и в кадре оно выглядело точкой.
+                // Разворачиваем так, чтобы оси оружия совпали с осями
+                // персонажа: +Z оружия смотрит туда же, куда лицо.
+                var aligned = Quaternion.Inverse(hand.rotation) * root.transform.rotation;
+                instance.transform.localRotation = aligned;
+
+                // Сдвигаем вдоль оси так, чтобы точка хвата легла в ладонь.
+                instance.transform.localPosition = -(aligned * new Vector3(0f, 0f, gripAlongZ));
+
+                PrefabUtility.SaveAsPrefabAsset(root, characterPath);
+                Debug.Log($"[CharacterSetup] {weapon.name} -> {characterPath} (кость {hand.name})");
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
+        /// <summary>
+        /// Ищем кость по имени, а не через Animator: аватар на префабе,
+        /// загруженном в изолированную сцену, не инициализирован, и
+        /// GetBoneTransform там возвращает пустоту.
+        /// </summary>
+        static Transform FindHandBone(Transform root)
+        {
+            string[] names = { "R_Hand", "RightHand", "mixamorig:RightHand", "Hand_R", "hand_r" };
+            foreach (var t in root.GetComponentsInChildren<Transform>(true))
+                foreach (var name in names)
+                    if (string.Equals(t.name, name, System.StringComparison.OrdinalIgnoreCase))
+                        return t;
+            return null;
         }
 
         static void EnsureReverseRun(string controllerPath)

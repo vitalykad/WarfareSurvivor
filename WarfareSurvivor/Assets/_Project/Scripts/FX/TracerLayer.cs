@@ -168,8 +168,16 @@ namespace WarfareSurvivor
             if (instance == null || !instance.config.tracersEnabled) return;
             var cfg = instance.config;
 
+            var direction = (to - from).normalized;
+
+            // Вспышка у ствола: короткий широкий отрезок, живущий доли трассы.
+            if (cfg.muzzleFlashLength > 0f)
+                instance.Add(from, from + direction * cfg.muzzleFlashLength,
+                    cfg.muzzleFlashLife, cfg.muzzleFlashLength,
+                    cfg.tracerWidth * cfg.muzzleFlashWidth, cfg.tracerColor);
+
             instance.Add(from, to, cfg.tracerLife, cfg.tracerDashMeters, cfg.tracerWidth, cfg.tracerColor);
-            instance.Sparks(to, (to - from).normalized);
+            instance.Sparks(to, direction);
         }
 
         void Sparks(Vector3 point, Vector3 incoming)

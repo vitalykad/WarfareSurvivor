@@ -20,6 +20,9 @@ namespace WarfareSurvivor
         /// <summary>Имя слоя удара — тот же, что заводит CharacterSetupBuilder.</summary>
         const string AttackLayerName = "UpperBody";
 
+        /// <summary>Имя метки дула — его же ставит WeaponBuilder.</summary>
+        const string MuzzleName = "Muzzle";
+
         /// <summary>Как боец держится по отношению к движению отряда.</summary>
         enum Stance
         {
@@ -72,10 +75,7 @@ namespace WarfareSurvivor
             health.Init(klass.maxHealth);
 
             animator = GetComponentInChildren<Animator>();
-            // Трасса должна выходить из ствола, а ствол — в правой руке.
-            // Кость берём один раз: GetBoneTransform не бесплатен.
-            if (animator != null && animator.isHuman)
-                muzzle = animator.GetBoneTransform(HumanBodyBones.RightHand);
+            muzzle = FindMuzzle();
 
             CacheAttackAnimation();
 
@@ -465,6 +465,26 @@ namespace WarfareSurvivor
             // состояние Attack берёт скорость из этого параметра, и на нуле
             // анимация замирает на первом кадре, так и не начавшись.
             animator.SetFloat(AttackSpeedParam, 1f);
+        }
+
+        /// <summary>
+        /// Точка вылета трассы — метка на стволе оружия. Её ставит сборщик
+        /// оружия у дальнего конца ствола.
+        ///
+        /// Раньше здесь бралась кость кисти, и трасса выходила из кулака:
+        /// пока оружия в руках не было, разницы не было видно, а с револьвером
+        /// стало бы заметно сразу.
+        /// </summary>
+        Transform FindMuzzle()
+        {
+            foreach (var t in GetComponentsInChildren<Transform>(true))
+                if (t.name == MuzzleName)
+                    return t;
+
+            // Оружия нет или метки на нём нет — стреляем от кисти, как раньше.
+            return animator != null && animator.isHuman
+                ? animator.GetBoneTransform(HumanBodyBones.RightHand)
+                : null;
         }
 
         Vector3 MuzzlePosition()
