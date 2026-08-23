@@ -63,6 +63,9 @@ namespace WarfareSurvivor.EditorTools
             var joystick = CreateUI();
             CreateFrameMeter(config);
 
+            var frameRate = new GameObject("FrameRate").AddComponent<FrameRateController>();
+            Wire(frameRate, nameof(config), config);
+
             Wire(squad, nameof(config), config);
             Wire(squad, "joystick", joystick);
             Wire(squad, "viewCamera", camera.GetComponent<Camera>());

@@ -95,6 +95,11 @@ MonoBehaviour:
   muzzleFlashLength: 0.5
   muzzleFlashWidth: 2.6
   muzzleFlashLife: 0.05
+  targetFrameRate: 60
+  vSyncCount: 0
+  showFrameMeter: 1
+  frameMeterLogInterval: 5
+  frameMeterWindow: 1
   debugSquadInvincible: 0
   debugAutoDrive: 0
   debugAutoDriveRadius: 7
