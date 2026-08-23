@@ -51,7 +51,11 @@ namespace WarfareSurvivor
             Full("без теней", shadows: false),
             Hide("без теней и зомби", LayerUtility.Zombies),
             Hide("+ без отряда", LayerUtility.Zombies, LayerUtility.Survivors),
-            Hide("+ без окружения", LayerUtility.Zombies, LayerUtility.Survivors, LayerUtility.Environment),
+            Hide("+ без руин", LayerUtility.Zombies, LayerUtility.Survivors, LayerUtility.Environment),
+            Hide("+ без земли (пустой экран)", LayerUtility.Zombies, LayerUtility.Survivors,
+                 LayerUtility.Environment, LayerUtility.Ground),
+            // Земля одна, без всего прочего: чистая цена заливки экрана.
+            Hide("только земля", LayerUtility.Zombies, LayerUtility.Survivors, LayerUtility.Environment),
 
             // Дальше выключаем не картинку, а счёт: если время не падает
             // и здесь, значит виновата не наша логика, а сам конвейер.
@@ -78,7 +82,11 @@ namespace WarfareSurvivor
             RenderScale = renderScale, ShadowDistance = shadowDistance
         };
 
-        static string[] All() => new[] { LayerUtility.Zombies, LayerUtility.Survivors, LayerUtility.Environment };
+        static string[] All() => new[]
+        {
+            LayerUtility.Zombies, LayerUtility.Survivors,
+            LayerUtility.Environment, LayerUtility.Ground
+        };
 
         static Stage Full(string name, bool shadows) => new Stage
         {

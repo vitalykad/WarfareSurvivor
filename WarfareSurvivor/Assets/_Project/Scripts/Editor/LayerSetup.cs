@@ -16,6 +16,7 @@ namespace WarfareSurvivor.EditorTools
         public const string Survivors = "Survivors";
         public const string Zombies = "Zombies";
         public const string Environment = "Environment";
+        public const string Ground = "Ground";
 
         [MenuItem("WarfareSurvivor/Setup/Create Layers")]
         public static void Ensure()
@@ -26,7 +27,7 @@ namespace WarfareSurvivor.EditorTools
             var so = new SerializedObject(asset[0]);
             var layers = so.FindProperty("layers");
 
-            foreach (var name in new[] { Survivors, Zombies, Environment })
+            foreach (var name in new[] { Survivors, Zombies, Environment, Ground })
             {
                 if (IndexOf(layers, name) >= 0) continue;
 

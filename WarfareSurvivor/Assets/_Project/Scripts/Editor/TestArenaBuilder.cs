@@ -257,7 +257,7 @@ namespace WarfareSurvivor.EditorTools
             var material = AssetDatabase.LoadAssetAtPath<Material>(GroundMaterial);
             if (material != null) ground.GetComponent<MeshRenderer>().sharedMaterial = material;
 
-            LayerUtility.Apply(ground, LayerUtility.Environment);
+            LayerUtility.Apply(ground, LayerUtility.Ground);
         }
 
         /// <summary>
