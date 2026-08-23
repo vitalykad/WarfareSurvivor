@@ -1,5 +1,7 @@
 using System.Text;
 using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 
 namespace WarfareSurvivor
 {
@@ -26,6 +28,12 @@ namespace WarfareSurvivor
             public bool Zombies;
             public bool Survivors;
             public bool Separation;
+
+            /// <summary>Масштаб рендера. Ноль — не трогать.</summary>
+            public float RenderScale;
+
+            /// <summary>Дальность теней. Ноль — не трогать.</summary>
+            public float ShadowDistance;
         }
 
         [SerializeField] ArenaConfig config;
@@ -34,20 +42,40 @@ namespace WarfareSurvivor
 
         static readonly Stage[] Stages =
         {
+            // Ступень прогрева: в неё попадает загрузка сцены, её цифры
+            // выбрасываются. Без неё первая настоящая ступень показывала
+            // 187 мс вместо 35.
+            Full("прогрев (не считается)", shadows: true),
+
             Full("всё как есть", shadows: true),
             Full("без теней", shadows: false),
             Hide("без теней и зомби", LayerUtility.Zombies),
             Hide("+ без отряда", LayerUtility.Zombies, LayerUtility.Survivors),
             Hide("+ без окружения", LayerUtility.Zombies, LayerUtility.Survivors, LayerUtility.Environment),
+
             // Дальше выключаем не картинку, а счёт: если время не падает
-            // и здесь, значит виновата не наша логика, а сам движок.
+            // и здесь, значит виновата не наша логика, а сам конвейер.
             new Stage { Name = "ничего не рисуем, без расталкивания зомби", Shadows = false,
                         HiddenLayers = All(), Zombies = true, Survivors = true, Separation = false },
             new Stage { Name = "+ зомби не думают", Shadows = false,
                         HiddenLayers = All(), Zombies = false, Survivors = true, Separation = false },
             new Stage { Name = "+ отряд не думает", Shadows = false,
                         HiddenLayers = All(), Zombies = false, Survivors = false, Separation = false },
+
+            // Теперь меряем сам конвейер: сцена целиком, меняются настройки.
+            Pipeline("тени 30 м вместо 70", shadowDistance: 30f),
+            Pipeline("разрешение 0.6", renderScale: 0.6f),
+            Pipeline("разрешение 0.5", renderScale: 0.5f),
+            Pipeline("разрешение 0.5 + тени 30", renderScale: 0.5f, shadowDistance: 30f),
+
             Full("всё обратно", shadows: true),
+        };
+
+        static Stage Pipeline(string name, float renderScale = 0f, float shadowDistance = 0f) => new Stage
+        {
+            Name = name, HiddenLayers = new string[0], Shadows = true,
+            Zombies = true, Survivors = true, Separation = true,
+            RenderScale = renderScale, ShadowDistance = shadowDistance
         };
 
         static string[] All() => new[] { LayerUtility.Zombies, LayerUtility.Survivors, LayerUtility.Environment };
@@ -73,6 +101,11 @@ namespace WarfareSurvivor
         float cpuTotal;
         int baseMask;
         float savedSeparation;
+        float baseRenderScale;
+        float baseShadowDistance;
+
+        static UniversalRenderPipelineAsset Pipe =>
+            GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
 
         void Awake()
         {
@@ -89,6 +122,11 @@ namespace WarfareSurvivor
             }
 
             baseMask = view.cullingMask;
+            if (Pipe != null)
+            {
+                baseRenderScale = Pipe.renderScale;
+                baseShadowDistance = Pipe.shadowDistance;
+            }
             Next();
         }
 
@@ -102,6 +140,12 @@ namespace WarfareSurvivor
             config.simulateZombies = true;
             config.simulateSurvivors = true;
             if (savedSeparation > 0f) config.zombieSeparationRadius = savedSeparation;
+
+            // Настройки конвейера живут в ассете и переживают выход из игры —
+            // вернуть их обязательно, иначе стенд молча поменяет проект.
+            if (Pipe == null || baseRenderScale <= 0f) return;
+            Pipe.renderScale = baseRenderScale;
+            Pipe.shadowDistance = baseShadowDistance;
         }
 
         void Update()
@@ -151,6 +195,12 @@ namespace WarfareSurvivor
             if (savedSeparation <= 0f) savedSeparation = config.zombieSeparationRadius;
             config.zombieSeparationRadius = current.Separation ? savedSeparation : 0f;
 
+            if (Pipe != null)
+            {
+                Pipe.renderScale = current.RenderScale > 0f ? current.RenderScale : baseRenderScale;
+                Pipe.shadowDistance = current.ShadowDistance > 0f ? current.ShadowDistance : baseShadowDistance;
+            }
+
             // Первые кадры после переключения не считаем: там перестройка
             // теневых карт и прогрев, к установившейся стоимости отношения
             // не имеющие.
@@ -161,6 +211,7 @@ namespace WarfareSurvivor
         void Report()
         {
             if (frames <= 0) return;
+            if (stage == 0) return;   // прогрев: там загрузка сцены
 
             var line = new StringBuilder(160);
             line.Append("[Стенд] ").Append(Stages[stage].Name)
