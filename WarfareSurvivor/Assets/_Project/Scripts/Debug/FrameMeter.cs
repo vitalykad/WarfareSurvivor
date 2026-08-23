@@ -24,8 +24,12 @@ namespace WarfareSurvivor
         [SerializeField] ArenaConfig config;
         [SerializeField] Text label;
 
-        /// <summary>Сколько секунд после старта не считаем: там кадр загрузки.</summary>
-        const float WarmupSeconds = 1.5f;
+        /// <summary>
+        /// Сколько первых кадров не считаем. Именно КАДРОВ, а не секунд:
+        /// кадр загрузки сцены длится десятки секунд и сам проскакивает
+        /// любое окно прогрева, заданное во времени.
+        /// </summary>
+        const int WarmupFrames = 10;
 
         readonly StringBuilder text = new StringBuilder(256);
 
@@ -36,7 +40,7 @@ namespace WarfareSurvivor
 
         float sessionWorst;
         float nextLogTime;
-        float warmupUntil;
+        int warmupLeft = WarmupFrames;
 
         // последние посчитанные значения — их же пишем в лог
         float shownAverage;
@@ -57,11 +61,10 @@ namespace WarfareSurvivor
             windowStart = Time.unscaledTime;
             nextLogTime = Time.unscaledTime + config.frameMeterLogInterval;
 
-            // Первый кадр после загрузки сцены длится секунды: в нём грузятся
-            // меши и компилируются шейдеры. Записав его в «худший за сеанс»,
-            // мы получили бы 9 секунд, рядом с которыми настоящие просадки
-            // не видны вовсе.
-            warmupUntil = Time.unscaledTime + WarmupSeconds;
+            // Первые кадры после загрузки сцены длятся секундами: в них
+            // грузятся меши и компилируются шейдеры. Записав такой кадр
+            // в «худший за сеанс», мы получили бы десятки секунд, рядом
+            // с которыми настоящие просадки не видны вовсе.
         }
 
         void Update()
@@ -70,8 +73,9 @@ namespace WarfareSurvivor
             // выглядеть просадкой.
             float ms = Time.unscaledDeltaTime * 1000f;
 
-            if (Time.unscaledTime < warmupUntil)
+            if (warmupLeft > 0)
             {
+                warmupLeft--;
                 windowStart = Time.unscaledTime;
                 windowWorst = 0f;
                 windowTotal = 0f;
