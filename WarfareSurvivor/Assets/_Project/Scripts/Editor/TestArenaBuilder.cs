@@ -35,6 +35,9 @@ namespace WarfareSurvivor.EditorTools
             // в сборку — иначе на устройстве их не окажется.
             ShaderInclusion.Ensure();
 
+            // Без этого FrameTimingManager молчит и разделения CPU/GPU не будет.
+            PlayerSettings.enableFrameTimingStats = true;
+
             LoadOrCreateConfig();
             PrepareSurvivorPrefab(PolicePrefab);
             PrepareSurvivorPrefab(SouthPolicePrefab);
@@ -58,6 +61,7 @@ namespace WarfareSurvivor.EditorTools
             var squad = CreateSquad(config);
             var camera = CreateCamera(squad.transform);
             var joystick = CreateUI();
+            CreateFrameMeter(config);
 
             Wire(squad, nameof(config), config);
             Wire(squad, "joystick", joystick);
@@ -439,6 +443,42 @@ namespace WarfareSurvivor.EditorTools
             Wire(joystick, "background", background);
             Wire(joystick, "handle", handle);
             return joystick;
+        }
+
+        /// <summary>
+        /// Счётчик кадра поверх игры. Живёт на том же канвасе, что джойстик.
+        /// </summary>
+        static void CreateFrameMeter(ArenaConfig config)
+        {
+            var canvas = Object.FindFirstObjectByType<Canvas>();
+            if (canvas == null) return;
+
+            var go = new GameObject("FrameMeter", typeof(Text), typeof(FrameMeter));
+            var rect = (RectTransform)go.transform;
+            rect.SetParent(canvas.transform, false);
+
+            // Левый верхний угол: там ничего не происходит, а джойстик внизу.
+            rect.anchorMin = rect.anchorMax = new Vector2(0f, 1f);
+            rect.pivot = new Vector2(0f, 1f);
+            rect.anchoredPosition = new Vector2(24f, -24f);
+            rect.sizeDelta = new Vector2(560f, 260f);
+
+            var text = go.GetComponent<Text>();
+            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.fontSize = 34;
+            text.color = Color.white;
+            text.raycastTarget = false;   // не должен перехватывать касания у джойстика
+            text.horizontalOverflow = HorizontalWrapMode.Overflow;
+            text.verticalOverflow = VerticalWrapMode.Overflow;
+
+            // Тень: белые цифры на светлом песке иначе не читаются.
+            var shadow = go.AddComponent<Shadow>();
+            shadow.effectColor = new Color(0f, 0f, 0f, 0.75f);
+            shadow.effectDistance = new Vector2(2f, -2f);
+
+            var meter = go.GetComponent<FrameMeter>();
+            Wire(meter, nameof(config), config);
+            Wire(meter, "label", text);
         }
 
         static void CreateEventSystem()

@@ -40,6 +40,33 @@ namespace WarfareSurvivor
         Dash[] items;
         int count;
 
+        /// <summary>Сколько отрезков сейчас в воздухе — трассы, искры и вспышки вместе.</summary>
+        public static int ActiveCount => instance != null ? instance.count : 0;
+
+        /// <summary>
+        /// Площадь перерисовки в квадратных метрах.
+        ///
+        /// Главная величина для мобильного кадра: платят за площадь, а не
+        /// за число эффектов. Считается по геометрии, поэтому честна —
+        /// это ровно те метры, которые залиты аддитивным шейдером.
+        /// </summary>
+        public static float ActiveArea
+        {
+            get
+            {
+                if (instance == null) return 0f;
+
+                float area = 0f;
+                for (int i = 0; i < instance.count; i++)
+                {
+                    var item = instance.items[i];
+                    float length = Mathf.Min(item.DashMeters, (item.To - item.From).magnitude);
+                    area += length * item.Width;
+                }
+                return area;
+            }
+        }
+
         Mesh mesh;
         Vector3[] vertices;
         Vector2[] uv;

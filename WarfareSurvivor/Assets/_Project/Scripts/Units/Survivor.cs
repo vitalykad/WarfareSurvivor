@@ -48,6 +48,7 @@ namespace WarfareSurvivor
         Stance stance;
         Transform muzzle;
         int attackLayer = -1;
+        bool hasAttackSpeed;
         float attackLayerWeight;
         float attackClipLength = 0.5f;
         float pendingHitTime;
@@ -383,7 +384,7 @@ namespace WarfareSurvivor
 
             if (animator != null)
             {
-                animator.SetFloat(AttackSpeedParam, playback);
+                if (hasAttackSpeed) animator.SetFloat(AttackSpeedParam, playback);
                 animator.SetTrigger(AttackParam);
             }
 
@@ -468,10 +469,19 @@ namespace WarfareSurvivor
                 break;
             }
 
-            // Множитель скорости обязан быть ненулевым с самого начала:
-            // состояние Attack берёт скорость из этого параметра, и на нуле
-            // анимация замирает на первом кадре, так и не начавшись.
-            animator.SetFloat(AttackSpeedParam, 1f);
+            // Параметр есть только у контроллеров с ударом. Ставить его
+            // вслепую нельзя: Animator ругается на каждое обращение
+            // к несуществующему параметру, и лог тонет в предупреждениях.
+            hasAttackSpeed = HasParameter(AttackSpeedParam);
+            if (hasAttackSpeed) animator.SetFloat(AttackSpeedParam, 1f);
+        }
+
+        bool HasParameter(int hash)
+        {
+            foreach (var parameter in animator.parameters)
+                if (parameter.nameHash == hash)
+                    return true;
+            return false;
         }
 
         /// <summary>
