@@ -52,6 +52,13 @@ namespace WarfareSurvivor
 
             Full("полная сцена, как есть", shadows: true),
 
+            // Две встречные ступени: они отвечают на вопрос прямо, без
+            // накопительного вычитания. Прежние ступени убирали объекты
+            // по очереди, и «всё, кроме земли» ни разу не измерялось.
+            Shadowed("всё, КРОМЕ земли", LayerUtility.Ground),
+            Shadowed("только земля", LayerUtility.Zombies, LayerUtility.Survivors, LayerUtility.Environment),
+            Hide("всё, кроме земли, без теней", LayerUtility.Ground),
+
             // Дальше — охота за ПОЛОМ: экран пуст, логика выключена,
             // и всё равно кадр стоит двадцать миллисекунд. Значит платит
             // сам конвейер, и надо понять, за что именно.
@@ -97,6 +104,13 @@ namespace WarfareSurvivor
             Zombies = true, Survivors = true, Separation = true, Ui = true
         };
 
+        /// <summary>Скрыть слои, оставив тени: сравнимо с «полной сценой».</summary>
+        static Stage Shadowed(string name, params string[] layers) => new Stage
+        {
+            Name = name, HiddenLayers = layers, Shadows = true,
+            Zombies = true, Survivors = true, Separation = true, Ui = true
+        };
+
         static Stage Hide(string name, params string[] layers) => new Stage
         {
             Name = name, HiddenLayers = layers, Shadows = false,
@@ -113,6 +127,12 @@ namespace WarfareSurvivor
         float cpuTotal;
         int baseMask;
         float savedSeparation;
+        int baseTargetRate;
+        int baseMaxAlive;
+        float baseSpawnInterval;
+
+        /// <summary>Сколько зомби держим на сцене всё время прогона.</summary>
+        const int SweepZombies = 50;
         float baseRenderScale;
         float baseShadowDistance;
         bool baseHdr;
@@ -137,6 +157,21 @@ namespace WarfareSurvivor
 
             baseMask = view.cullingMask;
             ui = FindFirstObjectByType<Canvas>();
+
+            // Снимаем ограничитель на время прогона. Под ним всё, что быстрее
+            // 16.7 мс, читается как ровно 16.7 — то есть измеряется потолок,
+            // а не затраты. Именно так «пустой экран» выглядел одинаково
+            // при разрешении 1.0 и 0.5.
+            baseTargetRate = config.targetFrameRate;
+            config.targetFrameRate = 1000;
+
+            // Держим толпу постоянной: за минуту прогона она успевала
+            // вырасти с двадцати до почти двухсот, и поздние ступени
+            // сравнивать было не с чем.
+            baseMaxAlive = config.maxAliveZombies;
+            baseSpawnInterval = config.spawnInterval;
+            config.maxAliveZombies = SweepZombies;
+            config.spawnInterval = 0.25f;
             if (Pipe != null)
             {
                 baseRenderScale = Pipe.renderScale;
@@ -156,6 +191,10 @@ namespace WarfareSurvivor
             config.simulateZombies = true;
             config.simulateSurvivors = true;
             if (savedSeparation > 0f) config.zombieSeparationRadius = savedSeparation;
+
+            if (baseTargetRate > 0) config.targetFrameRate = baseTargetRate;
+            if (baseMaxAlive > 0) config.maxAliveZombies = baseMaxAlive;
+            if (baseSpawnInterval > 0f) config.spawnInterval = baseSpawnInterval;
 
             // Настройки конвейера живут в ассете и переживают выход из игры —
             // вернуть их обязательно, иначе стенд молча поменяет проект.
@@ -253,6 +292,10 @@ namespace WarfareSurvivor
                 .Append(", ").Append(Mathf.RoundToInt(frames * 1000f / Mathf.Max(total, 0.01f))).Append(" fps")
                 .Append(" | зомби ").Append(Registry.Zombies.Count)
                 .Append(", бойцов ").Append(Registry.Survivors.Count);
+
+            int drift = Mathf.Abs(Registry.Zombies.Count - SweepZombies);
+            if (drift > SweepZombies / 3)
+                line.Append("  <- толпа уплыла, ступень несравнима");
 
             if (frames > 1 && total / frames > worst + 0.01f)
                 line.Append("  <- ЗАМЕР ВРЁТ: среднее больше худшего");
