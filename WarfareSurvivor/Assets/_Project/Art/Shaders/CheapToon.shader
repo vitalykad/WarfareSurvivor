@@ -15,13 +15,17 @@ Shader "WarfareSurvivor/CheapToon"
         _BaseColor ("Оттенок", Color) = (1,1,1,1)
 
         // Цвет в тени. Холодный оттенок читается лучше простого затемнения.
-        _ShadowColor ("Цвет тени", Color) = (0.45, 0.5, 0.62, 1)
+        _ShadowColor ("Цвет тени", Color) = (0.28, 0.33, 0.45, 1)
 
-        // Где проходит граница света и тени по N·L.
-        _Edge ("Граница", Range(0,1)) = 0.45
+        // Где проходит граница света и тени по N·L. Считается по СЫРОМУ
+        // косинусу: 0 — поверхность смотрит вбок от света, 1 — прямо на него.
+        _Edge ("Граница", Range(0,1)) = 0.4
 
         // Ширина перехода. Ноль — жёсткая ступенька.
-        _Soft ("Мягкость границы", Range(0.001,0.4)) = 0.06
+        _Soft ("Мягкость границы", Range(0.001,0.4)) = 0.08
+
+        // Вклад непрямого света. Больше — площе картинка.
+        _Ambient ("Непрямой свет", Range(0,1)) = 0.25
     }
 
     SubShader
@@ -70,6 +74,7 @@ Shader "WarfareSurvivor/CheapToon"
                 half4 _ShadowColor;
                 half _Edge;
                 half _Soft;
+                half _Ambient;
             CBUFFER_END
 
             Varyings vert(Attributes IN)
@@ -91,9 +96,15 @@ Shader "WarfareSurvivor/CheapToon"
                 float3 normalWS = normalize(IN.normalWS);
                 Light mainLight = GetMainLight(TransformWorldToShadowCoord(IN.positionWS));
 
-                // Освещённость с завёрнутым N·L: чистый dot даёт слишком
-                // резкий терминатор на низкополигональных моделях.
-                half ndotl = dot(normalWS, mainLight.direction) * 0.5h + 0.5h;
+                // СЫРОЙ косинус, без «заворачивания» в 0..1.
+                //
+                // Сначала я взял завёрнутый (dot * 0.5 + 0.5) — и модель
+                // оказалась освещена целиком: при таком отображении всё,
+                // что отвёрнуто от света меньше чем на 96 градусов, попадает
+                // в светлую полосу, а это почти весь силуэт. Порог должен
+                // стоять на самом косинусе, тогда терминатор ложится там,
+                // где поверхность действительно уходит от света.
+                half ndotl = saturate(dot(normalWS, mainLight.direction));
                 half lightness = ndotl * mainLight.shadowAttenuation;
 
                 // Та самая ступенька — весь тун держится на ней.
@@ -102,8 +113,10 @@ Shader "WarfareSurvivor/CheapToon"
                 half3 lighting = lerp(_ShadowColor.rgb, mainLight.color, band);
 
                 // Непрямой свет одной константой: сферические гармоники
-                // на каждом пикселе тут не окупаются.
-                lighting += unity_AmbientSky.rgb * 0.5h;
+                // на каждом пикселе тут не окупаются. Вклад держим малым —
+                // он добавляется к обеим полосам и, если переборщить,
+                // съедает разницу между ними, ради которой всё и затевалось.
+                lighting += unity_AmbientSky.rgb * _Ambient;
 
                 return half4(albedo.rgb * lighting, 1.0h);
             }
