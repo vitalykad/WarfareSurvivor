@@ -361,15 +361,6 @@ namespace WarfareSurvivor
 
         void Update()
         {
-            if (config.sweepMode == SweepMode.Zombies)
-            {
-                // Толпа закреплена на численности, где разница уже видна,
-                // а отряд бессмертен — иначе прогон оборвётся вайпом.
-                config.debugSquadInvincible = true;
-                config.maxAliveZombies = 150;
-                config.spawnInterval = 0.2f;
-            }
-
             if (Ramping)
             {
                 UpdateRamp();
