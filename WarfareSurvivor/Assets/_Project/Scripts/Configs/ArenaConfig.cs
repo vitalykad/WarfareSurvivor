@@ -25,6 +25,9 @@ namespace WarfareSurvivor
         /// <summary>Растущая толпа: ищем численность, на которой кадр ломается.</summary>
         Ramp = 3,
 
+        /// <summary>Шейдер и тени зомби на закреплённой толпе.</summary>
+        Zombies = 4,
+
         /// <summary>Все ступени по разу: ищем, что роняет кадр.</summary>
         Full = 0,
 

@@ -27,6 +27,7 @@ namespace WarfareSurvivor.EditorTools
             "Universal Render Pipeline/Unlit",             // полоски здоровья
             "Universal Render Pipeline/Lit",               // запасной для тиров зомби
             "WarfareSurvivor/CheapGround",                 // земля
+            "WarfareSurvivor/CheapToon",                   // персонажи и враги
             "Universal Render Pipeline/Simple Lit"         // для сравнения на стенде
         };
 

@@ -43,6 +43,12 @@ namespace WarfareSurvivor
 
             /// <summary>Шейдер земли на время ступени. null — не трогать.</summary>
             public string GroundShader;
+
+            /// <summary>Шейдер зомби на время ступени. null — не трогать.</summary>
+            public string ZombieShader;
+
+            /// <summary>Отбрасывают ли зомби тень. null — не трогать.</summary>
+            public bool? ZombieShadows;
         }
 
         [SerializeField] ArenaConfig config;
@@ -152,6 +158,26 @@ namespace WarfareSurvivor
             RenderScale = renderScale, ShadowDistance = shadowDistance
         };
 
+        /// <summary>
+        /// Зомби: шейдер и отбрасывание тени, на закреплённой толпе.
+        /// Толпа упирается в GPU линейно, по 0.13 мс на зомби, — здесь
+        /// выясняем, из чего эта цифра складывается.
+        /// </summary>
+        static readonly Stage[] ZombieAB =
+        {
+            Zombie("зомби: как есть (TCP2, 5 проходов)", null, true),
+            Zombie("зомби: без отбрасывания тени", null, false),
+            Zombie("зомби: свой тун", "WarfareSurvivor/CheapToon", true),
+            Zombie("зомби: свой тун, без тени", "WarfareSurvivor/CheapToon", false),
+        };
+
+        static Stage Zombie(string name, string shader, bool shadows) => new Stage
+        {
+            Name = name, HiddenLayers = new string[0], Shadows = true,
+            Zombies = true, Survivors = true, Separation = true, Ui = true,
+            ZombieShader = shader, ZombieShadows = shadows
+        };
+
         Stage[] Current
         {
             get
@@ -160,12 +186,15 @@ namespace WarfareSurvivor
                 {
                     case SweepMode.Ground: return GroundAB;
                     case SweepMode.Pipeline: return PipelineAB;
+                    case SweepMode.Zombies: return ZombieAB;
                     default: return Stages;
                 }
             }
         }
 
-        bool Looping => config.sweepMode == SweepMode.Ground || config.sweepMode == SweepMode.Pipeline;
+        bool Looping => config.sweepMode == SweepMode.Ground
+                     || config.sweepMode == SweepMode.Pipeline
+                     || config.sweepMode == SweepMode.Zombies;
 
         bool Ramping => config.sweepMode == SweepMode.Ramp;
 
@@ -203,6 +232,9 @@ namespace WarfareSurvivor
         int baseTargetRate;
         Material groundMaterial;
         Shader baseGroundShader;
+        Shader baseZombieShader;
+        string wantZombieShader;
+        bool? wantZombieShadows;
         int baseMaxAlive;
         float baseSpawnInterval;
 
@@ -255,6 +287,15 @@ namespace WarfareSurvivor
             baseSpawnInterval = config.spawnInterval;
             baseInvincible = config.debugSquadInvincible;
 
+            if (config.sweepMode == SweepMode.Zombies)
+            {
+                // Толпа закреплена на численности, где разница уже видна,
+                // а отряд бессмертен — иначе прогон оборвётся вайпом.
+                config.debugSquadInvincible = true;
+                config.maxAliveZombies = 150;
+                config.spawnInterval = 0.2f;
+            }
+
             if (Ramping)
             {
                 // Отряд бессмертен: иначе прогон обрывается вайпом задолго
@@ -292,6 +333,18 @@ namespace WarfareSurvivor
             if (baseTargetRate > 0) config.targetFrameRate = baseTargetRate;
             if (baseMaxAlive > 0) config.maxAliveZombies = baseMaxAlive;
             config.debugSquadInvincible = baseInvincible;
+
+            // Материалы тиров живут до конца сессии — шейдер вернуть.
+            if (baseZombieShader == null) return;
+            foreach (var zombie in Registry.Zombies)
+            {
+                if (zombie == null) continue;
+                foreach (var renderer in zombie.GetComponentsInChildren<Renderer>())
+                {
+                    if (renderer.sharedMaterial != null) renderer.sharedMaterial.shader = baseZombieShader;
+                    renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+                }
+            }
             if (baseSpawnInterval > 0f) config.spawnInterval = baseSpawnInterval;
 
             // Настройки конвейера живут в ассете и переживают выход из игры —
@@ -308,6 +361,15 @@ namespace WarfareSurvivor
 
         void Update()
         {
+            if (config.sweepMode == SweepMode.Zombies)
+            {
+                // Толпа закреплена на численности, где разница уже видна,
+                // а отряд бессмертен — иначе прогон оборвётся вайпом.
+                config.debugSquadInvincible = true;
+                config.maxAliveZombies = 150;
+                config.spawnInterval = 0.2f;
+            }
+
             if (Ramping)
             {
                 UpdateRamp();
@@ -343,6 +405,8 @@ namespace WarfareSurvivor
                 cpuTotal += (float)timings[0].cpuFrameTime;
                 timed++;
             }
+
+            if (config.sweepMode == SweepMode.Zombies) ApplyToZombies();
 
             if (banner != null && frames > 10 && frames % 30 == 0)
                 banner.text = $"{Current[stage].Name}\n{Mathf.RoundToInt(frames * 1000f / Mathf.Max(total, 0.01f))} fps   " +
@@ -399,6 +463,41 @@ namespace WarfareSurvivor
 
             config.maxAliveZombies += Mathf.Max(1, config.rampStep);
             StartRampStep();
+        }
+
+        /// <summary>
+        /// Раскладывает настройку по живым зомби. Зовётся каждый кадр,
+        /// а не только при смене ступени: зомби берутся из пула и приходят
+        /// новые, а настройка должна быть на всех, иначе замер размажется.
+        /// </summary>
+        void ApplyToZombies()
+        {
+            if (wantZombieShader == null && wantZombieShadows == null) return;
+
+            var mode = wantZombieShadows == true
+                ? UnityEngine.Rendering.ShadowCastingMode.On
+                : UnityEngine.Rendering.ShadowCastingMode.Off;
+
+            var shader = wantZombieShader != null ? Shader.Find(wantZombieShader) : baseZombieShader;
+
+            var zombies = Registry.Zombies;
+            for (int i = 0; i < zombies.Count; i++)
+            {
+                var zombie = zombies[i];
+                if (zombie == null) continue;
+
+                foreach (var renderer in zombie.GetComponentsInChildren<Renderer>())
+                {
+                    if (wantZombieShadows != null && renderer.shadowCastingMode != mode)
+                        renderer.shadowCastingMode = mode;
+
+                    var material = renderer.sharedMaterial;
+                    if (material == null || shader == null) continue;
+
+                    if (baseZombieShader == null) baseZombieShader = material.shader;
+                    if (material.shader != shader) material.shader = shader;
+                }
+            }
         }
 
         void StartRampStep()
@@ -491,6 +590,10 @@ namespace WarfareSurvivor
                 var shader = current.GroundShader != null ? Shader.Find(current.GroundShader) : baseGroundShader;
                 if (shader != null) groundMaterial.shader = shader;
             }
+
+            wantZombieShader = current.ZombieShader;
+            wantZombieShadows = current.ZombieShadows;
+            ApplyToZombies();
 
             // Первые кадры после переключения не считаем: там перестройка
             // теневых карт и прогрев, к установившейся стоимости отношения
