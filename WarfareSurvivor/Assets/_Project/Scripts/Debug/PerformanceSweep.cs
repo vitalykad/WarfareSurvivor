@@ -910,12 +910,13 @@ namespace WarfareSurvivor
                 line.Append(" || gpu ").Append((gpuTotal / timed).ToString("F1"))
                     .Append(" мс, cpu ").Append((cpuTotal / timed).ToString("F1")).Append(" мс");
 
-            // Сравнивать надо с тем потолком, на котором прогон и идёт:
-            // сравнения по зомби держат толпу в 150, и мерка в 30 ругалась
-            // бы на каждую ступень подряд.
-            int expected = config.sweepMode == SweepMode.Zombies
-                        || config.sweepMode == SweepMode.Skinning
-                ? config.maxAliveZombies
+            // Сравнивать надо с той численностью, на которой ступень реально
+            // идёт, а не с потолком спавнера: потолок считает и трупы,
+            // доигрывающие смерть, а счётчик — только живых, и равновесие
+            // сцены выходит заметно ниже потолка. С потолком в мерке
+            // проверка ругалась на исправные ступени.
+            int expected = CrowdPinned
+                ? config.maxAliveZombies * 2 / 3
                 : SweepZombies;
             int drift = Mathf.Abs(Registry.Zombies.Count - expected);
             if (drift > expected / 3)
