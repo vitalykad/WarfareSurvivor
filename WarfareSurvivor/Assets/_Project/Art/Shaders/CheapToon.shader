@@ -130,7 +130,7 @@ Shader "WarfareSurvivor/CheapToon"
                 // на каждом пикселе тут не окупаются. Вклад держим малым —
                 // он добавляется к обеим полосам и, если переборщить,
                 // съедает разницу между ними, ради которой всё и затевалось.
-                lighting += unity_ToonAmbientSky.rgb * _ToonAmbient;
+                lighting += unity_AmbientSky.rgb * _ToonAmbient;
 
                 return half4(albedo.rgb * lighting, 1.0h);
             }
