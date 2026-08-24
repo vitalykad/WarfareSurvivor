@@ -58,6 +58,17 @@ namespace WarfareSurvivor
 
             /// <summary>Крутится ли аниматор зомби. null — не трогать.</summary>
             public bool? ZombieAnimator;
+
+            /// <summary>
+            /// Свести всех зомби на ОДИН материал с инстансингом. Это
+            /// сценарий BatchRendererGroup средствами, которые уже есть:
+            /// один меш, один материал — и сотня вызовов схлопывается
+            /// в единицы. null — не трогать.
+            /// </summary>
+            public bool? ZombieOneMaterial;
+
+            /// <summary>Пакетчик SRP. null — не трогать.</summary>
+            public bool? SrpBatcher;
         }
 
         [SerializeField] ArenaConfig config;
@@ -204,14 +215,33 @@ namespace WarfareSurvivor
             Skin("зомби: застывшая поза, аниматор выключен", skinning: false, animator: false),
             Skin("зомби: застывшая поза, плоский шейдер", skinning: false, animator: false,
                  shader: "Universal Render Pipeline/Unlit"),
+
+            // Осталось измерить то, ради чего BatchRendererGroup и заводят:
+            // ВЫЗОВЫ ОТРИСОВКИ. Застывшая поза их не тронула — по одному
+            // на зомби плюс по одному в карту теней, как и было.
+            //
+            // Пара ступеней ниже сравнивает одно и то же изображение,
+            // нарисованное сотней вызовов и единицами. Всё прочее совпадает:
+            // тот же меш, тот же шейдер, та же площадь на экране.
+            //
+            // Пакетчик SRP выключен в обеих: он не убирает вызовы, а
+            // удешевляет их подготовку, и в URP имеет приоритет над
+            // инстансингом — с ним включённым инстансинг просто не сработал
+            // бы, и сравнение показало бы ноль на пустом месте.
+            Skin("зомби: сотня вызовов (пакетчик выкл)", skinning: false, animator: false,
+                 shader: "Universal Render Pipeline/Unlit", srpBatcher: false),
+            Skin("зомби: один материал, инстансинг", skinning: false, animator: false,
+                 shader: "Universal Render Pipeline/Unlit", srpBatcher: false, oneMaterial: true),
         };
 
-        static Stage Skin(string name, bool skinning, bool animator, string shader = null) => new Stage
+        static Stage Skin(string name, bool skinning, bool animator, string shader = null,
+                          bool? srpBatcher = null, bool oneMaterial = false) => new Stage
         {
             Name = name, HiddenLayers = new string[0], Shadows = true,
             Zombies = true, Survivors = true, Separation = true, Ui = true,
             ZombieSkinning = skinning, ZombieAnimator = animator,
-            ZombieShader = shader, ZombieShadows = true
+            ZombieShader = shader, ZombieShadows = true,
+            SrpBatcher = srpBatcher, ZombieOneMaterial = oneMaterial ? (bool?)true : null
         };
 
         static Stage Zombie(string name, string shader, bool shadows) => new Stage
@@ -309,6 +339,11 @@ namespace WarfareSurvivor
         bool? wantZombieShadows;
         bool? wantZombieSkinning;
         bool? wantZombieAnimator;
+        bool wantOneMaterial;
+
+        /// <summary>Один материал на всю толпу — для ступени с инстансингом.</summary>
+        Material sharedSwap;
+        bool baseSrpBatcher;
 
         /// <summary>Поза, снятая с первого попавшегося зомби, одна на всех.</summary>
         Mesh frozenPose;
@@ -402,6 +437,7 @@ namespace WarfareSurvivor
                 baseRenderScale = Pipe.renderScale;
                 baseShadowDistance = Pipe.shadowDistance;
                 baseHdr = Pipe.supportsHDR;
+                baseSrpBatcher = Pipe.useSRPBatcher;
             }
             Next();
         }
@@ -426,9 +462,7 @@ namespace WarfareSurvivor
 
             // Копии материалов больше не нужны: пул выдаёт зомби с исходным
             // материалом тира при следующем появлении.
-            foreach (var pair in swapped)
-                if (pair.Value != null) Destroy(pair.Value);
-            swapped.Clear();
+            DropSwapped();
 
             foreach (var zombie in Registry.Zombies)
             {
@@ -453,6 +487,7 @@ namespace WarfareSurvivor
             Pipe.renderScale = baseRenderScale;
             Pipe.shadowDistance = baseShadowDistance;
             Pipe.supportsHDR = baseHdr;
+            Pipe.useSRPBatcher = baseSrpBatcher;
             if (ui != null) ui.enabled = true;
             // Материал земли — ассет проекта, подмена шейдера переживёт выход
             // из игры. Вернуть обязательно.
@@ -477,6 +512,20 @@ namespace WarfareSurvivor
             // и те и другие, так что нагрузка соответствует потолку.
             if (CrowdPinned && !crowdReady)
             {
+                // Первое переключение в застывшую позу создаёт зомби меш-фильтр
+                // и рисователь, а первому же зомби печёт общий меш. В первом
+                // круге это ложилось прямо в замер: худший кадр доходил
+                // до 66 мс, а среднее застывшей позы оказывалось на семь
+                // миллисекунд выше настоящего. Создаём всё заранее, пока
+                // счёт не идёт, и тут же возвращаем кости на место.
+                var crowd = Registry.Zombies;
+                for (int i = 0; i < crowd.Count; i++)
+                {
+                    if (crowd[i] == null) continue;
+                    ApplySkinning(crowd[i], false);
+                    ApplySkinning(crowd[i], true);
+                }
+
                 ApplyToZombies();
                 if (Registry.Zombies.Count < config.maxAliveZombies * 2 / 3)
                 {
@@ -685,17 +734,44 @@ namespace WarfareSurvivor
         Material SwappedMaterial(Material source)
         {
             if (source == null) return null;
+
+            if (wantOneMaterial)
+            {
+                if (sharedSwap != null) return sharedSwap;
+                sharedSwap = MakeSwap(source, "ОдинНаВсех");
+                // Ради этого ступень и заведена: одинаковые меш и материал
+                // Unity складывает в один вызов вместо сотни.
+                if (sharedSwap != null) sharedSwap.enableInstancing = true;
+                return sharedSwap;
+            }
+
             if (swapped.TryGetValue(source, out var ready)) return ready;
 
+            var copy = MakeSwap(source, source.name);
+            if (copy != null) swapped[source] = copy;
+            return copy;
+        }
+
+        Material MakeSwap(Material source, string label)
+        {
             var shader = Shader.Find(wantZombieShader);
             if (shader == null) return null;
 
-            var copy = new Material(shader) { name = source.name + "_" + shader.name };
+            var copy = new Material(shader) { name = label + "_" + shader.name };
             if (source.HasProperty("_BaseMap")) copy.SetTexture("_BaseMap", source.GetTexture("_BaseMap"));
             if (source.HasProperty("_BaseColor")) copy.SetColor("_BaseColor", source.GetColor("_BaseColor"));
-
-            swapped[source] = copy;
             return copy;
+        }
+
+        /// <summary>Выбрасывает копии материалов: сменился режим, они негодны.</summary>
+        void DropSwapped()
+        {
+            foreach (var pair in swapped)
+                if (pair.Value != null) Destroy(pair.Value);
+            swapped.Clear();
+
+            if (sharedSwap != null) Destroy(sharedSwap);
+            sharedSwap = null;
         }
 
         void StartRampStep()
@@ -793,6 +869,17 @@ namespace WarfareSurvivor
             wantZombieShadows = current.ZombieShadows;
             wantZombieSkinning = current.ZombieSkinning;
             wantZombieAnimator = current.ZombieAnimator;
+
+            // Смена режима материалов делает прежние копии негодными:
+            // на одной ступени их несколько, на другой одна.
+            bool one = current.ZombieOneMaterial == true;
+            if (one != wantOneMaterial)
+            {
+                DropSwapped();
+                wantOneMaterial = one;
+            }
+
+            if (Pipe != null) Pipe.useSRPBatcher = current.SrpBatcher ?? baseSrpBatcher;
             ApplyToZombies();
 
             // Первые кадры после переключения не считаем: там перестройка
