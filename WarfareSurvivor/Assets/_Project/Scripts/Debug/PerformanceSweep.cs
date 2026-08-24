@@ -189,6 +189,7 @@ namespace WarfareSurvivor
 
         int stage = -1;
         int settleLeft;
+        int timed;
         float stageEnds;
         int frames;
         float total;
@@ -306,9 +307,22 @@ namespace WarfareSurvivor
             total += ms;
             if (ms > worst) worst = ms;
 
+            // Когда кадр упирается в развёртку экрана, все настройки читаются
+            // как ровно 16.7 мс и сравнить их нельзя. Время GPU показывает
+            // настоящую стоимость даже под потолком — именно по нему и надо
+            // выбирать между разрешениями.
+            FrameTimingManager.CaptureFrameTimings();
+            var timings = new FrameTiming[1];
+            if (FrameTimingManager.GetLatestTimings(1, timings) > 0)
+            {
+                gpuTotal += (float)timings[0].gpuFrameTime;
+                cpuTotal += (float)timings[0].cpuFrameTime;
+                timed++;
+            }
+
             if (banner != null && frames > 10 && frames % 30 == 0)
                 banner.text = $"{Current[stage].Name}\n{Mathf.RoundToInt(frames * 1000f / Mathf.Max(total, 0.01f))} fps   " +
-                              $"{(total / frames):F1} мс";
+                              $"{(total / frames):F1} мс   gpu {(timed > 0 ? gpuTotal / timed : 0f):F1} мс";
 
             if (Time.unscaledTime < stageEnds) return;
 
@@ -324,6 +338,7 @@ namespace WarfareSurvivor
             worst = 0f;
             gpuTotal = 0f;
             cpuTotal = 0f;
+            timed = 0;
 
             if (stage >= Current.Length)
             {
@@ -393,6 +408,10 @@ namespace WarfareSurvivor
                 .Append(", ").Append(Mathf.RoundToInt(frames * 1000f / Mathf.Max(total, 0.01f))).Append(" fps")
                 .Append(" | зомби ").Append(Registry.Zombies.Count)
                 .Append(", бойцов ").Append(Registry.Survivors.Count);
+
+            if (timed > 0)
+                line.Append(" || gpu ").Append((gpuTotal / timed).ToString("F1"))
+                    .Append(" мс, cpu ").Append((cpuTotal / timed).ToString("F1")).Append(" мс");
 
             int drift = Mathf.Abs(Registry.Zombies.Count - SweepZombies);
             if (drift > SweepZombies / 3)
