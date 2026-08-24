@@ -130,7 +130,42 @@ namespace WarfareSurvivor
             Ground("земля: свой дешёвый шейдер", "WarfareSurvivor/CheapGround"),
         };
 
-        Stage[] Current => config.sweepGroundOnly ? GroundAB : Stages;
+        /// <summary>
+        /// Сравнение настроек конвейера по кругу. Дальность теней на кадре
+        /// почти не сказывается, зато сказывается на РЕЗКОСТИ: карта теней
+        /// одна и та же, и чем меньше площадь, которую она покрывает, тем
+        /// больше её точек приходится на каждый метр. Поэтому смотреть надо
+        /// глазами, а не только в цифры.
+        /// </summary>
+        static readonly Stage[] PipelineAB =
+        {
+            Framing("масштаб 0.8 · тени 70 м (как сейчас)", 0.8f, 70f),
+            Framing("масштаб 1.0 · тени 70 м", 1f, 70f),
+            Framing("масштаб 1.0 · тени 60 м", 1f, 60f),
+            Framing("масштаб 0.8 · тени 60 м", 0.8f, 60f),
+        };
+
+        static Stage Framing(string name, float renderScale, float shadowDistance) => new Stage
+        {
+            Name = name, HiddenLayers = new string[0], Shadows = true,
+            Zombies = true, Survivors = true, Separation = true, Ui = true,
+            RenderScale = renderScale, ShadowDistance = shadowDistance
+        };
+
+        Stage[] Current
+        {
+            get
+            {
+                switch (config.sweepMode)
+                {
+                    case SweepMode.Ground: return GroundAB;
+                    case SweepMode.Pipeline: return PipelineAB;
+                    default: return Stages;
+                }
+            }
+        }
+
+        bool Looping => config.sweepMode != SweepMode.Full;
 
         static Stage Ground(string name, string shader) => new Stage
         {
@@ -294,7 +329,7 @@ namespace WarfareSurvivor
             {
                 // Сравнение шейдеров крутится по кругу: на него смотрят,
                 // а не читают лог после. Полный прогон — один раз.
-                if (config.sweepGroundOnly) stage = 0;
+                if (Looping) stage = 0;
                 else
                 {
                     Debug.Log("[Стенд] Прогон закончен");
@@ -349,7 +384,7 @@ namespace WarfareSurvivor
             if (frames <= 0) return;
             // В полном прогоне первая ступень — прогрев с загрузкой сцены.
             // В сравнении шейдеров прогрева нет: ступени идут по кругу.
-            if (!config.sweepGroundOnly && stage == 0) return;
+            if (!Looping && stage == 0) return;
 
             var line = new StringBuilder(160);
             line.Append("[Стенд] ").Append(Current[stage].Name)

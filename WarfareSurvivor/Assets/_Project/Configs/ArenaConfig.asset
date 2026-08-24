@@ -21,7 +21,7 @@ MonoBehaviour:
   cameraSmoothTime: 0.18
   sunColor: {r: 1, g: 0.89, b: 0.72, a: 1}
   sunIntensity: 1.3
-  sunPitch: 83.9
+  sunPitch: 74.6
   sunYaw: 329.8
   ambientSky: {r: 0.45, g: 0.55, b: 0.7, a: 1}
   ambientHorizon: {r: 0.48, g: 0.45, b: 0.42, a: 1}
@@ -100,8 +100,8 @@ MonoBehaviour:
   showFrameMeter: 1
   frameMeterLogInterval: 5
   frameMeterWindow: 1
-  debugSweep: 0
-  sweepGroundOnly: 1
+  debugSweep: 1
+  sweepMode: 2
   simulateZombies: 1
   simulateSurvivors: 1
   sweepStageSeconds: 10
