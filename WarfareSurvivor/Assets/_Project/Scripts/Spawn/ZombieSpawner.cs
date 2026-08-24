@@ -176,15 +176,26 @@ namespace WarfareSurvivor
                 return;
             }
 
-            if (bakedShader == null) bakedShader = Shader.Find(BakedShaderName);
-            if (bakedShader == null)
+            // Сначала ссылка из набора, и только потом поиск по имени.
+            // Ровно на этом порядке погорела первая сборка: шейдер искался
+            // по имени, сборщик выбросил его как неиспользуемый, и вся толпа
+            // тихо откатилась на кости — замер намерил старый путь.
+            var shader = config.bakedZombies.shader;
+            if (shader == null)
             {
-                Debug.LogWarning("[Зомби] Не найден шейдер " + BakedShaderName +
-                                 ". В сборке его нужно держать в Always Included Shaders.");
+                if (bakedShader == null) bakedShader = Shader.Find(BakedShaderName);
+                shader = bakedShader;
+            }
+
+            if (shader == null)
+            {
+                Debug.LogWarning("[Зомби] Нечем рисовать запечённую анимацию: " +
+                                 "в наборе нет ссылки на шейдер, и по имени " +
+                                 BakedShaderName + " он не нашёлся. Остаёмся на костях.");
                 return;
             }
 
-            var view = BakedZombieView.Convert(zombie.gameObject, config.bakedZombies, bakedShader);
+            var view = BakedZombieView.Convert(zombie.gameObject, config.bakedZombies, shader);
             if (view != null) zombie.UseBakedView(view);
         }
 

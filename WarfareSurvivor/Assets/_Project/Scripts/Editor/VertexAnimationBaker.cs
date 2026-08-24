@@ -21,6 +21,7 @@ namespace WarfareSurvivor
     {
         const string ZombiePrefab = "Assets/_Project/Prefabs/Monsters/Monster_Zombie.prefab";
         const string OutputFolder = "Assets/_Project/Art/Baked";
+        const string ShaderName = "WarfareSurvivor/VertexAnimationToon";
 
         [MenuItem("WarfareSurvivor/Bake Zombie Animation")]
         public static void BakeZombie() => Bake(ZombiePrefab, "Zombie");
@@ -187,7 +188,33 @@ namespace WarfareSurvivor
             var posTex = BuildTexture(label + "_VAT_Pos", positions, width, rows);
             var nrmTex = BuildTexture(label + "_VAT_Nrm", normals, width, rows);
 
-            var set = ScriptableObject.CreateInstance<BakedAnimationSet>();
+            string setPath = OutputFolder + "/" + label + "_VAT.asset";
+
+            // Обновляем СУЩЕСТВУЮЩИЙ ассет, а не создаём новый.
+            //
+            // Создание нового объекта по тому же пути рвёт все ссылки на него:
+            // после первой же перепечки конфиг ссылался в пустоту, и зомби
+            // молча оставались на костях. Тот же урок, что с ArenaConfig —
+            // чужие ссылки ломать нельзя.
+            var set = AssetDatabase.LoadAssetAtPath<BakedAnimationSet>(setPath);
+            bool fresh = set == null;
+            if (fresh)
+            {
+                set = ScriptableObject.CreateInstance<BakedAnimationSet>();
+                AssetDatabase.CreateAsset(set, setPath);
+            }
+            else
+            {
+                // Старые меш и текстуры лежат внутри того же ассета
+                // подобъектами: не убрав их, накопим мусор с каждой печью.
+                foreach (var sub in AssetDatabase.LoadAllAssetsAtPath(setPath))
+                    if (sub != set) Object.DestroyImmediate(sub, true);
+            }
+
+            set.shader = Shader.Find(ShaderName);
+            if (set.shader == null)
+                Debug.LogWarning("[Запекание] Не найден шейдер " + ShaderName +
+                                 ": набор запечётся, но рисовать его будет нечем.");
             set.mesh = mesh;
             set.positions = posTex;
             set.normals = nrmTex;
@@ -195,11 +222,10 @@ namespace WarfareSurvivor
             set.vertexCount = width;
             set.totalRows = rows;
 
-            string setPath = OutputFolder + "/" + label + "_VAT.asset";
-            AssetDatabase.CreateAsset(set, setPath);
             AssetDatabase.AddObjectToAsset(mesh, set);
             AssetDatabase.AddObjectToAsset(posTex, set);
             AssetDatabase.AddObjectToAsset(nrmTex, set);
+            EditorUtility.SetDirty(set);
             AssetDatabase.SaveAssets();
             AssetDatabase.ImportAsset(setPath);
 
