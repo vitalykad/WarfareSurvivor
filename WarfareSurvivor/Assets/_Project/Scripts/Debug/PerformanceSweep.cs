@@ -165,7 +165,9 @@ namespace WarfareSurvivor
             }
         }
 
-        bool Looping => config.sweepMode != SweepMode.Full;
+        bool Looping => config.sweepMode == SweepMode.Ground || config.sweepMode == SweepMode.Pipeline;
+
+        bool Ramping => config.sweepMode == SweepMode.Ramp;
 
         static Stage Ground(string name, string shader) => new Stage
         {
@@ -209,6 +211,7 @@ namespace WarfareSurvivor
         float baseRenderScale;
         float baseShadowDistance;
         bool baseHdr;
+        bool baseInvincible;
         Canvas ui;
 
         static UniversalRenderPipelineAsset Pipe =>
@@ -250,6 +253,20 @@ namespace WarfareSurvivor
             // сравнивать было не с чем.
             baseMaxAlive = config.maxAliveZombies;
             baseSpawnInterval = config.spawnInterval;
+            baseInvincible = config.debugSquadInvincible;
+
+            if (Ramping)
+            {
+                // Отряд бессмертен: иначе прогон обрывается вайпом задолго
+                // до интересной численности, и верхняя часть диапазона
+                // остаётся неизмеренной.
+                config.debugSquadInvincible = true;
+                config.maxAliveZombies = Mathf.Max(1, config.rampStep);
+                config.spawnInterval = 0.2f;
+                StartRampStep();
+                return;
+            }
+
             config.maxAliveZombies = SweepZombies;
             config.spawnInterval = 0.25f;
             if (Pipe != null)
@@ -274,6 +291,7 @@ namespace WarfareSurvivor
 
             if (baseTargetRate > 0) config.targetFrameRate = baseTargetRate;
             if (baseMaxAlive > 0) config.maxAliveZombies = baseMaxAlive;
+            config.debugSquadInvincible = baseInvincible;
             if (baseSpawnInterval > 0f) config.spawnInterval = baseSpawnInterval;
 
             // Настройки конвейера живут в ассете и переживают выход из игры —
@@ -290,6 +308,12 @@ namespace WarfareSurvivor
 
         void Update()
         {
+            if (Ramping)
+            {
+                UpdateRamp();
+                return;
+            }
+
             // Кадры устаканивания ПРОПУСКАЕМ целиком, а не считаем со знаком
             // минус. Раньше счётчик кадров стартовал отрицательным, а сумма
             // времени копилась с первого кадра — сумма по 348 кадрам делилась
@@ -328,6 +352,88 @@ namespace WarfareSurvivor
 
             Report();
             Next();
+        }
+
+        /// <summary>
+        /// Растущая толпа. Потолок живых поднимается ступенями, и на каждой
+        /// в лог уходит строка «столько-то зомби — такой-то кадр». Ищем
+        /// не среднюю цену зомби, а ЧИСЛЕННОСТЬ, на которой кадр перестаёт
+        /// укладываться в бюджет.
+        /// </summary>
+        void UpdateRamp()
+        {
+            if (settleLeft > 0)
+            {
+                settleLeft--;
+                return;
+            }
+
+            frames++;
+            float ms = Time.unscaledDeltaTime * 1000f;
+            total += ms;
+            if (ms > worst) worst = ms;
+
+            FrameTimingManager.CaptureFrameTimings();
+            var timings = new FrameTiming[1];
+            if (FrameTimingManager.GetLatestTimings(1, timings) > 0)
+            {
+                gpuTotal += (float)timings[0].gpuFrameTime;
+                timed++;
+            }
+
+            if (banner != null && frames > 5 && frames % 20 == 0)
+                banner.text = $"зомби {Registry.Zombies.Count} из {config.maxAliveZombies}\n" +
+                              $"{Mathf.RoundToInt(frames * 1000f / Mathf.Max(total, 0.01f))} fps   " +
+                              $"{(total / frames):F1} мс   gpu {(timed > 0 ? gpuTotal / timed : 0f):F1} мс";
+
+            if (Time.unscaledTime < stageEnds) return;
+
+            ReportRamp();
+
+            if (config.maxAliveZombies >= config.rampMax)
+            {
+                Debug.Log("[Толпа] Прогон закончен");
+                enabled = false;
+                return;
+            }
+
+            config.maxAliveZombies += Mathf.Max(1, config.rampStep);
+            StartRampStep();
+        }
+
+        void StartRampStep()
+        {
+            frames = 0;
+            total = 0f;
+            worst = 0f;
+            gpuTotal = 0f;
+            timed = 0;
+
+            // Ждём, пока толпа доберётся до нового потолка, и только потом
+            // начинаем считать: иначе померим момент долива, а не нагрузку.
+            settleLeft = 45;
+            stageEnds = Time.unscaledTime + Mathf.Max(2f, config.rampStepSeconds) + 0.75f;
+        }
+
+        void ReportRamp()
+        {
+            if (frames <= 0) return;
+
+            float avg = total / frames;
+            var line = new StringBuilder(160);
+            line.Append("[Толпа] зомби ").Append(Registry.Zombies.Count)
+                .Append(" (потолок ").Append(config.maxAliveZombies).Append(')')
+                .Append(": ").Append(avg.ToString("F1")).Append(" мс сред")
+                .Append(", худший ").Append(worst.ToString("F1")).Append(" мс")
+                .Append(", ").Append(Mathf.RoundToInt(1000f / Mathf.Max(avg, 0.01f))).Append(" fps");
+
+            if (timed > 0) line.Append(", gpu ").Append((gpuTotal / timed).ToString("F1")).Append(" мс");
+
+            // Бюджет 16.7 мс. Помечаем ступень, на которой вышли за него, —
+            // ради этой отметки прогон и затевается.
+            if (avg > 17.5f) line.Append("   <- ВЫШЛИ ЗА БЮДЖЕТ");
+
+            Debug.Log(line.ToString());
         }
 
         void Next()

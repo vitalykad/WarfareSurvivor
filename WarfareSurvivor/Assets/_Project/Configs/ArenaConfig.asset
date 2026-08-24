@@ -100,10 +100,13 @@ MonoBehaviour:
   showFrameMeter: 1
   frameMeterLogInterval: 5
   frameMeterWindow: 1
-  debugSweep: 0
-  sweepMode: 2
+  debugSweep: 1
+  sweepMode: 3
   simulateZombies: 1
   simulateSurvivors: 1
+  rampStep: 25
+  rampMax: 400
+  rampStepSeconds: 5
   sweepStageSeconds: 10
   debugSquadInvincible: 0
   debugAutoDrive: 0
