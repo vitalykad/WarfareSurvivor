@@ -67,11 +67,17 @@ namespace WarfareSurvivor.EditorTools
             var frameRate = new GameObject("FrameRate").AddComponent<FrameRateController>();
             Wire(frameRate, nameof(config), config);
 
-            var sweep = new GameObject("PerformanceSweep").AddComponent<PerformanceSweep>();
-            Wire(sweep, nameof(config), config);
-            Wire(sweep, "banner", CreateSweepBanner());
-            Wire(sweep, "view", camera.GetComponent<Camera>());
-            Wire(sweep, "sun", Object.FindFirstObjectByType<Light>());
+            // Стенд нагрузки в сцену не кладём, пока он не нужен: это
+            // инструмент замера, а не часть игры. Включается галочкой
+            // debugSweep в конфиге и пересборкой сцены.
+            if (config.debugSweep)
+            {
+                var sweep = new GameObject("PerformanceSweep").AddComponent<PerformanceSweep>();
+                Wire(sweep, nameof(config), config);
+                Wire(sweep, "banner", CreateSweepBanner());
+                Wire(sweep, "view", camera.GetComponent<Camera>());
+                Wire(sweep, "sun", Object.FindFirstObjectByType<Light>());
+            }
 
             Wire(squad, nameof(config), config);
             Wire(squad, "joystick", joystick);

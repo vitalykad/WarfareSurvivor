@@ -100,7 +100,7 @@ MonoBehaviour:
   showFrameMeter: 1
   frameMeterLogInterval: 5
   frameMeterWindow: 1
-  debugSweep: 1
+  debugSweep: 0
   sweepGroundOnly: 1
   simulateZombies: 1
   simulateSurvivors: 1
