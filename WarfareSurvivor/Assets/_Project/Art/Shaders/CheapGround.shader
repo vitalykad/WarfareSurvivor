@@ -35,8 +35,13 @@ Shader "WarfareSurvivor/CheapGround"
 
             // Только тени главного света. Дополнительных источников,
             // отражений и всего прочего здесь нет намеренно.
-            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE
-            #pragma multi_compile _ _SHADOWS_SOFT
+            // Набор ровно как у стандартного URP/Lit. Если пропустить хоть
+            // один вариант, шейдер молча собирается БЕЗ теней: конвейер
+            // включает ключевое слово, которого в шейдере нет, и берётся
+            // вариант «теней нет». Ошибка тихая — в одном окне тени видны,
+            // в другом нет.
+            #pragma multi_compile_fragment _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
+            #pragma multi_compile_fragment _ _SHADOWS_SOFT
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"

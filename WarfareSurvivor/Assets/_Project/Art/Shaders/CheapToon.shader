@@ -15,20 +15,26 @@ Shader "WarfareSurvivor/CheapToon"
         _BaseColor ("Оттенок", Color) = (1,1,1,1)
 
         // Цвет в тени. Холодный оттенок читается лучше простого затемнения.
+        // Имена с префиксом _Toon намеренно: при смене шейдера на живом
+        // материале Unity переносит совпадающие по имени свойства, и общие
+        // имена вроде _ShadowColor подхватываются из чужого шейдера. Зомби
+        // от этого становились бирюзовыми — TCP2 держит в _ShadowColor
+        // холодный оттенок.
+        //
         // Тень ТЁПЛАЯ, не синяя. Синева неба вместе с зелёной кожей зомби
         // уводила их в болотный оттенок, которого у TCP2 нет: подобрано
         // сравнением бок о бок.
-        _ShadowColor ("Цвет тени", Color) = (0.52, 0.47, 0.40, 1)
+        _ToonShadow ("Цвет тени", Color) = (0.52, 0.47, 0.40, 1)
 
         // Где проходит граница света и тени по N·L. Считается по СЫРОМУ
         // косинусу: 0 — поверхность смотрит вбок от света, 1 — прямо на него.
-        _Edge ("Граница", Range(0,1)) = 0.3
+        _ToonEdge ("Граница", Range(0,1)) = 0.3
 
         // Ширина перехода. Ноль — жёсткая ступенька.
-        _Soft ("Мягкость границы", Range(0.001,0.4)) = 0.16
+        _ToonSoft ("Мягкость границы", Range(0.001,0.4)) = 0.16
 
         // Вклад непрямого света. Больше — площе картинка.
-        _Ambient ("Непрямой свет", Range(0,1)) = 0.45
+        _ToonAmbient ("Непрямой свет", Range(0,1)) = 0.45
     }
 
     SubShader
@@ -45,8 +51,13 @@ Shader "WarfareSurvivor/CheapToon"
             #pragma fragment frag
 
             // Скиннинг нужен: это персонажи.
-            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE
-            #pragma multi_compile _ _SHADOWS_SOFT
+            // Набор ровно как у стандартного URP/Lit. Если пропустить хоть
+            // один вариант, шейдер молча собирается БЕЗ теней: конвейер
+            // включает ключевое слово, которого в шейдере нет, и берётся
+            // вариант «теней нет». Ошибка тихая — в одном окне тени видны,
+            // в другом нет.
+            #pragma multi_compile_fragment _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
+            #pragma multi_compile_fragment _ _SHADOWS_SOFT
             #pragma multi_compile_instancing
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
@@ -74,10 +85,10 @@ Shader "WarfareSurvivor/CheapToon"
             CBUFFER_START(UnityPerMaterial)
                 float4 _BaseMap_ST;
                 half4 _BaseColor;
-                half4 _ShadowColor;
-                half _Edge;
-                half _Soft;
-                half _Ambient;
+                half4 _ToonShadow;
+                half _ToonEdge;
+                half _ToonSoft;
+                half _ToonAmbient;
             CBUFFER_END
 
             Varyings vert(Attributes IN)
@@ -111,15 +122,15 @@ Shader "WarfareSurvivor/CheapToon"
                 half lightness = ndotl * mainLight.shadowAttenuation;
 
                 // Та самая ступенька — весь тун держится на ней.
-                half band = smoothstep(_Edge - _Soft, _Edge + _Soft, lightness);
+                half band = smoothstep(_ToonEdge - _ToonSoft, _ToonEdge + _ToonSoft, lightness);
 
-                half3 lighting = lerp(_ShadowColor.rgb, mainLight.color, band);
+                half3 lighting = lerp(_ToonShadow.rgb, mainLight.color, band);
 
                 // Непрямой свет одной константой: сферические гармоники
                 // на каждом пикселе тут не окупаются. Вклад держим малым —
                 // он добавляется к обеим полосам и, если переборщить,
                 // съедает разницу между ними, ради которой всё и затевалось.
-                lighting += unity_AmbientSky.rgb * _Ambient;
+                lighting += unity_ToonAmbientSky.rgb * _ToonAmbient;
 
                 return half4(albedo.rgb * lighting, 1.0h);
             }

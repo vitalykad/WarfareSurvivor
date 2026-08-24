@@ -220,6 +220,16 @@ namespace WarfareSurvivor
 
         int stage = -1;
         int settleLeft;
+
+        /// <summary>
+        /// Успел ли стенд запомнить исходное состояние сцены.
+        ///
+        /// Без этого флага выключение стенда гасило игру: отказ в Awake ставит
+        /// enabled = false, это зовёт OnDisable, а тот восстанавливал маску
+        /// камеры из ещё не заполненного поля — то есть из нуля. Камера
+        /// переставала рисовать всё.
+        /// </summary>
+        bool captured;
         int timed;
         float stageEnds;
         int frames;
@@ -233,6 +243,10 @@ namespace WarfareSurvivor
         Material groundMaterial;
         Shader baseGroundShader;
         Shader baseZombieShader;
+
+        /// <summary>Исходный материал -> его копия на подменном шейдере.</summary>
+        readonly System.Collections.Generic.Dictionary<Material, Material> swapped =
+            new System.Collections.Generic.Dictionary<Material, Material>();
         string wantZombieShader;
         bool? wantZombieShadows;
         int baseMaxAlive;
@@ -264,6 +278,7 @@ namespace WarfareSurvivor
             }
 
             baseMask = view.cullingMask;
+            captured = true;
             ui = FindFirstObjectByType<Canvas>();
 
             var ground = GameObject.Find("Ground");
@@ -321,6 +336,9 @@ namespace WarfareSurvivor
 
         void OnDisable()
         {
+            // Нечего восстанавливать: до запоминания состояния не дошли.
+            if (!captured) return;
+
             // Стенд не должен оставлять сцену в разобранном виде.
             if (view != null) view.cullingMask = baseMask;
             if (sun != null) sun.shadows = LightShadows.Soft;
@@ -334,16 +352,17 @@ namespace WarfareSurvivor
             if (baseMaxAlive > 0) config.maxAliveZombies = baseMaxAlive;
             config.debugSquadInvincible = baseInvincible;
 
-            // Материалы тиров живут до конца сессии — шейдер вернуть.
-            if (baseZombieShader == null) return;
+            // Копии материалов больше не нужны: пул выдаёт зомби с исходным
+            // материалом тира при следующем появлении.
+            foreach (var pair in swapped)
+                if (pair.Value != null) Destroy(pair.Value);
+            swapped.Clear();
+
             foreach (var zombie in Registry.Zombies)
             {
                 if (zombie == null) continue;
                 foreach (var renderer in zombie.GetComponentsInChildren<Renderer>())
-                {
-                    if (renderer.sharedMaterial != null) renderer.sharedMaterial.shader = baseZombieShader;
                     renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
-                }
             }
             if (baseSpawnInterval > 0f) config.spawnInterval = baseSpawnInterval;
 
@@ -469,8 +488,6 @@ namespace WarfareSurvivor
                 ? UnityEngine.Rendering.ShadowCastingMode.On
                 : UnityEngine.Rendering.ShadowCastingMode.Off;
 
-            var shader = wantZombieShader != null ? Shader.Find(wantZombieShader) : baseZombieShader;
-
             var zombies = Registry.Zombies;
             for (int i = 0; i < zombies.Count; i++)
             {
@@ -482,13 +499,37 @@ namespace WarfareSurvivor
                     if (wantZombieShadows != null && renderer.shadowCastingMode != mode)
                         renderer.shadowCastingMode = mode;
 
-                    var material = renderer.sharedMaterial;
-                    if (material == null || shader == null) continue;
+                    if (wantZombieShader == null || renderer.sharedMaterial == null) continue;
 
-                    if (baseZombieShader == null) baseZombieShader = material.shader;
-                    if (material.shader != shader) material.shader = shader;
+                    var swapped = SwappedMaterial(renderer.sharedMaterial);
+                    if (swapped != null) renderer.sharedMaterial = swapped;
                 }
             }
+        }
+
+        /// <summary>
+        /// Возвращает НОВЫЙ материал на нужном шейдере, а не подменяет шейдер
+        /// у существующего.
+        ///
+        /// Подмена ломает материал: у него остаются включёнными ключевые слова
+        /// прежнего шейдера, вариантов с ними в новом нет, и Unity рисует
+        /// ошибку — зомби становились пурпурными. Новый материал такого
+        /// наследства не несёт.
+        /// </summary>
+        Material SwappedMaterial(Material source)
+        {
+            if (source == null) return null;
+            if (swapped.TryGetValue(source, out var ready)) return ready;
+
+            var shader = Shader.Find(wantZombieShader);
+            if (shader == null) return null;
+
+            var copy = new Material(shader) { name = source.name + "_" + shader.name };
+            if (source.HasProperty("_BaseMap")) copy.SetTexture("_BaseMap", source.GetTexture("_BaseMap"));
+            if (source.HasProperty("_BaseColor")) copy.SetColor("_BaseColor", source.GetColor("_BaseColor"));
+
+            swapped[source] = copy;
+            return copy;
         }
 
         void StartRampStep()
