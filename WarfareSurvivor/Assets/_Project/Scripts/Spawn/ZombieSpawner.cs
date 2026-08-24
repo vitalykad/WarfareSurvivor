@@ -147,13 +147,45 @@ namespace WarfareSurvivor
             alive.Add(zombie);
         }
 
+        const string BakedShaderName = "WarfareSurvivor/VertexAnimationToon";
+        Shader bakedShader;
+
         Zombie CreateZombie()
         {
             var zombie = Instantiate(zombiePrefab, pool);
             zombie.Released += Release;
             LayerUtility.Apply(zombie.gameObject, LayerUtility.Zombies);
+            ApplyBakedView(zombie);
             zombie.gameObject.SetActive(false);
             return zombie;
+        }
+
+        /// <summary>
+        /// Переводит зомби на запечённую анимацию, если это включено.
+        /// Делается один раз при создании: перевод меняет состав компонентов,
+        /// и повторять его на каждой выдаче из пула незачем.
+        /// </summary>
+        void ApplyBakedView(Zombie zombie)
+        {
+            if (!config.useBakedZombies) return;
+
+            if (config.bakedZombies == null)
+            {
+                Debug.LogWarning("[Зомби] Запечённая анимация включена, но набор " +
+                                 "не назначен в конфиге. Остаёмся на костях.");
+                return;
+            }
+
+            if (bakedShader == null) bakedShader = Shader.Find(BakedShaderName);
+            if (bakedShader == null)
+            {
+                Debug.LogWarning("[Зомби] Не найден шейдер " + BakedShaderName +
+                                 ". В сборке его нужно держать в Always Included Shaders.");
+                return;
+            }
+
+            var view = BakedZombieView.Convert(zombie.gameObject, config.bakedZombies, bakedShader);
+            if (view != null) zombie.UseBakedView(view);
         }
 
         void Release(Zombie zombie)

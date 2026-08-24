@@ -12,6 +12,11 @@ namespace WarfareSurvivor
     {
         static readonly int DieParam = Animator.StringToHash("Die");
 
+        // Имена клипов те же, что в контроллере: печь берёт их оттуда,
+        // и расхождение сразу оставило бы зомби без анимации.
+        const string ClipRunning = "Zombie Running";
+        const string ClipDying = "Zombie Dying";
+
         // Один буфер на всех: расталкивание считается по очереди, и держать
         // список на каждом зомби значило бы двести списков вместо одного.
         static readonly List<Zombie> Neighbours = new List<Zombie>(32);
@@ -23,6 +28,9 @@ namespace WarfareSurvivor
 
         ArenaConfig config;
         Animator animator;
+
+        /// <summary>Не null, когда зомби показывается запечённой анимацией.</summary>
+        BakedZombieView baked;
         Health health;
         Renderer[] renderers;
 
@@ -55,6 +63,7 @@ namespace WarfareSurvivor
         {
             health = GetComponent<Health>();
             animator = GetComponentInChildren<Animator>();
+            baked = GetComponentInChildren<BakedZombieView>(true);
             renderers = GetComponentsInChildren<Renderer>();
             health.Damaged += OnDamaged;
             health.Died += OnDied;
@@ -97,7 +106,8 @@ namespace WarfareSurvivor
             knockbackVelocity = Vector3.zero;
             nextRetargetTime = Time.time + Random.value * cfg.retargetInterval;
 
-            if (animator != null)
+            if (baked != null) baked.Play(ClipRunning);
+            else if (animator != null)
             {
                 animator.Rebind();
                 animator.Update(0f);
@@ -105,6 +115,14 @@ namespace WarfareSurvivor
 
             if (!Registry.Zombies.Contains(this)) Registry.Zombies.Add(this);
         }
+
+        /// <summary>
+        /// Сообщает зомби, что его показывает запечённая анимация.
+        ///
+        /// Отдельным вызовом, а не поиском в Awake: спавнер переводит зомби
+        /// уже после создания объекта, когда Awake давно прошёл.
+        /// </summary>
+        public void UseBakedView(BakedZombieView view) => baked = view;
 
         public void TakeHit(float damage)
         {
@@ -153,6 +171,16 @@ namespace WarfareSurvivor
         void ApplyMaterial(Material material)
         {
             if (material == null) return;
+
+            // У запечённого зомби материал тира не подходит: он на шейдере
+            // со скиннингом. Двойник на шейдере запечённой анимации несёт
+            // ту же текстуру и тот же оттенок.
+            if (baked != null)
+            {
+                baked.SetMaterial(material);
+                return;
+            }
+
             for (int i = 0; i < renderers.Length; i++) renderers[i].sharedMaterial = material;
         }
 
@@ -169,7 +197,8 @@ namespace WarfareSurvivor
             // куда его отбросило, а не замереть в точке смерти.
             // Из реестра убираем сразу, чтобы бойцы не расстреливали труп.
             Registry.Zombies.Remove(this);
-            if (animator != null) animator.SetTrigger(DieParam);
+            if (baked != null) baked.Play(ClipDying);
+            else if (animator != null) animator.SetTrigger(DieParam);
             despawnTime = Time.time + config.zombieCorpseTime;
         }
 

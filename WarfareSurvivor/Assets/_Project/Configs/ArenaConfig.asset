@@ -59,6 +59,8 @@ MonoBehaviour:
   zombieScaleLow: 0.9
   zombieScaleHigh: 1.5
   zombieCorpseTime: 2.5
+  useBakedZombies: 1
+  bakedZombies: {fileID: 11400000, guid: 65a969dcc580044ef8b8b060dddc3dc8, type: 2}
   zombieSeparationRadius: 0.45
   zombieSeparationStrength: 0.5
   ruinCount: 14
@@ -100,7 +102,7 @@ MonoBehaviour:
   showFrameMeter: 1
   frameMeterLogInterval: 5
   frameMeterWindow: 1
-  debugSweep: 1
+  debugSweep: 0
   sweepMode: 5
   simulateZombies: 1
   simulateSurvivors: 1

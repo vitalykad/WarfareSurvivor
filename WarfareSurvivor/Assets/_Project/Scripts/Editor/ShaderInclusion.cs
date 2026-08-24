@@ -28,6 +28,7 @@ namespace WarfareSurvivor.EditorTools
             "Universal Render Pipeline/Lit",               // запасной для тиров зомби
             "WarfareSurvivor/CheapGround",                 // земля
             "WarfareSurvivor/CheapToon",                   // персонажи и враги
+            "WarfareSurvivor/VertexAnimationToon",         // зомби на запечённой анимации
             "Universal Render Pipeline/Simple Lit"         // для сравнения на стенде
         };
 
