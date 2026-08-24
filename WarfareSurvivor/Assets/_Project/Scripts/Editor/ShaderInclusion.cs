@@ -25,7 +25,9 @@ namespace WarfareSurvivor.EditorTools
         {
             "WarfareSurvivor/AdditiveTracer",              // трассы, искры, вспышка
             "Universal Render Pipeline/Unlit",             // полоски здоровья
-            "Universal Render Pipeline/Lit"                // запасной для тиров зомби
+            "Universal Render Pipeline/Lit",               // запасной для тиров зомби
+            "WarfareSurvivor/CheapGround",                 // земля
+            "Universal Render Pipeline/Simple Lit"         // для сравнения на стенде
         };
 
         [MenuItem("WarfareSurvivor/Setup/Include Runtime Shaders")]

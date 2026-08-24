@@ -64,6 +64,9 @@ namespace WarfareSurvivor
             // Simple Lit — упрощённую модель, Unlit — только текстуру.
             Ground("земля на Simple Lit", "Universal Render Pipeline/Simple Lit"),
             Ground("земля на Unlit", "Universal Render Pipeline/Unlit"),
+            // Свой шейдер: текстура, главный свет, его тень — и всё.
+            // Должен дать цену Unlit, сохранив тени на земле.
+            Ground("земля на своём шейдере", "WarfareSurvivor/CheapGround"),
 
             Shadowed("всё, КРОМЕ земли", LayerUtility.Ground),
             Shadowed("только земля", LayerUtility.Zombies, LayerUtility.Survivors, LayerUtility.Environment),
