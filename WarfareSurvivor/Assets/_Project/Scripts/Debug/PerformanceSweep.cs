@@ -48,6 +48,7 @@ namespace WarfareSurvivor
         [SerializeField] ArenaConfig config;
         [SerializeField] Camera view;
         [SerializeField] Light sun;
+        [SerializeField] UnityEngine.UI.Text banner;
 
         static readonly Stage[] Stages =
         {
@@ -118,6 +119,19 @@ namespace WarfareSurvivor
         };
 
         /// <summary>Полная сцена с подменённым шейдером земли.</summary>
+        /// <summary>
+        /// Сравнение шейдеров земли по кругу. Отдельный список, потому что
+        /// смотреть надо на картинку: полный прогон уводит сцену в состояния,
+        /// где смотреть не на что.
+        /// </summary>
+        static readonly Stage[] GroundAB =
+        {
+            Ground("земля: URP/Lit (полный PBR)", "Universal Render Pipeline/Lit"),
+            Ground("земля: свой дешёвый шейдер", "WarfareSurvivor/CheapGround"),
+        };
+
+        Stage[] Current => config.sweepGroundOnly ? GroundAB : Stages;
+
         static Stage Ground(string name, string shader) => new Stage
         {
             Name = name, HiddenLayers = new string[0], Shadows = true,
@@ -257,6 +271,10 @@ namespace WarfareSurvivor
             total += ms;
             if (ms > worst) worst = ms;
 
+            if (banner != null && frames > 10 && frames % 30 == 0)
+                banner.text = $"{Current[stage].Name}\n{Mathf.RoundToInt(frames * 1000f / Mathf.Max(total, 0.01f))} fps   " +
+                              $"{(total / frames):F1} мс";
+
             if (Time.unscaledTime < stageEnds) return;
 
             Report();
@@ -272,14 +290,20 @@ namespace WarfareSurvivor
             gpuTotal = 0f;
             cpuTotal = 0f;
 
-            if (stage >= Stages.Length)
+            if (stage >= Current.Length)
             {
-                Debug.Log("[Стенд] Прогон закончен");
-                enabled = false;
-                return;
+                // Сравнение шейдеров крутится по кругу: на него смотрят,
+                // а не читают лог после. Полный прогон — один раз.
+                if (config.sweepGroundOnly) stage = 0;
+                else
+                {
+                    Debug.Log("[Стенд] Прогон закончен");
+                    enabled = false;
+                    return;
+                }
             }
 
-            var current = Stages[stage];
+            var current = Current[stage];
 
             int mask = baseMask;
             foreach (var layerName in current.HiddenLayers)
@@ -317,15 +341,18 @@ namespace WarfareSurvivor
             // не имеющие. Полсекунды хватает.
             settleLeft = 30;
             stageEnds = Time.unscaledTime + Mathf.Max(2f, config.sweepStageSeconds) + 0.5f;
+            if (banner != null) banner.text = current.Name;
         }
 
         void Report()
         {
             if (frames <= 0) return;
-            if (stage == 0) return;   // прогрев: там загрузка сцены
+            // В полном прогоне первая ступень — прогрев с загрузкой сцены.
+            // В сравнении шейдеров прогрева нет: ступени идут по кругу.
+            if (!config.sweepGroundOnly && stage == 0) return;
 
             var line = new StringBuilder(160);
-            line.Append("[Стенд] ").Append(Stages[stage].Name)
+            line.Append("[Стенд] ").Append(Current[stage].Name)
                 .Append(": ").Append((total / frames).ToString("F1")).Append(" мс сред")
                 .Append(", худший ").Append(worst.ToString("F1")).Append(" мс")
                 .Append(", ").Append(Mathf.RoundToInt(frames * 1000f / Mathf.Max(total, 0.01f))).Append(" fps")

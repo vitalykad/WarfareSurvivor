@@ -101,7 +101,10 @@ MonoBehaviour:
   frameMeterLogInterval: 5
   frameMeterWindow: 1
   debugSweep: 1
-  sweepStageSeconds: 6
+  sweepGroundOnly: 1
+  simulateZombies: 1
+  simulateSurvivors: 1
+  sweepStageSeconds: 10
   debugSquadInvincible: 0
   debugAutoDrive: 0
   debugAutoDriveRadius: 7

@@ -69,6 +69,7 @@ namespace WarfareSurvivor.EditorTools
 
             var sweep = new GameObject("PerformanceSweep").AddComponent<PerformanceSweep>();
             Wire(sweep, nameof(config), config);
+            Wire(sweep, "banner", CreateSweepBanner());
             Wire(sweep, "view", camera.GetComponent<Camera>());
             Wire(sweep, "sun", Object.FindFirstObjectByType<Light>());
 
@@ -460,6 +461,36 @@ namespace WarfareSurvivor.EditorTools
         /// <summary>
         /// Счётчик кадра поверх игры. Живёт на том же канвасе, что джойстик.
         /// </summary>
+        /// <summary>Крупная подпись сверху: что сейчас проверяется.</summary>
+        static Text CreateSweepBanner()
+        {
+            var canvas = Object.FindFirstObjectByType<Canvas>();
+            if (canvas == null) return null;
+
+            var go = new GameObject("SweepBanner", typeof(Text));
+            var rect = (RectTransform)go.transform;
+            rect.SetParent(canvas.transform, false);
+            rect.anchorMin = new Vector2(0f, 1f);
+            rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(0.5f, 1f);
+            rect.anchoredPosition = new Vector2(0f, -300f);
+            rect.sizeDelta = new Vector2(-40f, 160f);
+
+            var text = go.GetComponent<Text>();
+            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.fontSize = 44;
+            text.alignment = TextAnchor.UpperCenter;
+            text.color = Color.white;
+            text.raycastTarget = false;
+            text.horizontalOverflow = HorizontalWrapMode.Overflow;
+            text.verticalOverflow = VerticalWrapMode.Overflow;
+
+            var shadow = go.AddComponent<Shadow>();
+            shadow.effectColor = new Color(0f, 0f, 0f, 0.8f);
+            shadow.effectDistance = new Vector2(2f, -2f);
+            return text;
+        }
+
         static void CreateFrameMeter(ArenaConfig config)
         {
             var canvas = Object.FindFirstObjectByType<Canvas>();
