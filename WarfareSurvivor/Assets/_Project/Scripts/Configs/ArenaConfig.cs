@@ -28,6 +28,9 @@ namespace WarfareSurvivor
         /// <summary>Шейдер и тени зомби на закреплённой толпе.</summary>
         Zombies = 4,
 
+        /// <summary>За что платим на зомби: за кости, за аниматор или за пиксели.</summary>
+        Skinning = 5,
+
         /// <summary>Все ступени по разу: ищем, что роняет кадр.</summary>
         Full = 0,
 

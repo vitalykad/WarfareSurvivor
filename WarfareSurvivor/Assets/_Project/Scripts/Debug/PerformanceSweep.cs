@@ -49,6 +49,15 @@ namespace WarfareSurvivor
 
             /// <summary>Отбрасывают ли зомби тень. null — не трогать.</summary>
             public bool? ZombieShadows;
+
+            /// <summary>
+            /// Гнутся ли зомби по костям. false — рисуем застывшую позу
+            /// обычным мешем. null — не трогать.
+            /// </summary>
+            public bool? ZombieSkinning;
+
+            /// <summary>Крутится ли аниматор зомби. null — не трогать.</summary>
+            public bool? ZombieAnimator;
         }
 
         [SerializeField] ArenaConfig config;
@@ -171,6 +180,40 @@ namespace WarfareSurvivor
             Zombie("зомби: свой тун, без тени", "WarfareSurvivor/CheapToon", false),
         };
 
+        /// <summary>
+        /// За что платим на зомби. Треугольников у зомби 1107 — для этого
+        /// телефона пустяк, значит дело не в геометрии. Остаются три
+        /// подозреваемых, и каждый снимается своей ступенью:
+        ///
+        ///   как есть -> застывшая поза   = цена СКИННИНГА (кости, отдельная
+        ///                                  свёртка на каждого зомби);
+        ///   застывшая -> без аниматора   = цена расчёта поз на процессоре;
+        ///   застывшая -> плоский шейдер  = цена ПИКСЕЛЕЙ и материала.
+        ///
+        /// Если основное уходит на первую разницу — толпу спасёт запекание
+        /// анимации в текстуру и BatchRendererGroup. Если на третью — их
+        /// заводить незачем, и лечить надо шейдер.
+        ///
+        /// Застывшая поза — это тот же меш, та же площадь на экране и то же
+        /// число вызовов отрисовки. Убраны ровно кости, ничего больше.
+        /// </summary>
+        static readonly Stage[] SkinningAB =
+        {
+            Skin("зомби: как есть (кости + аниматор)", skinning: true, animator: true),
+            Skin("зомби: застывшая поза (без костей)", skinning: false, animator: true),
+            Skin("зомби: застывшая поза, аниматор выключен", skinning: false, animator: false),
+            Skin("зомби: застывшая поза, плоский шейдер", skinning: false, animator: false,
+                 shader: "Universal Render Pipeline/Unlit"),
+        };
+
+        static Stage Skin(string name, bool skinning, bool animator, string shader = null) => new Stage
+        {
+            Name = name, HiddenLayers = new string[0], Shadows = true,
+            Zombies = true, Survivors = true, Separation = true, Ui = true,
+            ZombieSkinning = skinning, ZombieAnimator = animator,
+            ZombieShader = shader, ZombieShadows = true
+        };
+
         static Stage Zombie(string name, string shader, bool shadows) => new Stage
         {
             Name = name, HiddenLayers = new string[0], Shadows = true,
@@ -187,6 +230,7 @@ namespace WarfareSurvivor
                     case SweepMode.Ground: return GroundAB;
                     case SweepMode.Pipeline: return PipelineAB;
                     case SweepMode.Zombies: return ZombieAB;
+                    case SweepMode.Skinning: return SkinningAB;
                     default: return Stages;
                 }
             }
@@ -194,9 +238,20 @@ namespace WarfareSurvivor
 
         bool Looping => config.sweepMode == SweepMode.Ground
                      || config.sweepMode == SweepMode.Pipeline
-                     || config.sweepMode == SweepMode.Zombies;
+                     || config.sweepMode == SweepMode.Zombies
+                     || config.sweepMode == SweepMode.Skinning;
 
         bool Ramping => config.sweepMode == SweepMode.Ramp;
+
+        /// <summary>
+        /// Ждать ли набора толпы перед счётом.
+        ///
+        /// Спавнер доливает зомби постепенно, и за десять секунд ступени
+        /// численность успевает вырасти вдвое. Тогда соседние ступени
+        /// сравнивают не настройку, а размер толпы — то есть ничего.
+        /// </summary>
+        bool CrowdPinned => config.sweepMode == SweepMode.Zombies
+                         || config.sweepMode == SweepMode.Skinning;
 
         static Stage Ground(string name, string shader) => new Stage
         {
@@ -220,6 +275,9 @@ namespace WarfareSurvivor
 
         int stage = -1;
         int settleLeft;
+
+        /// <summary>Толпа на этой ступени уже набрана — счёт пошёл.</summary>
+        bool crowdReady;
 
         /// <summary>
         /// Успел ли стенд запомнить исходное состояние сцены.
@@ -249,6 +307,11 @@ namespace WarfareSurvivor
             new System.Collections.Generic.Dictionary<Material, Material>();
         string wantZombieShader;
         bool? wantZombieShadows;
+        bool? wantZombieSkinning;
+        bool? wantZombieAnimator;
+
+        /// <summary>Поза, снятая с первого попавшегося зомби, одна на всех.</summary>
+        Mesh frozenPose;
         int baseMaxAlive;
         float baseSpawnInterval;
 
@@ -302,13 +365,15 @@ namespace WarfareSurvivor
             baseSpawnInterval = config.spawnInterval;
             baseInvincible = config.debugSquadInvincible;
 
-            if (config.sweepMode == SweepMode.Zombies)
+            if (CrowdPinned)
             {
                 // Толпа закреплена на численности, где разница уже видна,
                 // а отряд бессмертен — иначе прогон оборвётся вайпом.
+                // Долив частый: чем быстрее наберём потолок, тем меньше
+                // прогон стоит в ожидании.
                 config.debugSquadInvincible = true;
                 config.maxAliveZombies = 150;
-                config.spawnInterval = 0.2f;
+                config.spawnInterval = 0.05f;
             }
 
             if (Ramping)
@@ -323,8 +388,15 @@ namespace WarfareSurvivor
                 return;
             }
 
-            config.maxAliveZombies = SweepZombies;
-            config.spawnInterval = 0.25f;
+            // Только для прогонов, где толпа — фон, а не предмет замера.
+            // Раньше эта пара строк стояла безусловно и затирала закрепление
+            // толпы, сделанное выше: сравнения по зомби шли не на полутора
+            // сотнях, а на тридцати.
+            if (!CrowdPinned)
+            {
+                config.maxAliveZombies = SweepZombies;
+                config.spawnInterval = 0.25f;
+            }
             if (Pipe != null)
             {
                 baseRenderScale = Pipe.renderScale;
@@ -361,9 +433,18 @@ namespace WarfareSurvivor
             foreach (var zombie in Registry.Zombies)
             {
                 if (zombie == null) continue;
+
+                // Кости обратно, застывшая копия — прочь. Иначе сцена
+                // останется с толпой манекенов после выключения стенда.
+                ApplySkinning(zombie, true);
+                var animator = zombie.GetComponentInChildren<Animator>();
+                if (animator != null) animator.enabled = true;
+
                 foreach (var renderer in zombie.GetComponentsInChildren<Renderer>())
                     renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
             }
+
+            if (frozenPose != null) Destroy(frozenPose);
             if (baseSpawnInterval > 0f) config.spawnInterval = baseSpawnInterval;
 
             // Настройки конвейера живут в ассете и переживают выход из игры —
@@ -384,6 +465,30 @@ namespace WarfareSurvivor
             {
                 UpdateRamp();
                 return;
+            }
+
+            // Пока толпа не набрана, ступень не идёт: настройку раскладываем,
+            // время не считаем, конец ступени отодвигаем.
+            //
+            // Порог — две трети потолка, и вот почему. Потолок спавнера
+            // считает и трупы, доигрывающие смерть, а Registry — только
+            // живых. Под потолком в 150 живых стабильно держится около 110,
+            // и требовать больше значило бы ждать вечно. Рисуются, впрочем,
+            // и те и другие, так что нагрузка соответствует потолку.
+            if (CrowdPinned && !crowdReady)
+            {
+                ApplyToZombies();
+                if (Registry.Zombies.Count < config.maxAliveZombies * 2 / 3)
+                {
+                    stageEnds = Time.unscaledTime + Mathf.Max(2f, config.sweepStageSeconds) + 0.5f;
+                    if (banner != null)
+                        banner.text = Current[stage].Name + "\nнабираем толпу " +
+                                      Registry.Zombies.Count + " из " + config.maxAliveZombies;
+                    return;
+                }
+
+                crowdReady = true;
+                settleLeft = 30;
             }
 
             // Кадры устаканивания ПРОПУСКАЕМ целиком, а не считаем со знаком
@@ -482,7 +587,8 @@ namespace WarfareSurvivor
         /// </summary>
         void ApplyToZombies()
         {
-            if (wantZombieShader == null && wantZombieShadows == null) return;
+            if (wantZombieShader == null && wantZombieShadows == null
+                && wantZombieSkinning == null && wantZombieAnimator == null) return;
 
             var mode = wantZombieShadows == true
                 ? UnityEngine.Rendering.ShadowCastingMode.On
@@ -494,8 +600,21 @@ namespace WarfareSurvivor
                 var zombie = zombies[i];
                 if (zombie == null) continue;
 
+                // Сначала кости, потом материалы: заморозка добавляет
+                // ещё один рисователь, и он тоже должен получить настройку.
+                if (wantZombieSkinning != null) ApplySkinning(zombie, wantZombieSkinning.Value);
+
+                if (wantZombieAnimator != null)
+                {
+                    var animator = zombie.GetComponentInChildren<Animator>();
+                    if (animator != null && animator.enabled != wantZombieAnimator.Value)
+                        animator.enabled = wantZombieAnimator.Value;
+                }
+
                 foreach (var renderer in zombie.GetComponentsInChildren<Renderer>())
                 {
+                    if (!renderer.enabled) continue;
+
                     if (wantZombieShadows != null && renderer.shadowCastingMode != mode)
                         renderer.shadowCastingMode = mode;
 
@@ -505,6 +624,53 @@ namespace WarfareSurvivor
                     if (swapped != null) renderer.sharedMaterial = swapped;
                 }
             }
+        }
+
+        /// <summary>
+        /// Переключает зомби между скиннингом и застывшей позой.
+        ///
+        /// Застывшая поза — тот же меш, тот же материал, тот же размер
+        /// на экране и тот же один вызов отрисовки. Отличие ровно одно:
+        /// вершины не пересчитываются по сорока одной кости каждый кадр.
+        /// Разница во времени кадра и есть цена скиннинга.
+        ///
+        /// Позу снимаем один раз с первого зомби и раздаём всем — именно так
+        /// выглядела бы толпа под BatchRendererGroup: один общий меш.
+        /// </summary>
+        void ApplySkinning(Component zombie, bool skinned)
+        {
+            var smr = zombie.GetComponentInChildren<SkinnedMeshRenderer>(true);
+            if (smr == null) return;
+
+            var frozen = smr.GetComponent<MeshRenderer>();
+
+            if (skinned)
+            {
+                if (frozen != null && frozen.enabled) frozen.enabled = false;
+                if (!smr.enabled) smr.enabled = true;
+                return;
+            }
+
+            if (frozenPose == null)
+            {
+                frozenPose = new Mesh { name = "ЗастывшийЗомби" };
+                // Без масштаба: меш живёт под тем же объектом, и масштаб
+                // тира применит сам transform. С ним размер удвоился бы.
+                smr.BakeMesh(frozenPose, false);
+            }
+
+            var filter = smr.GetComponent<MeshFilter>();
+            if (filter == null) filter = smr.gameObject.AddComponent<MeshFilter>();
+            if (filter.sharedMesh != frozenPose) filter.sharedMesh = frozenPose;
+
+            if (frozen == null)
+            {
+                frozen = smr.gameObject.AddComponent<MeshRenderer>();
+                frozen.sharedMaterials = smr.sharedMaterials;
+            }
+
+            if (!frozen.enabled) frozen.enabled = true;
+            if (smr.enabled) smr.enabled = false;
         }
 
         /// <summary>
@@ -625,12 +791,15 @@ namespace WarfareSurvivor
 
             wantZombieShader = current.ZombieShader;
             wantZombieShadows = current.ZombieShadows;
+            wantZombieSkinning = current.ZombieSkinning;
+            wantZombieAnimator = current.ZombieAnimator;
             ApplyToZombies();
 
             // Первые кадры после переключения не считаем: там перестройка
             // теневых карт и прогрев, к установившейся стоимости отношения
             // не имеющие. Полсекунды хватает.
             settleLeft = 30;
+            crowdReady = false;
             stageEnds = Time.unscaledTime + Mathf.Max(2f, config.sweepStageSeconds) + 0.5f;
             if (banner != null) banner.text = current.Name;
         }
@@ -654,8 +823,15 @@ namespace WarfareSurvivor
                 line.Append(" || gpu ").Append((gpuTotal / timed).ToString("F1"))
                     .Append(" мс, cpu ").Append((cpuTotal / timed).ToString("F1")).Append(" мс");
 
-            int drift = Mathf.Abs(Registry.Zombies.Count - SweepZombies);
-            if (drift > SweepZombies / 3)
+            // Сравнивать надо с тем потолком, на котором прогон и идёт:
+            // сравнения по зомби держат толпу в 150, и мерка в 30 ругалась
+            // бы на каждую ступень подряд.
+            int expected = config.sweepMode == SweepMode.Zombies
+                        || config.sweepMode == SweepMode.Skinning
+                ? config.maxAliveZombies
+                : SweepZombies;
+            int drift = Mathf.Abs(Registry.Zombies.Count - expected);
+            if (drift > expected / 3)
                 line.Append("  <- толпа уплыла, ступень несравнима");
 
             if (frames > 1 && total / frames > worst + 0.01f)
