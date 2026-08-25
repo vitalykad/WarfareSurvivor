@@ -33,11 +33,18 @@ namespace WarfareSurvivor
         float sweep = 1f;
         float sweepSpeed = 4f;
 
-        /// <summary>Докуда доводить взмах, чтобы хвост успел догореть.</summary>
-        const float Overshoot = 1.5f;
+        /// <summary>
+        /// Докуда доводить счётчик взмаха.
+        ///
+        /// Единица — дуга прочерчена и погасла. Само прочерчивание занимает
+        /// малую долю хода: медленно ползущая полоса читается как полоса,
+        /// а не как удар, поэтому дуга вспыхивает почти сразу.
+        /// </summary>
+        const float Overshoot = 1f;
 
         public static MeleeArc Attach(Transform owner, float range, Material material,
-                                      float arcDegrees, float innerFraction)
+                                      float arcDegrees, float innerFraction,
+                                      float height, float tilt)
         {
             if (owner == null || material == null || range <= 0f) return null;
 
@@ -45,13 +52,19 @@ namespace WarfareSurvivor
                 typeof(MeshFilter), typeof(MeshRenderer), typeof(MeleeArc));
             go.transform.SetParent(owner, false);
 
-            // Чуть над землёй и плашмя. Дуга принадлежит бойцу, поэтому
-            // ездит и поворачивается вместе с ним: он и так разворачивается
-            // к цели перед ударом, значит взмах сам ложится в нужную сторону.
-            go.transform.localPosition = new Vector3(0f, 0.05f, 0f);
-            // Поворот на 90 по X кладёт плоскость меша на землю: местное
-            // «вперёд» (+Y) становится направлением взгляда бойца.
-            go.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            // В ВОЗДУХЕ, на высоте оружия, а не на земле.
+            //
+            // Лежащая дуга читается как наклейка на полу: пол неподвижен,
+            // и всё, что на нём нарисовано, воспринимается как разметка.
+            // Поднятая на высоту пояса она попадает туда, где рука и ведёт
+            // лопату, и становится изображением удара.
+            go.transform.localPosition = new Vector3(0f, height, 0f);
+
+            // Поворот на 90 по X ставит плоскость меша горизонтально:
+            // местное «вперёд» (+Y) становится направлением взгляда бойца.
+            // Небольшой завал по Z даёт взмаху наклон — совсем ровный
+            // выглядит чертежом.
+            go.transform.localRotation = Quaternion.Euler(90f, 0f, tilt);
 
             go.GetComponent<MeshFilter>().sharedMesh = BuildArc(range, arcDegrees, innerFraction);
 

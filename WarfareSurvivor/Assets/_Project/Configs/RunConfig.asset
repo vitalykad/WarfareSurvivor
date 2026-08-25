@@ -60,8 +60,12 @@ MonoBehaviour:
   zombieTierColorHigh: {r: 0.95, g: 0.88, b: 0.25, a: 1}
   zombieScaleLow: 0.9
   zombieScaleHigh: 1.5
-  showMeleeRange: 0
-  meleeRangeFade: 0.35
+  showMeleeArc: 0
+  meleeArcDegrees: 140
+  meleeArcInner: 0.74
+  meleeArcStretch: 1.2
+  meleeArcHeight: 1.05
+  meleeArcTilt: 14
   zombieCorpseTime: 2.5
   useBakedZombies: 1
   bakedZombies: {fileID: 11400000, guid: 65a969dcc580044ef8b8b060dddc3dc8, type: 2}

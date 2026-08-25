@@ -308,11 +308,17 @@ namespace WarfareSurvivor
 
         [Tooltip("Где начинается полоса дуги, долей от дальности. Ноль — " +
                  "от самых ног бойца, что превращает её в сектор.")]
-        [Range(0f, 0.9f)] public float meleeArcInner = 0.35f;
+        [Range(0f, 0.95f)] public float meleeArcInner = 0.74f;
 
-        [Tooltip("Длительность взмаха относительно времени до попадания. " +
-                 "Единица — кромка дуги достигает края ровно в момент удара.")]
-        public float meleeArcStretch = 1.8f;
+        [Tooltip("Длительность взмаха относительно времени до попадания.")]
+        public float meleeArcStretch = 1.2f;
+
+        [Tooltip("Высота дуги над землёй. На полу она читается как разметка, " +
+                 "на высоте пояса — как удар.")]
+        public float meleeArcHeight = 1.05f;
+
+        [Tooltip("Завал дуги в градусах. Совсем ровная выглядит чертежом.")]
+        public float meleeArcTilt = 14f;
 
         [Tooltip("Сколько секунд труп лежит до возврата в пул.")]
         public float zombieCorpseTime = 2.5f;

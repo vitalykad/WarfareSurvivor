@@ -25,12 +25,13 @@ Material:
     m_TexEnvs: []
     m_Ints: []
     m_Floats:
-    - _EdgeSoft: 0.7
+    - _DrawSpeed: 4
+    - _EdgeSoft: 1.4
     - _Fade: 1
-    - _HeadWidth: 0.12
-    - _Tail: 0.55
+    - _HeadWidth: 0.08
+    - _Tail: 0.32
     m_Colors:
-    - _ArcColor: {r: 0.55, g: 0.85, b: 1, a: 0.85}
+    - _ArcColor: {r: 0.6, g: 0.88, b: 1, a: 0.55}
     - _HeadColor: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

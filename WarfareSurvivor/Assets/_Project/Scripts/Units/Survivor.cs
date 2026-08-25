@@ -100,7 +100,8 @@ namespace WarfareSurvivor
                 try
                 {
                     meleeArc = MeleeArc.Attach(transform, klass.attackRange,
-                        squad.MeleeArcMaterial, config.meleeArcDegrees, config.meleeArcInner);
+                        squad.MeleeArcMaterial, config.meleeArcDegrees, config.meleeArcInner,
+                        config.meleeArcHeight, config.meleeArcTilt);
                 }
                 catch (System.Exception e)
                 {

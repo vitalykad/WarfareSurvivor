@@ -14,6 +14,7 @@ Shader "WarfareSurvivor/MeleeArc"
         [HDR] _HeadColor ("Цвет кромки", Color) = (1, 0.96, 0.8, 1)
 
         _Tail ("Длина хвоста", Range(0.05, 1)) = 0.45
+        _DrawSpeed ("Скорость прочерчивания", Range(1, 8)) = 4
         _HeadWidth ("Ширина кромки", Range(0.01, 0.4)) = 0.09
         _EdgeSoft ("Мягкость поперёк", Range(0.01, 1)) = 0.55
         _Fade ("Общая видимость", Range(0, 1)) = 1
@@ -43,6 +44,7 @@ Shader "WarfareSurvivor/MeleeArc"
             CBUFFER_START(UnityPerMaterial)
                 half4 _ArcColor;
                 half4 _HeadColor;
+                half _DrawSpeed;
                 half _Tail;
                 half _HeadWidth;
                 half _EdgeSoft;
@@ -83,7 +85,13 @@ Shader "WarfareSurvivor/MeleeArc"
             {
                 UNITY_SETUP_INSTANCE_ID(IN);
 
-                half sweep = UNITY_ACCESS_INSTANCED_PROP(Props, _Sweep);
+                half progress = UNITY_ACCESS_INSTANCED_PROP(Props, _Sweep);
+
+                // Прочерчивание идёт БЫСТРО и занимает первую четверть хода,
+                // остальное — затухание целиком. Ползущая полоса читается
+                // как полоса; удар должен вспыхнуть.
+                half sweep = progress * max(_DrawSpeed, 1.0h);
+                half fade = saturate((1.0h - progress) * 2.0h);
 
                 // Сколько дуги позади кромки. Отрицательное — сюда взмах
                 // ещё не дошёл, и рисовать нечего.
@@ -99,10 +107,16 @@ Shader "WarfareSurvivor/MeleeArc"
                 half across = sin(saturate(IN.uv.y) * 3.14159h);
                 across = pow(across, max(_EdgeSoft, 0.01h));
 
+                // Сужение к концам дуги. Без него серп обрублен с обеих
+                // сторон и читается как заливка сектора, а не как разрез:
+                // у настоящего взмаха начало и конец тоньше середины.
+                half taper = sin(saturate(IN.uv.x) * 3.14159h);
+                taper = pow(taper, 0.6h);
+
                 // Сама кромка ярче хвоста: именно она читается как удар.
                 half head = saturate(1.0h - behind / max(_HeadWidth, 0.001h));
 
-                half alpha = tail * across * _Fade;
+                half alpha = tail * across * taper * _Fade * fade;
                 half3 color = lerp(_ArcColor.rgb, _HeadColor.rgb, head);
 
                 return half4(color * alpha, alpha * _ArcColor.a);
