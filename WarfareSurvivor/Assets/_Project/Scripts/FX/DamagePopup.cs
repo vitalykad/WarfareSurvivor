@@ -76,7 +76,7 @@ namespace WarfareSurvivor
             go.transform.SetParent(root, false);
 
             var text = go.AddComponent<TextMesh>();
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.font = UIFont.Get(config);
             text.fontSize = 64;
             text.anchor = TextAnchor.MiddleCenter;
             text.alignment = TextAlignment.Center;

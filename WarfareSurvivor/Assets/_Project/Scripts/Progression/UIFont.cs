@@ -13,6 +13,19 @@ namespace WarfareSurvivor
     {
         static Font cached;
 
+        /// <summary>
+        /// Шрифт из конфига, а если там пусто — встроенный.
+        ///
+        /// Через конфиг, потому что часть текста создаётся в рантайме
+        /// (карточки тир-апа, цифры урона), и связать их с ассетом
+        /// в редакторе нечем.
+        /// </summary>
+        public static Font Get(ArenaConfig config)
+        {
+            if (config != null && config.uiFont != null) return config.uiFont;
+            return Get();
+        }
+
         public static Font Get()
         {
             if (cached != null) return cached;

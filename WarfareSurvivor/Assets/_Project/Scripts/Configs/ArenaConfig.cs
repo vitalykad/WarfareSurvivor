@@ -509,6 +509,10 @@ namespace WarfareSurvivor
                  "сотнях это может стоить дороже их логики.")]
         public bool updateBakedFrames = true;
 
+        [Tooltip("Шрифт всего интерфейса. Подставляется строителем сцены " +
+                 "из Assets/Fonts; пусто — берётся встроенный.")]
+        public Font uiFont;
+
         [Header("Забег")]
 
         [Tooltip("Волны забега по порядку. Забег кончается, когда отыграна " +

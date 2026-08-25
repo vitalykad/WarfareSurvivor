@@ -123,8 +123,8 @@ namespace WarfareSurvivor
             image.raycastTarget = false;
         }
 
-        static void AddText(RectTransform parent, string value, int size, FontStyle style,
-                            Vector2 anchorMin, Vector2 anchorMax)
+        void AddText(RectTransform parent, string value, int size, FontStyle style,
+                     Vector2 anchorMin, Vector2 anchorMax)
         {
             var go = new GameObject("Текст", typeof(RectTransform), typeof(Text));
             var rect = (RectTransform)go.transform;
@@ -136,7 +136,7 @@ namespace WarfareSurvivor
 
             var text = go.GetComponent<Text>();
             text.text = value;
-            text.font = UIFont.Get();
+            text.font = UIFont.Get(config);
             text.fontSize = size;
             text.fontStyle = style;
             text.alignment = TextAnchor.UpperCenter;

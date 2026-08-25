@@ -88,6 +88,14 @@ namespace WarfareSurvivor.EditorTools
             if (config == null) Debug.LogError($"[TestArena] Не читается конфиг {configPath}");
             EnsureClasses(config);
 
+            // Шрифт в конфиг: карточки тир-апа и цифры урона создаются
+            // в рантайме, и связать их с ассетом в редакторе нечем.
+            if (config != null)
+            {
+                config.uiFont = UiFont();
+                EditorUtility.SetDirty(config);
+            }
+
             CreateGround();
             CreateLight(config);
             CreateRuins(config);
@@ -595,7 +603,7 @@ namespace WarfareSurvivor.EditorTools
             rect.sizeDelta = new Vector2(-40f, 160f);
 
             var text = go.GetComponent<Text>();
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.font = UiFont();
             text.fontSize = 44;
             text.alignment = TextAnchor.UpperCenter;
             text.color = Color.white;
@@ -625,7 +633,7 @@ namespace WarfareSurvivor.EditorTools
             rect.sizeDelta = new Vector2(560f, 260f);
 
             var text = go.GetComponent<Text>();
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.font = UiFont();
             text.fontSize = 34;
             text.color = Color.white;
             text.raycastTarget = false;   // не должен перехватывать касания у джойстика
@@ -909,7 +917,7 @@ namespace WarfareSurvivor.EditorTools
             rect.SetParent(parent, false);
 
             var text = go.GetComponent<Text>();
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.font = UiFont();
             text.fontSize = size;
             text.alignment = align;
             text.color = Color.white;
@@ -1057,6 +1065,27 @@ namespace WarfareSurvivor.EditorTools
             }
 
             if (dirty) importer.SaveAndReimport();
+        }
+
+        const string FontPath = "Assets/Fonts/fredoka-one.ttf";
+
+        /// <summary>
+        /// Шрифт интерфейса. Ищется в проекте один раз; не найден —
+        /// возвращается встроенный, чтобы сборка не осталась без текста.
+        /// </summary>
+        static Font UiFont()
+        {
+            var font = AssetDatabase.LoadAssetAtPath<Font>(FontPath);
+            if (font != null) return font;
+
+            foreach (var guid in AssetDatabase.FindAssets("t:Font", new[] { "Assets/Fonts" }))
+            {
+                var found = AssetDatabase.LoadAssetAtPath<Font>(AssetDatabase.GUIDToAssetPath(guid));
+                if (found != null) return found;
+            }
+
+            Debug.LogWarning("[Сборка] Шрифт интерфейса не найден, берётся встроенный");
+            return Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         }
 
         static void CreateEventSystem()

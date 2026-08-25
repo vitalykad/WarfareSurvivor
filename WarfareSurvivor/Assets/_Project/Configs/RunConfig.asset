@@ -111,6 +111,7 @@ MonoBehaviour:
   simulateZombies: 1
   simulateSurvivors: 1
   updateBakedFrames: 1
+  uiFont: {fileID: 12800000, guid: e39bb5b09f9274bd7ae7f47a28aaf8f2, type: 3}
   runWaves:
   - Name: "\u041F\u0435\u0440\u0432\u0430\u044F"
     Duration: 20
