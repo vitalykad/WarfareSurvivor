@@ -93,7 +93,7 @@ namespace WarfareSurvivor.EditorTools
             CreateRuins(config);
 
             var squad = CreateSquad(config);
-            Wire(squad, "rangeRingMaterial", EnsureRangeRingMaterial());
+            Wire(squad, "meleeArcMaterial", EnsureMeleeArcMaterial());
             var camera = CreateCamera(squad.transform, config);
             var joystick = CreateUI();
             if (!gameplay) CreateFrameMeter(config);
@@ -667,24 +667,24 @@ namespace WarfareSurvivor.EditorTools
         const string BottleTexture = "Assets/Sprites/BottleOfWater.png";
 
         /// <summary>
-        /// Материал круга досягаемости. Один на всех бойцов: круги
-        /// отличаются только прозрачностью, а её задаёт блок свойств.
+        /// Материал дуги замаха. Один на всех бойцов: дуги отличаются
+        /// только положением взмаха, а его задаёт блок свойств.
         /// </summary>
-        static Material EnsureRangeRingMaterial()
+        static Material EnsureMeleeArcMaterial()
         {
-            const string path = "Assets/_Project/Art/Materials/RangeRing.mat";
+            const string path = "Assets/_Project/Art/Materials/MeleeArc.mat";
 
-            var shader = Shader.Find("WarfareSurvivor/RangeRing");
+            var shader = Shader.Find("WarfareSurvivor/MeleeArc");
             if (shader == null)
             {
-                Debug.LogError("[Сборка] Не найден шейдер WarfareSurvivor/RangeRing");
+                Debug.LogError("[Сборка] Не найден шейдер WarfareSurvivor/MeleeArc");
                 return null;
             }
 
             var material = AssetDatabase.LoadAssetAtPath<Material>(path);
             if (material == null)
             {
-                material = new Material(shader) { name = "RangeRing" };
+                material = new Material(shader) { name = "MeleeArc" };
                 material.enableInstancing = true;
                 EnsureFolder("Assets/_Project/Art/Materials");
                 AssetDatabase.CreateAsset(material, path);

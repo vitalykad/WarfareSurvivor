@@ -50,8 +50,8 @@ namespace WarfareSurvivor
         int attackLayer = -1;
         bool hasAttackSpeed;
 
-        /// <summary>Круг досягаемости под ногами. Только у ближнего боя.</summary>
-        AttackRangeRing rangeRing;
+        /// <summary>Дуга замаха под ногами. Только у ближнего боя.</summary>
+        MeleeArc meleeArc;
         float attackLayerWeight;
         float attackClipLength = 0.5f;
         float pendingHitTime;
@@ -86,24 +86,25 @@ namespace WarfareSurvivor
             torsoAim = GetComponent<TorsoAim>();
             if (torsoAim != null) torsoAim.Configure(config.torsoAimMaxAngle, config.torsoAimSpeed);
 
-            // Круг только у ближнего боя: у стрелка дальность в девять метров,
-            // и такой круг накрыл бы половину отряда, ничего не объясняя.
+            // Дуга только у ближнего боя: у стрелка дальность в девять
+            // метров, и взмах такого размаха накрыл бы половину отряда,
+            // ничего не объясняя.
             //
             // Под try по той же причине, что и полоска здоровья ниже: это
             // украшение, и его поломка не должна мешать бойцу появиться.
-            // Пренебрёг — и получил ровно тот же отказ, что уже был однажды:
-            // исключение внутри косметики оборвало создание отряда на первом
-            // же бойце, отряд вышел пустым, и забег проигрывался мгновенно.
-            if (config.showMeleeRange && klass.role == SquadRole.Melee)
+            // Пренебрёг однажды — и исключение внутри косметики оборвало
+            // создание отряда на первом же бойце, отряд вышел пустым,
+            // и забег проигрывался мгновенно.
+            if (config.showMeleeArc && klass.role == SquadRole.Melee)
             {
                 try
                 {
-                    rangeRing = AttackRangeRing.Attach(
-                        transform, klass.attackRange, squad.RangeRingMaterial, config.meleeRangeFade);
+                    meleeArc = MeleeArc.Attach(transform, klass.attackRange,
+                        squad.MeleeArcMaterial, config.meleeArcDegrees, config.meleeArcInner);
                 }
                 catch (System.Exception e)
                 {
-                    Debug.LogError($"[{name}] Круг досягаемости не собрался: {e.Message}", this);
+                    Debug.LogError($"[{name}] Дуга замаха не собралась: {e.Message}", this);
                 }
             }
 
@@ -420,7 +421,14 @@ namespace WarfareSurvivor
             // Момент делится на ускорение: клип идёт быстрее — середина
             // наступает раньше, иначе попадание отстанет от картинки.
             pendingVictim = target;
-            pendingHitTime = Time.time + attackClipLength * Mathf.Clamp01(klass.attackHitTime) / playback;
+
+            float toHit = attackClipLength * Mathf.Clamp01(klass.attackHitTime) / playback;
+            pendingHitTime = Time.time + toHit;
+
+            // Дуга идёт вместе с замахом, а не с попаданием: она и есть
+            // изображение замаха, и появиться должна тогда же, когда боец
+            // заносит лопату.
+            if (meleeArc != null) meleeArc.Swing(toHit * Mathf.Max(0.2f, config.meleeArcStretch));
         }
 
         void ResolvePendingHit()
@@ -439,8 +447,6 @@ namespace WarfareSurvivor
             // Без запаса часть ударов уходила бы в пустоту по формальности.
             float reach = klass.attackRange * 1.35f;
             if (to.sqrMagnitude > reach * reach) return;
-
-            if (rangeRing != null) rangeRing.Flash();
 
             victim.TakeHit(klass.damage);
             if (klass.knockbackDistance > 0f)

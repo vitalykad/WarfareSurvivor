@@ -27,12 +27,12 @@ namespace WarfareSurvivor
 
         [SerializeField] ArenaConfig config;
 
-        [SerializeField, Tooltip("Материал круга досягаемости. Бойцы берут " +
+        [SerializeField, Tooltip("Материал дуги замаха. Бойцы берут " +
                                  "его отсюда: они создаются в рантайме, " +
                                  "и связать их в редакторе нечем.")]
-        Material rangeRingMaterial;
+        Material meleeArcMaterial;
 
-        public Material RangeRingMaterial => rangeRingMaterial;
+        public Material MeleeArcMaterial => meleeArcMaterial;
 
         [SerializeField] VirtualJoystick joystick;
         [SerializeField] Camera viewCamera;

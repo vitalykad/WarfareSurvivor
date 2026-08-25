@@ -16,7 +16,7 @@ MonoBehaviour:
   prefab: {fileID: 7514476081002296282, guid: eb7c8380149cb49e1b3a8bbd54bb35b0, type: 3}
   role: 2
   maxHealth: 150
-  attackRange: 4
+  attackRange: 3
   attackInterval: 0.5
   damage: 25
   knockbackDistance: 3

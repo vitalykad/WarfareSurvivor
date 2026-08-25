@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: RangeRing
-  m_Shader: {fileID: 4800000, guid: fbed6f583ebe149b4a79e7f7a347a01f, type: 3}
+  m_Name: MeleeArc
+  m_Shader: {fileID: 4800000, guid: 8e0116065ddba4018b765757678418fd, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -25,11 +25,12 @@ Material:
     m_TexEnvs: []
     m_Ints: []
     m_Floats:
+    - _EdgeSoft: 0.7
     - _Fade: 1
-    - _FillPower: 0.12
-    - _RingSoft: 0.05
-    - _RingWidth: 0.09
+    - _HeadWidth: 0.12
+    - _Tail: 0.55
     m_Colors:
-    - _RingColor: {r: 1, g: 0.24999997, b: 0.19999996, a: 1}
+    - _ArcColor: {r: 0.55, g: 0.85, b: 1, a: 0.85}
+    - _HeadColor: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
