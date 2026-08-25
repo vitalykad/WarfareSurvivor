@@ -642,6 +642,7 @@ namespace WarfareSurvivor.EditorTools
             Wire(sparks, "squad", squad);
             Wire(sparks, "spawner", spawner);
             Wire(sparks, "sparkMaterial", EnsureSparkMaterial());
+            Wire(sparks, "view", Object.FindFirstObjectByType<Camera>());
 
             var panel = CreateTierUpPanel(canvas, config);
             var hud = CreateRunHud(canvas);
@@ -657,26 +658,81 @@ namespace WarfareSurvivor.EditorTools
             Wire(hud, "squad", squad);
         }
 
+        const string BottleTexture = "Assets/Sprites/BottleOfWater.png";
+
         /// <summary>
-        /// Материал искры: аддитивный, без освещения. Тот же шейдер, что
-        /// у трассеров, — светящаяся точка на песке должна читаться, а не
-        /// подчиняться солнцу.
+        /// Материал ресурса: картинка бутылки плюс свечение вокруг неё.
+        /// Освещение не считается — предмет должен читаться одинаково
+        /// и на солнце, и в тени руин.
+        ///
+        /// Шейдер и текстуру проставляем при каждой сборке, а подобранные
+        /// цвет и сила свечения остаются: их правят в инспекторе, и стирать
+        /// подобранное пересборкой нельзя.
         /// </summary>
         static Material EnsureSparkMaterial()
         {
             const string path = "Assets/_Project/Art/Materials/Spark.mat";
-            var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
-            if (existing != null) return existing;
 
-            var shader = Shader.Find("WarfareSurvivor/AdditiveTracer");
-            if (shader == null) return null;
+            var shader = Shader.Find("WarfareSurvivor/Pickup");
+            if (shader == null)
+            {
+                Debug.LogError("[Забег] Не найден шейдер WarfareSurvivor/Pickup");
+                return null;
+            }
 
-            var material = new Material(shader) { name = "Spark" };
-            if (material.HasProperty("_Boost")) material.SetFloat("_Boost", 2.4f);
+            PrepareBottleTexture();
+            var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(BottleTexture);
 
-            EnsureFolder("Assets/_Project/Art/Materials");
-            AssetDatabase.CreateAsset(material, path);
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material == null)
+            {
+                material = new Material(shader) { name = "Spark" };
+                EnsureFolder("Assets/_Project/Art/Materials");
+                AssetDatabase.CreateAsset(material, path);
+            }
+
+            if (material.shader != shader) material.shader = shader;
+            if (texture != null) material.SetTexture("_BaseMap", texture);
+            EditorUtility.SetDirty(material);
             return material;
+        }
+
+        /// <summary>
+        /// Картинка приходит в 1024x1536 — полтора мегабайта на предмет
+        /// размером с ладонь. На целевом устройстве 2.6 ГБ памяти, и система
+        /// уже шлёт предупреждения о нехватке, так что ужимаем до 256
+        /// и сжимаем. На экране предмет занимает десятки пикселей, разницы
+        /// не видно.
+        /// </summary>
+        static void PrepareBottleTexture()
+        {
+            var importer = AssetImporter.GetAtPath(BottleTexture) as TextureImporter;
+            if (importer == null) return;
+
+            bool dirty = false;
+
+            if (importer.textureType != TextureImporterType.Default)
+            {
+                importer.textureType = TextureImporterType.Default;
+                dirty = true;
+            }
+
+            if (!importer.alphaIsTransparency)
+            {
+                importer.alphaIsTransparency = true;
+                dirty = true;
+            }
+
+            if (importer.maxTextureSize > 256)
+            {
+                importer.maxTextureSize = 256;
+                dirty = true;
+            }
+
+            if (!dirty) return;
+
+            importer.SaveAndReimport();
+            Debug.Log("[Забег] Настройки импорта бутылки поправлены: 256 пикселей, прозрачность");
         }
 
         static TierUpPanel CreateTierUpPanel(Canvas canvas, ArenaConfig config)

@@ -14,6 +14,9 @@ namespace WarfareSurvivor
     /// Поэтому подбор идёт от ЦЕНТРА ОТРЯДА, а не от отдельных бойцов:
     /// игрок ведёт отряд как курсор, и собирать он должен тем же движением,
     /// которым ведёт.
+    ///
+    /// Выглядит ресурс бутылкой воды: узнаваемый предмет читается на песке
+    /// лучше абстрактного огонька, а подсветку ему даёт шейдер.
     /// </summary>
     public class SparkField : MonoBehaviour
     {
@@ -21,6 +24,15 @@ namespace WarfareSurvivor
         [SerializeField] SquadController squad;
         [SerializeField] ZombieSpawner spawner;
         [SerializeField] Material sparkMaterial;
+
+        [SerializeField, Tooltip("Камера: к ней разворачиваются бутылки.")]
+        Camera view;
+
+        [SerializeField, Tooltip("Высота бутылки в метрах.")]
+        float sparkHeight = 1.1f;
+
+        /// <summary>Пропорции картинки: она вытянута по вертикали.</summary>
+        const float SparkAspect = 1024f / 1536f;
 
         /// <summary>Подобрана искра, столько-то штук.</summary>
         public event System.Action<int> Collected;
@@ -65,13 +77,16 @@ namespace WarfareSurvivor
             // иначе игрок наказан за то, что бой шёл слишком хорошо.
             if (sparks.Count >= Mathf.Max(8, config.maxSparks)) CollectAt(0);
 
-            position.y = 0.35f;
+            // Приподнимаем на половину высоты: центр плоскости должен
+            // оказаться над землёй, иначе нижняя половина уходит под неё.
+            position.y = Mathf.Max(0.2f, sparkHeight) * 0.45f;
 
-            var view = idle.Count > 0 ? idle.Pop() : CreateView();
-            view.position = position;
-            view.gameObject.SetActive(true);
+            var item = idle.Count > 0 ? idle.Pop() : CreateView();
+            item.position = position;
+            item.rotation = Facing();
+            item.gameObject.SetActive(true);
 
-            sparks.Add(new Spark { View = view, Position = position, Value = value });
+            sparks.Add(new Spark { View = item, Position = position, Value = value });
         }
 
         /// <summary>Убирает всё с поля, ничего не засчитывая: забег кончился.</summary>
@@ -91,6 +106,16 @@ namespace WarfareSurvivor
             }
             if (total > 0) Collected?.Invoke(total);
         }
+
+        /// <summary>
+        /// Разворот лицом к камере.
+        ///
+        /// Камера смотрит под ПОСТОЯННЫМ углом, поэтому разворот считается
+        /// один раз при появлении, а не каждый кадр на каждую бутылку.
+        /// Наклон камеры меняется только правкой конфига, и ради этого
+        /// крутить сотню объектов ежекадрово незачем.
+        /// </summary>
+        Quaternion Facing() => view != null ? view.transform.rotation : Quaternion.Euler(90f, 0f, 0f);
 
         void Update()
         {
@@ -161,28 +186,24 @@ namespace WarfareSurvivor
         }
 
         /// <summary>
-        /// Плоский квадрат, лежащий НА ЗЕМЛЕ.
+        /// Плоскость с картинкой, стоящая в плоскости XY.
         ///
-        /// Не билборд к камере: камера смотрит сверху-сбоку под фиксированным
-        /// углом, и лежащий квадрат с неё виден так же хорошо, а стоит
-        /// дешевле — его не надо разворачивать каждый кадр.
+        /// Разворачивает её к камере уже трансформ объекта. Пропорции взяты
+        /// с самой картинки — квадрат сплющил бы бутылку.
         /// </summary>
-        static Mesh BuildQuad()
+        Mesh BuildQuad()
         {
-            const float half = 0.28f;
-            var mesh = new Mesh { name = "Искра" };
+            float height = Mathf.Max(0.2f, sparkHeight);
+            float halfHeight = height * 0.5f;
+            float halfWidth = halfHeight * SparkAspect;
+
+            var mesh = new Mesh { name = "Бутылка" };
             mesh.vertices = new[]
             {
-                new Vector3(-half, 0f, -half), new Vector3(-half, 0f, half),
-                new Vector3(half, 0f, half), new Vector3(half, 0f, -half)
+                new Vector3(-halfWidth, -halfHeight, 0f), new Vector3(-halfWidth, halfHeight, 0f),
+                new Vector3(halfWidth, halfHeight, 0f), new Vector3(halfWidth, -halfHeight, 0f)
             };
             mesh.uv = new[] { Vector2.zero, Vector2.up, Vector2.one, Vector2.right };
-
-            // Цвет живёт в ВЕРШИНАХ: аддитивный шейдер берёт оттенок оттуда,
-            // и без него искра выходит белым квадратом, неотличимым от блика.
-            // Тёплое золото читается на песке и не спорит с зеленью зомби.
-            var gold = new Color(1f, 0.82f, 0.30f, 1f);
-            mesh.colors = new[] { gold, gold, gold, gold };
             mesh.triangles = new[] { 0, 1, 2, 0, 2, 3 };
             mesh.RecalculateNormals();
             return mesh;
