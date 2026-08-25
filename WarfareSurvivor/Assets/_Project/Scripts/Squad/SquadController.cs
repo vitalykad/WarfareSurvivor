@@ -75,33 +75,60 @@ namespace WarfareSurvivor
         public int MemberCount => living.Count;
 
         /// <summary>
-        /// Накопленные за забег улучшения. Живут у ОТРЯДА, а не у бойца:
-        /// иначе пополнение приходило бы без вложенного игроком, и добор
-        /// класса обесценивал бы предыдущие улучшения.
+        /// Накопленные за забег улучшения, ПО КЛАССАМ.
+        ///
+        /// По классам, а не на весь отряд: усиление лопаты и усиление
+        /// револьвера — разные вложения, и складывать их в одну кучу значит
+        /// стирать выбор. Отряд из восьми лопат и двух стрелков должен
+        /// по-разному отзываться на «+урон лопате» и «+урон стрелку».
+        ///
+        /// Хранится у ОТРЯДА, а не у бойца: пополнение должно приходить
+        /// с уже вложенным, иначе каждый добор класса обесценивал бы
+        /// предыдущие улучшения.
         /// </summary>
-        public float DamageBonus { get; private set; } = 1f;
-        public float HealthBonus { get; private set; } = 1f;
+        readonly Dictionary<SurvivorClassSO, float> damageBonus = new Dictionary<SurvivorClassSO, float>();
+        readonly Dictionary<SurvivorClassSO, float> healthBonus = new Dictionary<SurvivorClassSO, float>();
 
-        /// <summary>Усиливает удар всем — и тем, кто придёт потом.</summary>
-        public void AddDamageBonus(float step)
+        public float DamageBonusFor(SurvivorClassSO klass) => Bonus(damageBonus, klass);
+        public float HealthBonusFor(SurvivorClassSO klass) => Bonus(healthBonus, klass);
+
+        static float Bonus(Dictionary<SurvivorClassSO, float> table, SurvivorClassSO klass)
+            => klass != null && table.TryGetValue(klass, out var value) ? value : 1f;
+
+        /// <summary>Усиливает удар этому классу — и его будущему пополнению.</summary>
+        public void AddDamageBonus(SurvivorClassSO klass, float step)
         {
-            DamageBonus *= 1f + Mathf.Max(0f, step);
+            if (klass == null) return;
+            damageBonus[klass] = Bonus(damageBonus, klass) * (1f + Mathf.Max(0f, step));
         }
 
         /// <summary>
-        /// Прибавляет живучести всем живым, и запоминает прибавку
-        /// для будущего пополнения.
+        /// Прибавляет живучести живым бойцам этого класса и запоминает
+        /// прибавку для будущего пополнения.
         /// </summary>
-        public void AddHealthBonus(float step)
+        public void AddHealthBonus(SurvivorClassSO klass, float step)
         {
+            if (klass == null) return;
+
             float multiplier = 1f + Mathf.Max(0f, step);
-            HealthBonus *= multiplier;
+            healthBonus[klass] = Bonus(healthBonus, klass) * multiplier;
 
             for (int i = 0; i < living.Count; i++)
             {
-                var health = living[i] != null ? living[i].GetComponent<Health>() : null;
+                if (living[i] == null || living[i].Class != klass) continue;
+
+                var health = living[i].GetComponent<Health>();
                 if (health != null) health.RaiseMax(multiplier);
             }
+        }
+
+        /// <summary>Сколько бойцов этого класса сейчас в строю.</summary>
+        public int CountOf(SurvivorClassSO klass)
+        {
+            int n = 0;
+            for (int i = 0; i < living.Count; i++)
+                if (living[i] != null && living[i].Class == klass) n++;
+            return n;
         }
 
         /// <summary>Живые бойцы — для подсчёта состава в интерфейсе.</summary>

@@ -76,7 +76,7 @@ namespace WarfareSurvivor
         /// бы без вложенного игроком, и каждый добор класса обесценивал бы
         /// предыдущие улучшения.
         /// </summary>
-        float Damage => klass.damage * (squad != null ? squad.DamageBonus : 1f);
+        float Damage => klass.damage * (squad != null ? squad.DamageBonusFor(klass) : 1f);
 
         public void Bind(SquadController owner, ArenaConfig cfg, SurvivorClassSO survivorClass)
         {
@@ -87,7 +87,7 @@ namespace WarfareSurvivor
             health = GetComponent<Health>();
             // Пополнение приходит уже с накопленной живучестью: иначе
             // новичок оказывался бы слабее тех, кто пришёл раньше.
-            health.Init(klass.maxHealth * squad.HealthBonus);
+            health.Init(klass.maxHealth * squad.HealthBonusFor(klass));
 
             animator = GetComponentInChildren<Animator>();
             muzzle = FindMuzzle();

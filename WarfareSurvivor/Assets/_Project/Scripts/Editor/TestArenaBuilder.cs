@@ -332,7 +332,11 @@ namespace WarfareSurvivor.EditorTools
             var path = $"{ClassesDir}/{fileName}.asset";
 
             var existing = AssetDatabase.LoadAssetAtPath<SurvivorClassSO>(path);
-            if (existing != null) return existing;
+            if (existing != null)
+            {
+                AssignCardArt(existing);
+                return existing;
+            }
 
             EnsureFolder(ClassesDir);
             var klass = ScriptableObject.CreateInstance<SurvivorClassSO>();
@@ -344,7 +348,10 @@ namespace WarfareSurvivor.EditorTools
             AssetDatabase.CreateAsset(klass, path);
             AssetDatabase.SaveAssets();
             Debug.Log($"[TestArena] Создан класс {path}");
-            return AssetDatabase.LoadAssetAtPath<SurvivorClassSO>(path);
+
+            var saved = AssetDatabase.LoadAssetAtPath<SurvivorClassSO>(path);
+            AssignCardArt(saved);
+            return saved;
         }
 
         static T Ensure<T>(GameObject go) where T : Component
@@ -948,6 +955,103 @@ namespace WarfareSurvivor.EditorTools
             }
 
             if (wrong == 0) Debug.Log($"[Сборка] Все компоненты читают {expected.name}");
+        }
+
+        const string CardArtFolder = "Assets/_Project/Art/TireUp";
+
+        /// <summary>
+        /// Подбирает классу картинки карточек из папки тир-апа.
+        ///
+        /// По имени файла: «Farmer_PlusUnit», «Policeman_IncreaseHealth».
+        /// Совпадение нестрогое в обе стороны — имя класса ShovelFarmer
+        /// содержит «Farmer», а файл Policeman содержит имя класса Police.
+        /// Строгое равенство потребовало бы переименовывать одно под другое.
+        ///
+        /// Назначенное руками не перетирается: пересборка сцены не должна
+        /// отменять ручной выбор.
+        /// </summary>
+        static void AssignCardArt(SurvivorClassSO klass)
+        {
+            if (klass == null) return;
+            if (!AssetDatabase.IsValidFolder(CardArtFolder)) return;
+
+            if (klass.cardAddUnit == null) klass.cardAddUnit = FindCard(klass, "PlusUnit");
+            if (klass.cardDamage == null) klass.cardDamage = FindCard(klass, "IncreaseDamage");
+            if (klass.cardHealth == null) klass.cardHealth = FindCard(klass, "IncreaseHealth");
+
+            EditorUtility.SetDirty(klass);
+        }
+
+        static Sprite FindCard(SurvivorClassSO klass, string kind)
+        {
+            string className = klass.name;
+
+            foreach (var guid in AssetDatabase.FindAssets("t:Texture2D", new[] { CardArtFolder }))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                string file = System.IO.Path.GetFileNameWithoutExtension(path);
+
+                int split = file.IndexOf('_');
+                if (split <= 0) continue;
+                if (!file.Substring(split + 1).Equals(kind, System.StringComparison.OrdinalIgnoreCase)) continue;
+
+                string prefix = file.Substring(0, split);
+                bool matches = className.IndexOf(prefix, System.StringComparison.OrdinalIgnoreCase) >= 0
+                            || prefix.IndexOf(className, System.StringComparison.OrdinalIgnoreCase) >= 0;
+                if (!matches) continue;
+
+                PrepareCardTexture(path);
+                return AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Готовит картинку карточки: тип «спрайт» и разумный размер.
+        ///
+        /// Файлы приходят по два с половиной мегабайта — это больше, чем весь
+        /// запечённый набор анимаций зомби, ради картинки размером
+        /// с полкарточки. На устройстве 2.6 ГБ памяти и система уже шлёт
+        /// предупреждения о нехватке.
+        /// </summary>
+        static void PrepareCardTexture(string path)
+        {
+            var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+            if (importer == null) return;
+
+            bool dirty = false;
+
+            if (importer.textureType != TextureImporterType.Sprite)
+            {
+                importer.textureType = TextureImporterType.Sprite;
+                dirty = true;
+            }
+
+            // Без режима нарезки спрайт не создаётся вовсе: тип стоит
+            // «спрайт», а LoadAssetAtPath<Sprite> возвращает пусто,
+            // и карточка молча остаётся без картинки.
+            if (importer.spriteImportMode != SpriteImportMode.Single)
+            {
+                importer.spriteImportMode = SpriteImportMode.Single;
+                dirty = true;
+            }
+
+            if (importer.maxTextureSize > 512)
+            {
+                importer.maxTextureSize = 512;
+                dirty = true;
+            }
+
+            // Карточка всегда на экране одного размера, уменьшённые копии
+            // ей не нужны и стоят трети памяти.
+            if (importer.mipmapEnabled)
+            {
+                importer.mipmapEnabled = false;
+                dirty = true;
+            }
+
+            if (dirty) importer.SaveAndReimport();
         }
 
         static void CreateEventSystem()

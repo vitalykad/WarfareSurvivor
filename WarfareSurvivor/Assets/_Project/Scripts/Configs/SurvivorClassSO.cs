@@ -75,6 +75,19 @@ namespace WarfareSurvivor
         /// <summary>Пассивные классы в бою не участвуют — им незачем искать цель.</summary>
         public bool Attacks => role != SquadRole.Support && damage > 0f;
 
+        [Header("Карточки тир-апа")]
+
+        [Tooltip("Картинка карточки «добавить бойца». Подставляется " +
+                 "строителем сцены из _Project/Art/TireUp по имени файла; " +
+                 "назначенное руками не перетирается.")]
+        public Sprite cardAddUnit;
+
+        [Tooltip("Картинка карточки «усилить удар» этого класса.")]
+        public Sprite cardDamage;
+
+        [Tooltip("Картинка карточки «прибавить живучести» этого класса.")]
+        public Sprite cardHealth;
+
         [Header("Дуга замаха")]
 
         [Tooltip("Рисовать дугу замаха. Живёт у КЛАССА, а не в общем " +

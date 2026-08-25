@@ -30,6 +30,9 @@ namespace WarfareSurvivor
         public string Title;
         public string Subtitle;
         public string Body;
+
+        /// <summary>Картинка карточки. Пусто — рисуется одним текстом.</summary>
+        public Sprite Art;
     }
 
     public class RunController : MonoBehaviour
@@ -178,8 +181,8 @@ namespace WarfareSurvivor
             switch (offer.Kind)
             {
                 case OfferKind.AddUnit: squad.AddMember(offer.Class); break;
-                case OfferKind.Damage: squad.AddDamageBonus(config.tierUpDamageStep); break;
-                case OfferKind.Health: squad.AddHealthBonus(config.tierUpHealthStep); break;
+                case OfferKind.Damage: squad.AddDamageBonus(offer.Class, config.tierUpDamageStep); break;
+                case OfferKind.Health: squad.AddHealthBonus(offer.Class, config.tierUpHealthStep); break;
             }
 
             pending--;
@@ -208,51 +211,78 @@ namespace WarfareSurvivor
             if (squad.MemberCount < config.squadSlotCap)
             {
                 var klass = RandomClass();
-                if (klass != null)
-                    offers.Add(new TierUpOffer
-                    {
-                        Kind = OfferKind.AddUnit,
-                        Class = klass,
-                        Title = klass.displayName,
-                        Subtitle = "пополнение",
-                        Body = ClassBody(klass)
-                    });
+                if (klass != null) offers.Add(AddUnitOffer(klass));
             }
 
             // Улучшения РАЗНЫЕ, а не два случайных: выпадали две одинаковые
             // карточки «+20% урона», и выбор из трёх превращался в выбор
-            // из двух. Пока видов улучшения два, они и берутся оба,
-            // а порядок тасуется, чтобы урон не всегда оказывался слева.
+            // из двух.
+            //
+            // Класс для улучшения берётся из ПРИСУТСТВУЮЩИХ в отряде:
+            // предлагать усиление револьвера тому, у кого ни одного стрелка,
+            // значит тратить карточку впустую.
             int upgrades = Mathf.Max(1, config.tierUpOptions - offers.Count);
             var kinds = new List<OfferKind> { OfferKind.Damage, OfferKind.Health };
             if (Random.value < 0.5f) kinds.Reverse();
 
             for (int i = 0; i < upgrades; i++)
             {
-                var kind = kinds[i % kinds.Count];
-                offers.Add(kind == OfferKind.Damage ? DamageOffer() : HealthOffer());
+                var target = PresentClass();
+                if (target == null) break;
+
+                offers.Add(kinds[i % kinds.Count] == OfferKind.Damage
+                    ? DamageOffer(target)
+                    : HealthOffer(target));
             }
 
             return offers;
         }
 
-        TierUpOffer DamageOffer() => new TierUpOffer
+        TierUpOffer AddUnitOffer(SurvivorClassSO klass) => new TierUpOffer
         {
-            Kind = OfferKind.Damage,
-            Title = "+" + Percent(config.tierUpDamageStep) + " урона",
-            Subtitle = "всему отряду",
-            Body = "Бьют сильнее все, включая тех,\nкто придёт потом.\n\nсейчас " +
-                   Percent(squad.DamageBonus - 1f) + " сверх базового"
+            Kind = OfferKind.AddUnit,
+            Class = klass,
+            Art = klass.cardAddUnit,
+            Title = klass.displayName,
+            Subtitle = "пополнение",
+            Body = ClassBody(klass)
         };
 
-        TierUpOffer HealthOffer() => new TierUpOffer
+        TierUpOffer DamageOffer(SurvivorClassSO klass) => new TierUpOffer
+        {
+            Kind = OfferKind.Damage,
+            Class = klass,
+            Art = klass.cardDamage,
+            Title = "+" + Percent(config.tierUpDamageStep) + " урона",
+            Subtitle = klass.displayName,
+            Body = "Бьют сильнее все бойцы этого класса,\nвключая тех, кто придёт потом.\n\nсейчас " +
+                   Percent(squad.DamageBonusFor(klass) - 1f) + " сверх базового"
+        };
+
+        TierUpOffer HealthOffer(SurvivorClassSO klass) => new TierUpOffer
         {
             Kind = OfferKind.Health,
+            Class = klass,
+            Art = klass.cardHealth,
             Title = "+" + Percent(config.tierUpHealthStep) + " здоровья",
-            Subtitle = "всему отряду",
+            Subtitle = klass.displayName,
             Body = "Живучести прибавляется сразу,\nа не только новичкам.\n\nсейчас " +
-                   Percent(squad.HealthBonus - 1f) + " сверх базового"
+                   Percent(squad.HealthBonusFor(klass) - 1f) + " сверх базового"
         };
+
+        /// <summary>
+        /// Случайный класс ИЗ ТЕХ, кто есть в строю. Улучшать некого —
+        /// возвращает пусто, и карточка не появляется.
+        /// </summary>
+        SurvivorClassSO PresentClass()
+        {
+            var pool = new List<SurvivorClassSO>();
+            foreach (var member in squad.Members)
+                if (member != null && member.Class != null && !pool.Contains(member.Class))
+                    pool.Add(member.Class);
+
+            return pool.Count == 0 ? null : pool[Random.Range(0, pool.Count)];
+        }
 
         static string Percent(float value) => Mathf.RoundToInt(value * 100f) + "%";
 

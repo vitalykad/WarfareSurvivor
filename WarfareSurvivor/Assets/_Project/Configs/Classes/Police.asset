@@ -22,3 +22,12 @@ MonoBehaviour:
   knockbackDistance: 0
   attackHitTime: 0.5
   knockbackDuration: 0.25
+  cardAddUnit: {fileID: 21300000, guid: 5b39b4d77d2c549b19c011e1766b618d, type: 3}
+  cardDamage: {fileID: 21300000, guid: ee9333033c1554982935528262585e36, type: 3}
+  cardHealth: {fileID: 21300000, guid: 81864073426c94512980ad09c939c64c, type: 3}
+  showAttackArc: 0
+  arcDegrees: 140
+  arcInner: 0.74
+  arcStretch: 1.2
+  arcHeight: 1.05
+  arcTilt: 14
