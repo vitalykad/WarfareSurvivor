@@ -646,6 +646,7 @@ namespace WarfareSurvivor.EditorTools
             var sparks = new GameObject("SparkField").AddComponent<SparkField>();
             Wire(sparks, nameof(config), config);
             Wire(sparks, "spawner", spawner);
+            Wire(sparks, "squadCenter", squad.transform);
             Wire(sparks, "sparkMaterial", EnsureSparkMaterial());
             Wire(sparks, "view", Object.FindFirstObjectByType<Camera>());
 

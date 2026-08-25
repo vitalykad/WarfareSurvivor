@@ -21,6 +21,9 @@ namespace WarfareSurvivor
     {
         [SerializeField] ArenaConfig config;
         [SerializeField] ZombieSpawner spawner;
+
+        [SerializeField, Tooltip("Центр отряда: от него добыча отлетает наружу.")]
+        Transform squadCenter;
         [SerializeField] Material sparkMaterial;
 
         [SerializeField, Tooltip("Камера: к ней разворачиваются бутылки.")]
@@ -37,7 +40,14 @@ namespace WarfareSurvivor
             public Transform View;
             public Vector3 Position;
             public int Value;
+
+            /// <summary>Летит к бойцу.</summary>
             public bool Flying;
+
+            /// <summary>Откуда и куда идёт разлёт, и сколько его осталось.</summary>
+            public Vector3 From;
+            public Vector3 To;
+            public float ScatterLeft;
         }
 
         readonly List<Spark> sparks = new List<Spark>();
@@ -74,15 +84,53 @@ namespace WarfareSurvivor
 
             // Приподнимаем на половину стороны: центр плоскости должен
             // оказаться над землёй, иначе нижняя половина уходит под неё.
-            position.y = Mathf.Max(0.2f, sparkHeight) * 0.5f;
+            float ground = Mathf.Max(0.2f, sparkHeight) * 0.5f;
+            position.y = ground;
 
             var item = idle.Count > 0 ? idle.Pop() : CreateView();
             item.position = position;
             item.rotation = Facing();
             item.gameObject.SetActive(true);
 
-            sparks.Add(new Spark { View = item, Position = position, Value = value });
+            sparks.Add(new Spark
+            {
+                View = item,
+                Position = position,
+                Value = value,
+                From = position,
+                To = ScatterTarget(position, ground),
+                ScatterLeft = Mathf.Max(0.05f, config.sparkScatterTime)
+            });
         }
+
+        /// <summary>
+        /// Куда отлетит добыча.
+        ///
+        /// НАРУЖУ от отряда, а не в случайную сторону: зомби гибнут вплотную
+        /// к строю, и разлёт внутрь положил бы добычу под ноги — то есть
+        /// туда же, откуда её и так подберут не двигаясь. Наружу же она
+        /// ложится кольцом вокруг отряда, и игроку приходится выбирать,
+        /// в какую сторону идти.
+        /// </summary>
+        Vector3 ScatterTarget(Vector3 from, float ground)
+        {
+            var away = from - CrowdCenter();
+            away.y = 0f;
+
+            // Погиб ровно в центре — направление берём любое, лишь бы было.
+            if (away.sqrMagnitude < 0.01f)
+            {
+                float angle = Random.value * Mathf.PI * 2f;
+                away = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+            }
+
+            float distance = Random.Range(config.sparkScatterMin, Mathf.Max(config.sparkScatterMin, config.sparkScatterMax));
+            var target = from + away.normalized * distance;
+            target.y = ground;
+            return target;
+        }
+
+        Vector3 CrowdCenter() => squadCenter != null ? squadCenter.position : Vector3.zero;
 
         /// <summary>Убирает всё с поля, ничего не засчитывая: забег кончился.</summary>
         public void Clear()
@@ -124,6 +172,15 @@ namespace WarfareSurvivor
             {
                 var spark = sparks[i];
 
+                // Пока летит — не подбирается ни при каких условиях.
+                // Иначе отряд, идущий следом за добычей, ловил бы её
+                // в воздухе, и разлёт не значил бы ничего.
+                if (spark.ScatterLeft > 0f)
+                {
+                    Scatter(ref spark, i);
+                    continue;
+                }
+
                 var collector = Nearest(spark.Position);
                 if (collector == null) continue;
 
@@ -146,6 +203,33 @@ namespace WarfareSurvivor
 
                 if (sqr <= pickup) CollectAt(i);
             }
+        }
+
+        /// <summary>
+        /// Двигает добычу по дуге разлёта.
+        ///
+        /// Дуга, а не прямая: подскок читается как «выбило ударом»,
+        /// а скольжение по земле — как ошибку физики.
+        /// </summary>
+        void Scatter(ref Spark spark, int index)
+        {
+            float total = Mathf.Max(0.05f, config.sparkScatterTime);
+            spark.ScatterLeft -= Time.deltaTime;
+
+            float t = Mathf.Clamp01(1f - spark.ScatterLeft / total);
+            var position = Vector3.Lerp(spark.From, spark.To, t);
+            position.y += Mathf.Sin(t * Mathf.PI) * Mathf.Max(0f, config.sparkScatterHop);
+
+            spark.Position = position;
+            spark.View.position = position;
+
+            if (spark.ScatterLeft <= 0f)
+            {
+                spark.Position = spark.To;
+                spark.View.position = spark.To;
+            }
+
+            sparks[index] = spark;
         }
 
         /// <summary>

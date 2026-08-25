@@ -549,8 +549,24 @@ namespace WarfareSurvivor
                  "классов, предложить нельзя.")]
         public int tierUpOptions = 3;
 
-        [Tooltip("С какого расстояния искра летит к отряду.")]
-        public float sparkAttractRadius = 6f;
+        [Tooltip("На сколько метров добыча отлетает ОТ ОТРЯДА в момент " +
+                 "падения. Зомби гибнут вплотную к строю, и без разлёта " +
+                 "добыча рождается уже внутри зоны сбора — подбирается сама, " +
+                 "и идти за ней никуда не надо.")]
+        public float sparkScatterMin = 3f;
+
+        public float sparkScatterMax = 6f;
+
+        [Tooltip("Сколько секунд длится разлёт. Пока летит — не подбирается.")]
+        public float sparkScatterTime = 0.4f;
+
+        [Tooltip("Высота дуги разлёта.")]
+        public float sparkScatterHop = 1.2f;
+
+        [Tooltip("С какого расстояния добыча летит к ближайшему бойцу. " +
+                 "Должен быть заметно МЕНЬШЕ разлёта, иначе она вернётся " +
+                 "сама и движение снова окажется ни при чём.")]
+        public float sparkAttractRadius = 2.5f;
 
         [Tooltip("С какого расстояния засчитывается подбор.")]
         public float sparkPickupRadius = 1.2f;

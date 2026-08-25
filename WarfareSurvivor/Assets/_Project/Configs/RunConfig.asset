@@ -142,7 +142,11 @@ MonoBehaviour:
   tierUpCostBase: 10
   tierUpCostGrowth: 1.4
   tierUpOptions: 3
-  sparkAttractRadius: 6
+  sparkScatterMin: 3
+  sparkScatterMax: 6
+  sparkScatterTime: 0.4
+  sparkScatterHop: 1.2
+  sparkAttractRadius: 2.5
   sparkPickupRadius: 1.2
   sparkFlySpeed: 12
   maxSparks: 150
