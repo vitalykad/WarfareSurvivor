@@ -51,6 +51,9 @@ namespace WarfareSurvivor
             public Vector3 From;
             public Vector3 To;
             public float ScatterLeft;
+
+            /// <summary>Сдвиг фазы покачивания: без него всё поле качается в такт.</summary>
+            public float Phase;
         }
 
         readonly List<Spark> sparks = new List<Spark>();
@@ -102,7 +105,8 @@ namespace WarfareSurvivor
                 Value = value,
                 From = position,
                 To = ScatterTarget(position, ground),
-                ScatterLeft = Mathf.Max(0.05f, config.sparkScatterTime)
+                ScatterLeft = Mathf.Max(0.05f, config.sparkScatterTime),
+                Phase = Random.value * Mathf.PI * 2f
             });
         }
 
@@ -204,6 +208,8 @@ namespace WarfareSurvivor
 
                 sparks[i] = spark;
 
+                Bob(spark);
+
                 if (sqr <= pickup) CollectAt(i);
             }
         }
@@ -233,6 +239,36 @@ namespace WarfareSurvivor
             }
 
             sparks[index] = spark;
+        }
+
+        /// <summary>
+        /// Покачивание и крен.
+        ///
+        /// Неподвижный предмет на песке глаз принимает за часть фона —
+        /// особенно наш, лежащий среди трупов и обломков. Движение отличает
+        /// подбираемое от декорации раньше, чем игрок успеет разглядеть,
+        /// что именно там лежит.
+        ///
+        /// Двигается ТОЛЬКО картинка, а не сама добыча: расстояние подбора
+        /// считается от её настоящего места, и качающаяся точка сбора
+        /// давала бы подбор то раньше, то позже.
+        ///
+        /// Крен идёт вокруг оси взгляда, а не вокруг вертикали: плоскость
+        /// повёрнута к камере, и разворот вокруг вертикали показал бы её
+        /// ребром — бутылка исчезала бы дважды за оборот.
+        /// </summary>
+        void Bob(Spark spark)
+        {
+            if (spark.View == null) return;
+
+            float t = Time.time + spark.Phase;
+
+            var position = spark.Position;
+            position.y += Mathf.Sin(t * config.sparkBobSpeed) * config.sparkBobHeight;
+            spark.View.position = position;
+
+            float sway = Mathf.Sin(t * config.sparkSwaySpeed) * config.sparkSwayAngle;
+            spark.View.rotation = Facing() * Quaternion.Euler(0f, 0f, sway);
         }
 
         /// <summary>

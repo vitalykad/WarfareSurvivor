@@ -154,6 +154,10 @@ MonoBehaviour:
   sparkAttractRadius: 2.5
   sparkPickupRadius: 1.2
   sparkFlySpeed: 12
+  sparkBobHeight: 0.12
+  sparkBobSpeed: 2.2
+  sparkSwayAngle: 14
+  sparkSwaySpeed: 1.5
   maxSparks: 150
   rampStep: 25
   rampMax: 400
