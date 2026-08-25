@@ -86,22 +86,22 @@ namespace WarfareSurvivor
             torsoAim = GetComponent<TorsoAim>();
             if (torsoAim != null) torsoAim.Configure(config.torsoAimMaxAngle, config.torsoAimSpeed);
 
-            // Дуга только у ближнего боя: у стрелка дальность в девять
-            // метров, и взмах такого размаха накрыл бы половину отряда,
-            // ничего не объясняя.
+            // Дугу включает САМ КЛАСС: размах привязан к дальности его
+            // оружия, и решать за все классы одной галочкой в общем конфиге
+            // неправильно.
             //
             // Под try по той же причине, что и полоска здоровья ниже: это
             // украшение, и его поломка не должна мешать бойцу появиться.
             // Пренебрёг однажды — и исключение внутри косметики оборвало
             // создание отряда на первом же бойце, отряд вышел пустым,
             // и забег проигрывался мгновенно.
-            if (config.showMeleeArc && klass.role == SquadRole.Melee)
+            if (klass.showAttackArc)
             {
                 try
                 {
                     meleeArc = MeleeArc.Attach(transform, klass.attackRange,
-                        squad.MeleeArcMaterial, config.meleeArcDegrees, config.meleeArcInner,
-                        config.meleeArcHeight, config.meleeArcTilt);
+                        squad.MeleeArcMaterial, klass.arcDegrees, klass.arcInner,
+                        klass.arcHeight, klass.arcTilt);
                 }
                 catch (System.Exception e)
                 {
@@ -429,7 +429,7 @@ namespace WarfareSurvivor
             // Дуга идёт вместе с замахом, а не с попаданием: она и есть
             // изображение замаха, и появиться должна тогда же, когда боец
             // заносит лопату.
-            if (meleeArc != null) meleeArc.Swing(toHit * Mathf.Max(0.2f, config.meleeArcStretch));
+            if (meleeArc != null) meleeArc.Swing(toHit * Mathf.Max(0.2f, klass.arcStretch));
         }
 
         void ResolvePendingHit()
