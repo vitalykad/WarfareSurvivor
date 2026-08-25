@@ -29,8 +29,11 @@ namespace WarfareSurvivor
         [SerializeField, Tooltip("Камера: к ней разворачиваются бутылки.")]
         Camera view;
 
-        [SerializeField, Tooltip("Сторона квадрата в метрах.")]
-        float sparkHeight = 0.55f;
+        [SerializeField, Tooltip("Высота бутылки в метрах.")]
+        float sparkHeight = 0.9f;
+
+        /// <summary>Пропорции картинки: она вытянута по вертикали.</summary>
+        const float SparkAspect = 1024f / 1536f;
 
         /// <summary>Подобрана искра, столько-то штук.</summary>
         public event System.Action<int> Collected;
@@ -304,7 +307,7 @@ namespace WarfareSurvivor
         Mesh BuildQuad()
         {
             float halfHeight = Mathf.Max(0.2f, sparkHeight) * 0.5f;
-            float halfWidth = halfHeight;
+            float halfWidth = halfHeight * SparkAspect;
 
             var mesh = new Mesh { name = "Добыча" };
             mesh.vertices = new[]

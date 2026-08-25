@@ -104,7 +104,9 @@ namespace WarfareSurvivor.EditorTools
             Wire(squad, "meleeArcMaterial", EnsureMeleeArcMaterial());
             var camera = CreateCamera(squad.transform, config);
             var joystick = CreateUI();
-            if (!gameplay) CreateFrameMeter(config);
+            // Счётчик кадра теперь решает КОНФИГ, а не тип сцены: в забеге
+            // он тоже нужен, когда проверяешь цену графики на устройстве.
+            if (config.showFrameMeter) CreateFrameMeter(config);
 
             var frameRate = new GameObject("FrameRate").AddComponent<FrameRateController>();
             Wire(frameRate, nameof(config), config);
@@ -766,22 +768,88 @@ namespace WarfareSurvivor.EditorTools
 
             if (material.shader != shader) material.shader = shader;
 
-            // Картинки нет — добыча это светящийся квадрат, и форму ему
-            // задаёт сама плоскость.
-            material.SetTexture("_BaseMap", null);
+            // Сама добыча — бутылка воды, узнаваемый предмет читается
+            // на песке лучше абстрактного пятна.
+            PrepareBottleTexture();
+            var bottle = AssetDatabase.LoadAssetAtPath<Texture2D>(BottleTexture);
+            if (bottle != null) material.SetTexture("_BaseMap", bottle);
 
-            // Цвета ставим только у нового материала: подобранные руками
-            // пересборка сцены стирать не должна.
+            // Свечение — своей текстурой, не силуэтом бутылки.
+            material.SetTexture("_GlowTex", EnsureGlowTexture());
+
             if (fresh)
             {
-                material.SetColor("_BaseColor", new Color(0.35f, 0.72f, 1f, 0.85f));
-                material.SetColor("_GlowColor", new Color(0.30f, 0.70f, 1f, 1f));
-                material.SetFloat("_GlowPower", 0.9f);
-                material.SetFloat("_GlowSize", 1.8f);
+                material.SetColor("_BaseColor", Color.white);
+                material.SetColor("_GlowColor", new Color(0.35f, 0.78f, 1f, 1f));
+                material.SetFloat("_GlowPower", 1.1f);
+                material.SetFloat("_GlowSize", 2.2f);
+                material.SetFloat("_GlowStretch", 1.5f);
             }
 
             EditorUtility.SetDirty(material);
             return material;
+        }
+
+        /// <summary>
+        /// Текстура свечения: тугое ядро плюс широкий мягкий ореол В ОДНОЙ
+        /// картинке.
+        ///
+        /// Ровно приём из SWARM. Один общий мягкий спад читается размазанным
+        /// пятном, а не светом; два слоя дают «раскалённую сердцевину
+        /// с цветным ободом». Ядро уводится к белому прямо в текстуре —
+        /// на аддитивном смешивании оно пересвечивается само, а ореол
+        /// остаётся того цвета, который задан в материале.
+        ///
+        /// Рисуется кодом, а не приходит файлом: это градиент по формуле,
+        /// и держать его картинкой значит хранить то, что и так однозначно
+        /// считается.
+        /// </summary>
+        static Texture2D EnsureGlowTexture()
+        {
+            const string path = "Assets/_Project/Art/Materials/PickupGlow.asset";
+
+            var existing = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            if (existing != null) return existing;
+
+            const int size = 128;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false, true)
+            {
+                name = "PickupGlow",
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear
+            };
+
+            var pixels = new Color[size * size];
+            float half = (size - 1) * 0.5f;
+
+            for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                // Расстояние от центра в долях радиуса.
+                float dx = (x - half) / half;
+                float dy = (y - half) / half;
+                float a = Mathf.Sqrt(dx * dx + dy * dy);
+
+                // Числа из SWARM подправлены под наш масштаб. Там добыча
+                // была мелкой точкой, и узкий ореол читался; у нас предмет
+                // размером с полметра, и на том же спаде свечение тонуло —
+                // на четверти радиуса альфа падала до 0.15.
+                float core = Mathf.Pow(Mathf.Clamp01(1f - a / 0.32f), 1.5f);
+                float halo = Mathf.Pow(Mathf.Clamp01(1f - a), 2.2f) * 0.7f;
+                float alpha = Mathf.Max(core, halo);
+
+                // Цвет белый: оттенок задаёт материал, а ядро само уходит
+                // к белому за счёт того, что ярче ореола.
+                pixels[y * size + x] = new Color(1f, 1f, 1f, alpha);
+            }
+
+            texture.SetPixels(pixels);
+            texture.Apply(false, false);
+
+            EnsureFolder("Assets/_Project/Art/Materials");
+            AssetDatabase.CreateAsset(texture, path);
+            Debug.Log("[Сборка] Создана текстура свечения " + path);
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
         }
 
         /// <summary>

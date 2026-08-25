@@ -13,7 +13,9 @@ Shader "WarfareSurvivor/Pickup"
 
         [HDR] _GlowColor ("Цвет свечения", Color) = (0.35, 0.75, 1, 1)
 
-        _GlowSize ("Размах свечения", Range(1, 2)) = 1.35
+        _GlowTex ("Текстура свечения", 2D) = "black" {}
+        _GlowSize ("Размах свечения", Range(1, 4)) = 2.2
+        _GlowStretch ("Растяжка свечения по ширине", Range(0.5, 3)) = 1.5
         _GlowPower ("Сила свечения", Range(0, 2)) = 0.55
 
         _PulseSpeed ("Скорость пульса", Range(0, 8)) = 2.2
@@ -34,12 +36,15 @@ Shader "WarfareSurvivor/Pickup"
 
         TEXTURE2D(_BaseMap);
         SAMPLER(sampler_BaseMap);
+        TEXTURE2D(_GlowTex);
+        SAMPLER(sampler_GlowTex);
 
         CBUFFER_START(UnityPerMaterial)
             float4 _BaseMap_ST;
             half4 _BaseColor;
             half4 _GlowColor;
             half _GlowSize;
+            half _GlowStretch;
             half _GlowPower;
             half _PulseSpeed;
             half _PulseDepth;
@@ -82,25 +87,31 @@ Shader "WarfareSurvivor/Pickup"
             Varyings vert(Attributes IN)
             {
                 Varyings OUT;
-                float3 blown = IN.positionOS.xyz * _GlowSize;
+
+                // Раздуваем плоскость и выправляем пропорции: сама добыча
+                // вытянута по вертикали, и равномерное раздутие дало бы
+                // вытянутый ореол вместо круглого.
+                float3 blown = float3(IN.positionOS.x * _GlowSize * _GlowStretch,
+                                      IN.positionOS.y * _GlowSize,
+                                      IN.positionOS.z);
+
                 OUT.positionHCS = TransformObjectToHClip(blown);
-                OUT.uv = TRANSFORM_TEX(IN.uv, _BaseMap);
+                OUT.uv = IN.uv;
                 return OUT;
             }
 
             half4 frag(Varyings IN) : SV_Target
             {
-                half alpha = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, IN.uv).a;
+                // Свечение берётся из СВОЕЙ текстуры, а не из силуэта добычи.
+                //
+                // В ней два слоя разом: тугое ядро и широкий мягкий ореол.
+                // Один общий мягкий спад читается размазанным пятном, а не
+                // светом — это прямой урок из SWARM. Ядро в текстуре уведено
+                // к белому, ореол остаётся цветным, отсюда «раскалённая
+                // сердцевина с цветным ободом».
+                half glow = SAMPLE_TEXTURE2D(_GlowTex, sampler_GlowTex, IN.uv).a;
 
-                // Круглое затухание от центра. Без него ореол повторяет форму
-                // плоскости, и у квадратной добычи получается квадратное
-                // свечение с резкой границей — читается как ошибка, а не
-                // как подсветка.
-                half2 fromCenter = IN.uv * 2.0h - 1.0h;
-                half falloff = saturate(1.0h - length(fromCenter));
-                falloff *= falloff;
-
-                half strength = alpha * falloff * _GlowPower * Pulse();
+                half strength = glow * _GlowPower * Pulse();
                 return half4(_GlowColor.rgb * strength, strength);
             }
             ENDHLSL

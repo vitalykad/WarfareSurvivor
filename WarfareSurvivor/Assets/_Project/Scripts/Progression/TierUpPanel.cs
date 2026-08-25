@@ -34,6 +34,7 @@ namespace WarfareSurvivor
             if (title != null) title.text = string.Empty;
 
             BuildCards(options);
+            ReportLayout();
         }
 
         public void Hide()
@@ -44,7 +45,17 @@ namespace WarfareSurvivor
         void BuildCards(List<TierUpOffer> options)
         {
             for (int i = 0; i < cards.Count; i++)
-                if (cards[i] != null) Destroy(cards[i].gameObject);
+            {
+                if (cards[i] == null) continue;
+
+                // Гасим СРАЗУ, а не только помечаем на удаление: Unity
+                // уничтожает объект в конце кадра, и до тех пор старые
+                // карточки остаются детьми ряда — участвуют в раскладке
+                // и попадают в отчёт, из-за чего он показывал шесть карточек
+                // вместо трёх.
+                cards[i].transform.SetParent(null, false);
+                Destroy(cards[i].gameObject);
+            }
             cards.Clear();
 
             if (cardRow == null) return;
@@ -56,6 +67,39 @@ namespace WarfareSurvivor
                 card.onClick.AddListener(() => Pick(captured));
                 cards.Add(card);
             }
+        }
+
+        /// <summary>
+        /// Проверяет, что все карточки попали в экран.
+        ///
+        /// Карточка за краем читается игроком как «её нет», и отличить это
+        /// от «её не предложили» со стороны невозможно — на устройстве
+        /// инспектора нет.
+        /// </summary>
+        void ReportLayout()
+        {
+            if (cardRow == null) return;
+
+            var corners = new Vector3[4];
+            var report = new System.Text.StringBuilder("[Тир-ап] на экране:");
+
+            for (int i = 0; i < cardRow.childCount; i++)
+            {
+                var rect = cardRow.GetChild(i) as RectTransform;
+                if (rect == null) continue;
+
+                rect.GetWorldCorners(corners);
+                float left = corners[0].x;
+                float right = corners[2].x;
+
+                report.Append(' ').Append(rect.name).Append('[')
+                      .Append(Mathf.RoundToInt(left)).Append("..").Append(Mathf.RoundToInt(right)).Append(']');
+
+                if (left < 0f || right > Screen.width) report.Append("<-ЗА КРАЕМ");
+            }
+
+            report.Append(" ширина экрана ").Append(Screen.width);
+            Debug.Log(report.ToString());
         }
 
         void Pick(TierUpOffer offer)

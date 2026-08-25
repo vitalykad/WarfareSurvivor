@@ -62,6 +62,17 @@ namespace WarfareSurvivor
         /// <summary>Куда вернуться, когда выбор сделан.</summary>
         Phase resume = Phase.Fighting;
 
+        /// <summary>
+        /// Сколько наборов прошло без пополнения.
+        ///
+        /// Начинается с большого числа намеренно: ПЕРВЫЙ набор забега должен
+        /// содержать пополнение. Это первое решение игрока за забег, и оно
+        /// должно быть про состав отряда — то есть про то, ради чего игра
+        /// и затевалась. Чередование само по себе отдало бы первый набор
+        /// под улучшения.
+        /// </summary>
+        int sinceAddUnit = 99;
+
         void Awake()
         {
             if (config == null || squad == null || spawner == null)
@@ -165,6 +176,15 @@ namespace WarfareSurvivor
                 return;
             }
 
+            // Лог набора: на устройстве инспектора нет, и понять, почему
+            // карточка не появилась, больше нечем.
+            var report = new System.Text.StringBuilder("[Тир-ап] набор:");
+            foreach (var o in options) report.Append(' ').Append(o.Kind).Append('/').Append(o.Title).Append(';');
+            report.Append(" бойцов ").Append(squad.MemberCount).Append('/').Append(config.squadSlotCap)
+                  .Append(", классов в конфиге ").Append(AllClasses().Count)
+                  .Append(", шанс пополнения ").Append(config.tierUpAddUnitChance);
+            Debug.Log(report.ToString());
+
             if (Current != Phase.Choosing) resume = Current;
             Current = Phase.Choosing;
 
@@ -215,9 +235,23 @@ namespace WarfareSurvivor
             // не мог. Через раз пополнения нет, и набор целиком уходит
             // под улучшения — тогда решение становится «кого именно
             // усиливать».
+            // Пополнение идёт ЧЕРЕДОВАНИЕМ, а не по броску монеты.
+            //
+            // С монеткой при шансе в половину выпадали полосы: на устройстве
+            // из восьми наборов пополнение пришло один раз, и игрок весь
+            // забег не мог расширить отряд. Чередование даёт ровно то, что
+            // и просили — «через раз», — без полос невезения.
+            //
+            // Шаг выводится из того же числа: половина — через один,
+            // треть — через два.
+            int step = Mathf.Max(1, Mathf.RoundToInt(1f / Mathf.Max(0.01f, config.tierUpAddUnitChance)));
+
             bool roomLeft = squad.MemberCount < config.squadSlotCap;
-            if (roomLeft && Random.value < config.tierUpAddUnitChance)
+            bool addUnitTurn = sinceAddUnit >= step - 1;
+
+            if (roomLeft && addUnitTurn)
             {
+                sinceAddUnit = 0;
                 // Раз уж пополнение выпало — предлагаем ВСЕ классы разом,
                 // а не один случайный.
                 //
@@ -227,6 +261,7 @@ namespace WarfareSurvivor
                 // кого взять, он берёт того, кого выпало.
                 foreach (var klass in AllClasses()) offers.Add(AddUnitOffer(klass));
             }
+            else sinceAddUnit++;
 
             AddUpgrades(offers);
 
@@ -265,8 +300,21 @@ namespace WarfareSurvivor
                 (pool[i], pool[j]) = (pool[j], pool[i]);
             }
 
-            int take = Mathf.Min(pool.Count, Mathf.Max(0, config.tierUpOptions - offers.Count));
-            for (int i = 0; i < take; i++) offers.Add(pool[i]);
+            // Вид улучшения в наборе не повторяется, даже если он для разных
+            // классов.
+            //
+            // Подписи с карточек убраны, и «+25% здоровья фермеру» рядом
+            // с «+25% здоровья полицейскому» отличаются только нарисованным
+            // персонажем — со стороны это две одинаковые карточки, и выбор
+            // выглядит бессмысленным. Один вид — одна карточка.
+            int target = Mathf.Max(1, config.tierUpOptions);
+
+            foreach (var offer in pool)
+            {
+                if (offers.Count >= target) break;
+                if (offers.Exists(o => o.Kind == offer.Kind)) continue;
+                offers.Add(offer);
+            }
         }
 
         TierUpOffer AddUnitOffer(SurvivorClassSO klass) => new TierUpOffer
