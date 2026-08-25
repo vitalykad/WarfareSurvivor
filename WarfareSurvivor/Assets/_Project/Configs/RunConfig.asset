@@ -56,11 +56,11 @@ MonoBehaviour:
   zombieTiers: 4
   zombieHitsPerTier: 25
   minZombieTier: 3
-  zombieTierTint: 0.45
+  zombieTierTint: 0
   zombieTierColorLow: {r: 0.42, g: 0.75, b: 0.3, a: 1}
   zombieTierColorHigh: {r: 0.95, g: 0.88, b: 0.25, a: 1}
   zombieScaleLow: 1
-  zombieScaleHigh: 1.4
+  zombieScaleHigh: 1.6
   zombieCorpseTime: 1.2
   zombieDeathSpeed: 2.2
   useBakedZombies: 1
