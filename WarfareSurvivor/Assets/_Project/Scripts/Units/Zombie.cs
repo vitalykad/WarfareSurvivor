@@ -31,6 +31,16 @@ namespace WarfareSurvivor
 
         /// <summary>Не null, когда зомби показывается запечённой анимацией.</summary>
         BakedZombieView baked;
+
+        [SerializeField, Tooltip("Запечённая анимация ЭТОЙ модели. Живёт " +
+                                 "на префабе, а не в конфиге: у каждого вида " +
+                                 "зомби свой меш, а значит и своя текстура " +
+                                 "позиций — общий набор годится ровно для " +
+                                 "одного вида.")]
+        BakedAnimationSet bakedSet;
+
+        /// <summary>Набор запечённой анимации этого вида. Пусто — берётся из конфига.</summary>
+        public BakedAnimationSet BakedSet => bakedSet;
         Health health;
         Renderer[] renderers;
 

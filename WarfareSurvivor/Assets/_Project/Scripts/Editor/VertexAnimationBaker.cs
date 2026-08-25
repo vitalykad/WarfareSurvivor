@@ -26,6 +26,62 @@ namespace WarfareSurvivor
         [MenuItem("WarfareSurvivor/Bake Zombie Animation")]
         public static void BakeZombie() => Bake(ZombiePrefab, "Zombie");
 
+        /// <summary>
+        /// Печёт КАЖДЫЙ вид зомби. Своя текстура позиций у каждого меша,
+        /// поэтому общего набора на всех быть не может.
+        /// </summary>
+        [MenuItem("WarfareSurvivor/Bake All Zombie Animations")]
+        public static void BakeAllZombies()
+        {
+            int baked = 0;
+
+            foreach (var guid in AssetDatabase.FindAssets("t:Prefab", new[] { "Assets/_Project/Prefabs/Monsters" }))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+
+                var go = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                if (go == null || go.GetComponentInChildren<SkinnedMeshRenderer>(true) == null) continue;
+
+                // Ярлык — имя префаба без приставки: из него складываются
+                // имена ассетов набора и материала-основы.
+                string label = go.name.StartsWith("Monster_") ? go.name.Substring("Monster_".Length) : go.name;
+                if (Bake(path, label) != null) baked++;
+            }
+
+            Debug.Log($"[Запекание] Готово видов: {baked}");
+        }
+
+        /// <summary>
+        /// Прописывает набор в префаб, с которого его пекли.
+        ///
+        /// Раньше набор лежал в конфиге в единственном числе, и это работало,
+        /// пока вид зомби был один. У каждой модели свой меш и своя текстура
+        /// позиций, поэтому связь «модель — её набор» принадлежит модели.
+        /// </summary>
+        static void LinkToPrefab(string prefabPath, BakedAnimationSet set)
+        {
+            if (set == null) return;
+
+            var root = PrefabUtility.LoadPrefabContents(prefabPath);
+            try
+            {
+                var zombie = root.GetComponent<Zombie>() ?? root.GetComponentInChildren<Zombie>(true);
+                if (zombie == null) return;
+
+                var field = typeof(Zombie).GetField("bakedSet",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                if (field == null) return;
+
+                field.SetValue(zombie, set);
+                PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
+                Debug.Log("[Запекание] Набор привязан к префабу " + prefabPath);
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
         public static BakedAnimationSet Bake(string prefabPath, string label)
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
@@ -40,7 +96,9 @@ namespace WarfareSurvivor
 
             try
             {
-                return BakeInstance(instance, label);
+                var set = BakeInstance(instance, label);
+                if (set != null) LinkToPrefab(prefabPath, set);
+                return set;
             }
             finally
             {

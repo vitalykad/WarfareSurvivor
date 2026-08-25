@@ -131,7 +131,7 @@ namespace WarfareSurvivor.EditorTools
 
             var spawner = new GameObject("ZombieSpawner").AddComponent<ZombieSpawner>();
             Wire(spawner, nameof(config), config);
-            Wire(spawner, "zombiePrefab", AssetDatabase.LoadAssetAtPath<Zombie>(ZombiePrefab));
+            WireZombiePrefabs(spawner);
             Wire(spawner, "squad", squad);
 
             if (gameplay) CreateRun(config, squad, spawner);
@@ -286,11 +286,36 @@ namespace WarfareSurvivor.EditorTools
 
         static void PrepareZombiePrefab()
         {
-            var root = PrefabUtility.LoadPrefabContents(ZombiePrefab);
-            Ensure<Health>(root);
-            Ensure<Zombie>(root);
-            PrefabUtility.SaveAsPrefabAsset(root, ZombiePrefab);
-            PrefabUtility.UnloadPrefabContents(root);
+            foreach (var path in ZombiePrefabs())
+            {
+                var root = PrefabUtility.LoadPrefabContents(path);
+                Ensure<Health>(root);
+                Ensure<Zombie>(root);
+                PrefabUtility.SaveAsPrefabAsset(root, path);
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
+        /// <summary>
+        /// Все виды зомби, какие есть в проекте. Список собирается по папке,
+        /// а не перечисляется: добавленная модель подхватывается пересборкой
+        /// сцены, без правки кода.
+        /// </summary>
+        static List<string> ZombiePrefabs()
+        {
+            var paths = new List<string>();
+
+            foreach (var guid in AssetDatabase.FindAssets("t:Prefab", new[] { "Assets/_Project/Prefabs/Monsters" }))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                var go = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                if (go == null) continue;
+                if (go.GetComponentInChildren<SkinnedMeshRenderer>(true) == null) continue;
+                paths.Add(path);
+            }
+
+            paths.Sort(System.StringComparer.Ordinal);
+            return paths;
         }
 
         /// <summary>
@@ -1086,6 +1111,32 @@ namespace WarfareSurvivor.EditorTools
 
             Debug.LogWarning("[Сборка] Шрифт интерфейса не найден, берётся встроенный");
             return Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        }
+
+        /// <summary>Отдаёт спавнеру все виды зомби разом.</summary>
+        static void WireZombiePrefabs(ZombieSpawner spawner)
+        {
+            var paths = ZombiePrefabs();
+            var prefabs = new List<Zombie>(paths.Count);
+
+            foreach (var path in paths)
+            {
+                var zombie = AssetDatabase.LoadAssetAtPath<Zombie>(path);
+                if (zombie != null) prefabs.Add(zombie);
+            }
+
+            var field = typeof(ZombieSpawner).GetField("zombiePrefabs",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            if (field == null)
+            {
+                Debug.LogError("[Сборка] У спавнера нет поля zombiePrefabs");
+                return;
+            }
+
+            field.SetValue(spawner, prefabs.ToArray());
+            EditorUtility.SetDirty(spawner);
+            Debug.Log($"[Сборка] Видов зомби подключено: {prefabs.Count}");
         }
 
         static void CreateEventSystem()

@@ -36,6 +36,12 @@ namespace WarfareSurvivor.EditorTools
         public const string UpperBodyLayer = "UpperBody";
         const string ZombiePrefab = MonstersDir + "/Monster_Zombie.prefab";
 
+        // Второй вид зомби. Клипы и контроллер общие: анимация гуманоидная,
+        // и Unity переносит её на чужой скелет сама — заново пекутся только
+        // позиции вершин, потому что меш другой.
+        const string OfficeZombieModel = "Assets/Models/Enemy/OfficeZombie/OfficeZombie.fbx";
+        public const string OfficeZombiePrefab = MonstersDir + "/Monster_OfficeZombie.prefab";
+
         // Скорость, ниже которой боец считается стоящим. Относительная величина:
         // сравнивается с параметром Speed, который код нормализует к 0..1.
         const float MoveThreshold = 0.1f;
@@ -191,6 +197,7 @@ namespace WarfareSurvivor.EditorTools
             }
 
             BuildPrefab(ZombieModel, ZombieController, ZombiePrefab, force);
+            BuildPrefab(OfficeZombieModel, ZombieController, OfficeZombiePrefab, force);
         }
 
         /// <summary>

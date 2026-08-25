@@ -12,24 +12,44 @@ namespace WarfareSurvivor
     public class ZombieSpawner : MonoBehaviour
     {
         [SerializeField] ArenaConfig config;
-        [SerializeField] Zombie zombiePrefab;
+
+        [SerializeField, Tooltip("Виды зомби. Появляются вперемешку, вид " +
+                                 "выбирается на каждого случайно. У каждого " +
+                                 "свой меш, свои материалы тиров и своя " +
+                                 "запечённая анимация.")]
+        Zombie[] zombiePrefabs = new Zombie[0];
+
         [SerializeField] SquadController squad;
 
-        readonly Stack<Zombie> idle = new Stack<Zombie>();
+        /// <summary>
+        /// Один вид зомби со всем своим хозяйством.
+        ///
+        /// Пул и материалы у каждого вида СВОИ. Общий пул выдавал бы офисника
+        /// на месте обычного и наоборот — вид зомби определялся бы тем, кто
+        /// раньше умер, а не случайностью. Материалы тоже не разделить:
+        /// у моделей разные текстуры, а цвет тира красит их поверх.
+        /// </summary>
+        class Variant
+        {
+            public Zombie Prefab;
+            public Material[] Tier;
+            public Material[] Flash;
+            public readonly Stack<Zombie> Idle = new Stack<Zombie>();
+        }
+
+        readonly List<Variant> variants = new List<Variant>();
         readonly List<Zombie> alive = new List<Zombie>();
-        Material[] tierMaterials;
-        Material[] flashMaterials;
         Transform pool;
         float nextSpawnTime;
         float startTime;
 
         void Start()
         {
-            if (config == null || zombiePrefab == null)
+            if (config == null || zombiePrefabs == null || zombiePrefabs.Length == 0)
             {
                 // Молчаливый null тут превращается в NRE каждый кадр и топит
                 // консоль — а причина (не проставленная ссылка) не видна.
-                Debug.LogError($"[{name}] Не заданы config или zombiePrefab. Спавн выключен.", this);
+                Debug.LogError($"[{name}] Не заданы config или ни одного вида зомби. Спавн выключен.", this);
                 enabled = false;
                 return;
             }
@@ -49,13 +69,29 @@ namespace WarfareSurvivor
         /// </summary>
         void BuildTierMaterials()
         {
-            var sourceRenderer = zombiePrefab.GetComponentInChildren<Renderer>();
+            variants.Clear();
+
+            foreach (var prefab in zombiePrefabs)
+            {
+                if (prefab == null) continue;
+                variants.Add(BuildVariant(prefab));
+            }
+
+            if (variants.Count == 0)
+                Debug.LogError($"[{name}] Ни один вид зомби не собрался.", this);
+        }
+
+        Variant BuildVariant(Zombie prefab)
+        {
+            var variant = new Variant { Prefab = prefab };
+
+            var sourceRenderer = prefab.GetComponentInChildren<Renderer>(true);
             var source = sourceRenderer != null ? sourceRenderer.sharedMaterial : null;
 
-            tierMaterials = new Material[config.zombieTiers];
-            flashMaterials = new Material[config.zombieTiers];
+            variant.Tier = new Material[config.zombieTiers];
+            variant.Flash = new Material[config.zombieTiers];
 
-            for (int i = 0; i < tierMaterials.Length; i++)
+            for (int i = 0; i < variant.Tier.Length; i++)
             {
                 float t = config.zombieTiers <= 1 ? 0f : i / (float)(config.zombieTiers - 1);
                 var color = Color.Lerp(config.zombieTierColorLow, config.zombieTierColorHigh, t);
@@ -65,13 +101,15 @@ namespace WarfareSurvivor
                 // под ровным зелёным, и модель переставала читаться.
                 color = Color.Lerp(Color.white, color, Mathf.Clamp01(config.zombieTierTint));
 
-                tierMaterials[i] = MakeMaterial(source, $"Zombie_Tier{i + 1}", color, emissive: false);
+                variant.Tier[i] = MakeMaterial(source, $"{prefab.name}_Tier{i + 1}", color, emissive: false);
 
                 // Вспышка — отдельный ГОТОВЫЙ материал на тир, а не правка
                 // свойств на лету: подсвеченные тогда рисуются одной пачкой.
-                flashMaterials[i] = MakeMaterial(source, $"Zombie_Tier{i + 1}_Flash",
+                variant.Flash[i] = MakeMaterial(source, $"{prefab.name}_Tier{i + 1}_Flash",
                     config.hitFlashColor, emissive: true);
             }
+
+            return variant;
         }
 
         Material MakeMaterial(Material source, string name, Color color, bool emissive)
@@ -171,14 +209,20 @@ namespace WarfareSurvivor
 
         void Spawn(Vector3 position, int tier)
         {
-            var zombie = idle.Count > 0 ? idle.Pop() : CreateZombie();
+            if (variants.Count == 0) return;
+
+            // Вид выбирается на КАЖДОГО зомби, а не на группу: иначе волна
+            // приходит однородными пачками, и вместо смешанной толпы
+            // получается чередование отрядов.
+            var variant = variants[Random.Range(0, variants.Count)];
+            var zombie = variant.Idle.Count > 0 ? variant.Idle.Pop() : CreateZombie(variant);
 
             float t = config.zombieTiers <= 1 ? 0f : (tier - 1) / (float)(config.zombieTiers - 1);
             float scale = Mathf.Lerp(config.zombieScaleLow, config.zombieScaleHigh, t);
 
             zombie.transform.SetPositionAndRotation(position, Quaternion.identity);
             zombie.gameObject.SetActive(true);
-            zombie.Init(config, tier, tierMaterials[tier - 1], flashMaterials[tier - 1], scale);
+            zombie.Init(config, tier, variant.Tier[tier - 1], variant.Flash[tier - 1], scale);
 
             alive.Add(zombie);
         }
@@ -186,14 +230,18 @@ namespace WarfareSurvivor
         const string BakedShaderName = "WarfareSurvivor/VertexAnimationToon";
         Shader bakedShader;
 
-        Zombie CreateZombie()
+        /// <summary>Кто из какого вида вышел — чтобы вернуть его в свой пул.</summary>
+        readonly Dictionary<Zombie, Variant> origin = new Dictionary<Zombie, Variant>();
+
+        Zombie CreateZombie(Variant variant)
         {
-            var zombie = Instantiate(zombiePrefab, pool);
+            var zombie = Instantiate(variant.Prefab, pool);
             zombie.Released += Release;
             zombie.Died += OnZombieDied;
             LayerUtility.Apply(zombie.gameObject, LayerUtility.Zombies);
             ApplyBakedView(zombie);
             zombie.gameObject.SetActive(false);
+            origin[zombie] = variant;
             return zombie;
         }
 
@@ -206,10 +254,10 @@ namespace WarfareSurvivor
         {
             if (!config.useBakedZombies) return;
 
-            if (config.bakedZombies == null)
+            if (zombie.BakedSet == null && config.bakedZombies == null)
             {
-                Debug.LogWarning("[Зомби] Запечённая анимация включена, но набор " +
-                                 "не назначен в конфиге. Остаёмся на костях.");
+                Debug.LogWarning($"[Зомби] У {zombie.name} нет запечённой анимации " +
+                                 "ни на префабе, ни в конфиге. Остаётся на костях.");
                 return;
             }
 
@@ -232,7 +280,13 @@ namespace WarfareSurvivor
                 return;
             }
 
-            var view = BakedZombieView.Convert(zombie.gameObject, config.bakedZombies, shader);
+            // Набор берём У САМОГО ЗОМБИ: у каждой модели свой меш, а значит
+            // и своя текстура позиций. Общий из конфига остаётся запасным
+            // путём для вида, которому набор ещё не привязан.
+            var set = zombie.BakedSet != null ? zombie.BakedSet : config.bakedZombies;
+            if (set == null) return;
+
+            var view = BakedZombieView.Convert(zombie.gameObject, set, shader);
             if (view != null) zombie.UseBakedView(view);
         }
 
@@ -244,7 +298,10 @@ namespace WarfareSurvivor
             Registry.Zombies.Remove(zombie);
             zombie.gameObject.SetActive(false);
             zombie.transform.SetParent(pool, false);
-            idle.Push(zombie);
+
+            // В СВОЙ пул: иначе офисник выйдет на месте обычного зомби
+            // с чужими материалами и чужой запечённой анимацией.
+            if (origin.TryGetValue(zombie, out var variant)) variant.Idle.Push(zombie);
         }
     }
 }
