@@ -21,11 +21,22 @@ namespace WarfareSurvivor
         System.Action<TierUpOffer> choice;
         readonly List<Button> cards = new List<Button>();
 
+        /// <summary>
+        /// Выбор уже сделан, и окно ждёт закрытия.
+        ///
+        /// Без этого два касания в один кадр — или касание сразу по двум
+        /// карточкам — засчитываются оба: игрок получает два улучшения
+        /// за один тир-ап, а очередь уходит в минус. На телефоне это
+        /// случается легко: палец накрывает край соседней карточки.
+        /// </summary>
+        bool picked;
+
         void Awake() => Hide();
 
         public void Show(List<TierUpOffer> options, System.Action<TierUpOffer> onPick)
         {
             choice = onPick;
+            picked = false;
             if (root != null) root.gameObject.SetActive(true);
 
             // Заголовка нет намеренно: три карточки и так не оставляют
@@ -80,6 +91,13 @@ namespace WarfareSurvivor
         {
             if (cardRow == null) return;
 
+            // Пересчитываем раскладку СЕЙЧАС, а не ждём конца кадра.
+            //
+            // Иначе замер видит карточки до того, как группа их расставила,
+            // и все три отчитываются с одними координатами — отчёт врёт
+            // ровно про то, ради чего заведён.
+            LayoutRebuilder.ForceRebuildLayoutImmediate(cardRow);
+
             var corners = new Vector3[4];
             var report = new System.Text.StringBuilder("[Тир-ап] на экране:");
 
@@ -104,6 +122,9 @@ namespace WarfareSurvivor
 
         void Pick(TierUpOffer offer)
         {
+            if (picked) return;
+            picked = true;
+
             Hide();
             choice?.Invoke(offer);
         }

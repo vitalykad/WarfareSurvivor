@@ -205,7 +205,9 @@ namespace WarfareSurvivor
                 case OfferKind.Health: squad.AddHealthBonus(offer.Class, config.tierUpHealthStep); break;
             }
 
-            pending--;
+            // Не ниже нуля: отрицательная очередь означала бы, что тир-ап
+            // засчитан дважды, и следующий набор не показался бы вовсе.
+            pending = Mathf.Max(0, pending - 1);
             Current = resume;
             Time.timeScale = 1f;
 

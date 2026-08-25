@@ -962,7 +962,9 @@ namespace WarfareSurvivor.EditorTools
             var squadRect = (RectTransform)squadLabel.transform;
             squadRect.anchorMin = squadRect.anchorMax = new Vector2(0f, 1f);
             squadRect.pivot = new Vector2(0f, 1f);
-            squadRect.anchoredPosition = new Vector2(28f, -110f);
+            // Ниже счётчика кадра: он занимает верхние строки, и состав
+            // на него налезал.
+            squadRect.anchoredPosition = new Vector2(28f, -300f);
             squadRect.sizeDelta = new Vector2(700f, 50f);
 
             // Полоска искр — над джойстиком, во всю ширину: это единственный
