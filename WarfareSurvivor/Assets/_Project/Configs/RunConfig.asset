@@ -1,0 +1,151 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 220fe60dcb8b7418696490ff2000211e, type: 3}
+  m_Name: RunConfig
+  m_EditorClassIdentifier: Assembly-CSharp::WarfareSurvivor.ArenaConfig
+  cameraPitch: 58
+  cameraYaw: 0
+  cameraFieldOfView: 28
+  cameraDistance: 55
+  cameraNearClip: 5
+  cameraFarClip: 140
+  cameraSmoothTime: 0.18
+  sunColor: {r: 1, g: 0.89, b: 0.72, a: 1}
+  sunIntensity: 1.3
+  sunPitch: 74.6
+  sunYaw: 329.8
+  ambientSky: {r: 0.45, g: 0.55, b: 0.7, a: 1}
+  ambientHorizon: {r: 0.48, g: 0.45, b: 0.42, a: 1}
+  ambientGround: {r: 0.35, g: 0.28, b: 0.2, a: 1}
+  squadComposition:
+  - Class: {fileID: 11400000, guid: d7934318956704e09acd034c08018278, type: 2}
+    Count: 2
+  - Class: {fileID: 11400000, guid: 626208014da524a00b5ee0123e9acebc, type: 2}
+    Count: 4
+  squadSpeed: 7
+  formationRingSpacingMin: 1.5
+  formationRingSpacingStep: 1
+  formationRingGap: 1.4
+  memberSpeedMultiplier: 1.6
+  separationRadius: 2.2
+  separationStrength: 3.5
+  bodyTurnSpeed: 720
+  torsoAimMaxAngle: 75
+  torsoAimSpeed: 480
+  aimedAngleThreshold: 20
+  backwardSwitchAngle: 90
+  stanceHysteresis: 15
+  stanceMinHoldTime: 0.7
+  retargetInterval: 0.2
+  healthBarVisibleTime: 3
+  zombieSpeed: 2.6
+  zombieContactRange: 1.1
+  zombieContactDamage: 4
+  zombieContactInterval: 0.8
+  zombieTiers: 4
+  zombieHitsPerTier: 10
+  minZombieTier: 3
+  zombieTierColorLow: {r: 0.42, g: 0.75, b: 0.3, a: 1}
+  zombieTierColorHigh: {r: 0.95, g: 0.88, b: 0.25, a: 1}
+  zombieScaleLow: 0.9
+  zombieScaleHigh: 1.5
+  zombieCorpseTime: 2.5
+  useBakedZombies: 1
+  bakedZombies: {fileID: 11400000, guid: 65a969dcc580044ef8b8b060dddc3dc8, type: 2}
+  zombieSeparationRadius: 0.45
+  zombieSeparationStrength: 0.5
+  ruinCount: 14
+  ruinAreaRadius: 45
+  ruinKeepClearRadius: 8
+  ruinScaleMin: 0.22
+  ruinScaleMax: 0.55
+  ruinSeed: 20260821
+  firstSpawnDelay: 2
+  spawnInterval: 1.3
+  groupSizeMin: 5
+  groupSizeMax: 9
+  spawnRadius: 14
+  groupAngleSpread: 25
+  maxAliveZombies: 200
+  tierUnlockInterval: 25
+  hitFlashDuration: 0.08
+  hitFlashColor: {r: 1, g: 1, b: 1, a: 1}
+  maxDamagePopups: 48
+  popupLifetime: 0.7
+  popupRiseSpeed: 1.8
+  popupScale: 0.14
+  tracersEnabled: 1
+  tracerLife: 0.11
+  tracerDashMeters: 2.5
+  tracerWidth: 0.35
+  tracerColor: {r: 1, g: 0.86, b: 0.45, a: 1}
+  tracerBoost: 4
+  maxTracers: 96
+  sparkCount: 4
+  sparkLife: 0.16
+  sparkLengthMeters: 0.6
+  sparkSpread: 0.6
+  muzzleFlashLength: 0.5
+  muzzleFlashWidth: 2.6
+  muzzleFlashLife: 0.05
+  targetFrameRate: 60
+  vSyncCount: 0
+  showFrameMeter: 0
+  frameMeterLogInterval: 5
+  frameMeterWindow: 1
+  debugSweep: 0
+  sweepMode: 6
+  simulateZombies: 1
+  simulateSurvivors: 1
+  updateBakedFrames: 1
+  runWaves:
+  - Name: "\u041F\u0435\u0440\u0432\u0430\u044F"
+    Duration: 45
+    SpawnInterval: 2
+    GroupMin: 3
+    GroupMax: 5
+    MinTier: 1
+    MaxTier: 2
+    MaxAlive: 40
+  - Name: "\u0412\u0442\u043E\u0440\u0430\u044F"
+    Duration: 90
+    SpawnInterval: 1.5
+    GroupMin: 4
+    GroupMax: 7
+    MinTier: 1
+    MaxTier: 3
+    MaxAlive: 60
+  - Name: "\u0422\u0440\u0435\u0442\u044C\u044F"
+    Duration: 120
+    SpawnInterval: 1.1
+    GroupMin: 5
+    GroupMax: 9
+    MinTier: 2
+    MaxTier: 4
+    MaxAlive: 80
+  waveBreak: 4
+  squadSlotCap: 15
+  sparkPerKill: 1
+  tierUpCostBase: 10
+  tierUpCostGrowth: 1.4
+  tierUpOptions: 3
+  sparkAttractRadius: 6
+  sparkPickupRadius: 1.2
+  sparkFlySpeed: 12
+  maxSparks: 150
+  rampStep: 25
+  rampMax: 400
+  rampStepSeconds: 5
+  sweepStageSeconds: 10
+  debugSquadInvincible: 0
+  debugAutoDrive: 0
+  debugAutoDriveRadius: 7

@@ -490,12 +490,6 @@ namespace WarfareSurvivor
 
         [Header("Забег")]
 
-        [Tooltip("С кем отряд ВЫХОДИТ на забег. Отдельно от squadComposition, " +
-                 "потому что стенду замеров нужны те же 25 бойцов, а забег " +
-                 "должен начинаться с малого и расти на тир-апах. Пусто — " +
-                 "берётся squadComposition.")]
-        public SquadEntry[] runSquadStart = new SquadEntry[0];
-
         [Tooltip("Волны забега по порядку. Забег кончается, когда отыграна " +
                  "последняя, — или раньше, если отряд выбит.")]
         public WaveEntry[] runWaves =

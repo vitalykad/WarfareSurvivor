@@ -27,8 +27,6 @@ namespace WarfareSurvivor
 
         [SerializeField] ArenaConfig config;
 
-        [SerializeField, Tooltip("Брать стартовый состав забега, а не состав стенда.")]
-        bool useRunComposition;
         [SerializeField] VirtualJoystick joystick;
         [SerializeField] Camera viewCamera;
 
@@ -180,12 +178,9 @@ namespace WarfareSurvivor
         {
             var plan = new List<SurvivorClassSO>();
 
-            // Сцена забега берёт свой стартовый состав: там отряд выходит
-            // малым и растёт на тир-апах, а на стенде замеров стоят те же
-            // двадцать пять бойцов, при которых сняты все цифры.
-            var source = useRunComposition && config.runSquadStart != null && config.runSquadStart.Length > 0
-                ? config.runSquadStart
-                : config.squadComposition;
+            // Состав берётся из конфига СВОЕЙ сцены: у забега он свой,
+            // и разводить их флагами внутри отряда больше не нужно.
+            var source = config.squadComposition;
 
             if (source == null || source.Length == 0)
             {

@@ -20,6 +20,19 @@ namespace WarfareSurvivor.EditorTools
         const string ScenePath = "Assets/_Project/Scenes/Sandbox/TestArena.unity";
         const string RunScenePath = "Assets/_Project/Scenes/Run.unity";
         const string ConfigPath = "Assets/_Project/Configs/ArenaConfig.asset";
+
+        /// <summary>
+        /// У забега СВОЙ конфиг.
+        ///
+        /// Общий не годится: стенду замеров нужны двадцать пять бойцов и
+        /// бесконечные волны, при которых сняты все цифры, а забегу — малый
+        /// стартовый отряд и три волны. Одно поле не может служить обоим,
+        /// и попытка развести их флагами уже начала плодить костыли.
+        ///
+        /// Оба конфига одного типа, поэтому балансная правка переносится
+        /// между ними копированием значения, а не переписыванием кода.
+        /// </summary>
+        const string RunConfigPath = "Assets/_Project/Configs/RunConfig.asset";
         const string PolicePrefab = "Assets/_Project/Prefabs/Survivors/Survivor_Police.prefab";
         const string SouthPolicePrefab = "Assets/_Project/Prefabs/Survivors/Survivor_SouthPoliceman.prefab";
         const string FarmerPrefab = "Assets/_Project/Prefabs/Survivors/Survivor_ShovelFarmer.prefab";
@@ -58,6 +71,7 @@ namespace WarfareSurvivor.EditorTools
             PlayerSettings.enableFrameTimingStats = true;
 
             LoadOrCreateConfig();
+            if (gameplay) EnsureRunConfig();
             PrepareSurvivorPrefab(PolicePrefab);
             PrepareSurvivorPrefab(SouthPolicePrefab);
             PrepareSurvivorPrefab(FarmerPrefab);
@@ -69,8 +83,9 @@ namespace WarfareSurvivor.EditorTools
             // пересоздаёт managed-объекты, и ссылка, взятая раньше, уже
             // указывает на уничтоженный инстанс — в сцену она уходит как
             // fileID 0, а компонент стартует с пустым конфигом.
-            var config = AssetDatabase.LoadAssetAtPath<ArenaConfig>(ConfigPath);
-            if (config == null) Debug.LogError($"[TestArena] Не читается конфиг {ConfigPath}");
+            string configPath = gameplay ? RunConfigPath : ConfigPath;
+            var config = AssetDatabase.LoadAssetAtPath<ArenaConfig>(configPath);
+            if (config == null) Debug.LogError($"[TestArena] Не читается конфиг {configPath}");
             EnsureClasses(config);
 
             CreateGround();
@@ -78,7 +93,6 @@ namespace WarfareSurvivor.EditorTools
             CreateRuins(config);
 
             var squad = CreateSquad(config);
-            Wire(squad, "useRunComposition", gameplay);
             var camera = CreateCamera(squad.transform);
             var joystick = CreateUI();
             if (!gameplay) CreateFrameMeter(config);
@@ -160,6 +174,68 @@ namespace WarfareSurvivor.EditorTools
         /// не должна стирать настроенное руками. Новые поля Unity добавит
         /// сама при следующем импорте, старые значения при этом сохранятся.
         /// </summary>
+        /// <summary>
+        /// Заводит конфиг забега, если его ещё нет.
+        ///
+        /// Создаём КОПИЕЙ общего, а не пустышкой: свет, камера, поведение
+        /// зомби и прочая настройка уже подобраны, и начинать забег
+        /// с умолчаний кода значило бы подбирать всё заново.
+        ///
+        /// Существующий не трогаем никогда. Пересборка сцены не должна
+        /// стирать баланс, который в него уже вложен.
+        /// </summary>
+        static ArenaConfig EnsureRunConfig()
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<ArenaConfig>(RunConfigPath);
+            if (existing != null) return existing;
+
+            var source = LoadOrCreateConfig();
+
+            var copy = ScriptableObject.CreateInstance<ArenaConfig>();
+            EditorUtility.CopySerialized(source, copy);
+
+            // Отличия забега от стенда — здесь и только здесь.
+            // Дальше конфиг живёт своей жизнью, и правят его в инспекторе.
+            copy.squadComposition = StartingSquad(source.squadComposition);
+
+            // Отладочное с собой не тащим: забег — это игра, а не замер.
+            copy.debugSweep = false;
+            copy.debugSquadInvincible = false;
+            copy.showFrameMeter = false;
+
+            EnsureFolder("Assets/_Project/Configs");
+            AssetDatabase.CreateAsset(copy, RunConfigPath);
+            AssetDatabase.SaveAssets();
+
+            Debug.Log($"[Забег] Создан конфиг {RunConfigPath} копией общего");
+            return AssetDatabase.LoadAssetAtPath<ArenaConfig>(RunConfigPath);
+        }
+
+        /// <summary>
+        /// Отряд, с которым выходят на забег: по паре бойцов каждой роли.
+        ///
+        /// Мало и намеренно: смысл забега в том, что отряд РАСТЁТ на тир-апах.
+        /// Выйти полным составом значит отдать игроку результат до того,
+        /// как он принял хоть одно решение.
+        /// </summary>
+        static SquadEntry[] StartingSquad(SquadEntry[] source)
+        {
+            var start = new System.Collections.Generic.List<SquadEntry>();
+            if (source == null) return start.ToArray();
+
+            foreach (var entry in source)
+            {
+                if (entry.Class == null) continue;
+                if (start.Exists(e => e.Class == entry.Class)) continue;
+
+                // Ближний бой держит удар, поэтому его вдвое больше:
+                // двое стрелков без прикрытия не переживут первую же волну.
+                int count = entry.Class.role == SquadRole.Melee ? 4 : 2;
+                start.Add(new SquadEntry { Class = entry.Class, Count = count });
+            }
+            return start.ToArray();
+        }
+
         static ArenaConfig LoadOrCreateConfig()
         {
             var config = AssetDatabase.LoadAssetAtPath<ArenaConfig>(ConfigPath);
