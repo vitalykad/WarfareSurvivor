@@ -74,6 +74,36 @@ namespace WarfareSurvivor
         /// <summary>Сколько бойцов сейчас живо.</summary>
         public int MemberCount => living.Count;
 
+        /// <summary>
+        /// Накопленные за забег улучшения. Живут у ОТРЯДА, а не у бойца:
+        /// иначе пополнение приходило бы без вложенного игроком, и добор
+        /// класса обесценивал бы предыдущие улучшения.
+        /// </summary>
+        public float DamageBonus { get; private set; } = 1f;
+        public float HealthBonus { get; private set; } = 1f;
+
+        /// <summary>Усиливает удар всем — и тем, кто придёт потом.</summary>
+        public void AddDamageBonus(float step)
+        {
+            DamageBonus *= 1f + Mathf.Max(0f, step);
+        }
+
+        /// <summary>
+        /// Прибавляет живучести всем живым, и запоминает прибавку
+        /// для будущего пополнения.
+        /// </summary>
+        public void AddHealthBonus(float step)
+        {
+            float multiplier = 1f + Mathf.Max(0f, step);
+            HealthBonus *= multiplier;
+
+            for (int i = 0; i < living.Count; i++)
+            {
+                var health = living[i] != null ? living[i].GetComponent<Health>() : null;
+                if (health != null) health.RaiseMax(multiplier);
+            }
+        }
+
         /// <summary>Живые бойцы — для подсчёта состава в интерфейсе.</summary>
         public System.Collections.Generic.IReadOnlyList<Survivor> Members => living;
 

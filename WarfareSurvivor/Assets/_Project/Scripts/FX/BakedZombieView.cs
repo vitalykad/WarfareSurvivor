@@ -74,12 +74,16 @@ namespace WarfareSurvivor
         /// Ставит клип с начала. У зациклённых фаза случайная: иначе сотня
         /// зомби бежит нога в ногу, и толпа выглядит строем.
         /// </summary>
-        public void Play(string clipName)
+        /// <summary>Во сколько раз быстрее играть текущий клип.</summary>
+        float speed = 1f;
+
+        public void Play(string clipName, float playbackSpeed = 1f)
         {
             int index = set != null ? set.IndexOf(clipName) : -1;
             if (index < 0) return;
 
             clip = index;
+            speed = Mathf.Max(0.05f, playbackSpeed);
             time = set.clips[index].looping ? Random.value * set.clips[index].Length : 0f;
             Apply();
         }
@@ -128,7 +132,7 @@ namespace WarfareSurvivor
         void LateUpdate()
         {
             if (clip < 0 || set == null || !UpdateFrames) return;
-            time += Time.deltaTime;
+            time += Time.deltaTime * speed;
             Apply();
         }
 

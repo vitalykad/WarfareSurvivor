@@ -13,6 +13,25 @@ namespace WarfareSurvivor
     /// живёт в конфиге. Прототип, у которого темп зашит в код, умирает
     /// на первой же итерации баланса.
     /// </summary>
+    /// <summary>Что предлагает карточка тир-апа.</summary>
+    public enum OfferKind { AddUnit, Damage, Health }
+
+    /// <summary>
+    /// Одно предложение на тир-апе.
+    ///
+    /// Разнородные по смыслу карточки в одном списке намеренно: игрок
+    /// выбирает не «какого бойца добрать», а «во что вложиться», и добор
+    /// бойца — лишь один из вариантов.
+    /// </summary>
+    public struct TierUpOffer
+    {
+        public OfferKind Kind;
+        public SurvivorClassSO Class;
+        public string Title;
+        public string Subtitle;
+        public string Body;
+    }
+
     public class RunController : MonoBehaviour
     {
         public enum Phase { Fighting, Break, Choosing, Won, Lost }
@@ -136,12 +155,9 @@ namespace WarfareSurvivor
 
         void OfferTierUp()
         {
-            var options = PickOptions();
-            if (options.Count == 0 || tierUp == null || squad.MemberCount >= config.squadSlotCap)
+            var options = BuildOffers();
+            if (options.Count == 0 || tierUp == null)
             {
-                // Предлагать нечего — очередь просто сгорает. Держать её
-                // до освобождения слота значило бы вывалить пять окон подряд
-                // в момент первой же потери.
                 pending = 0;
                 return;
             }
@@ -157,9 +173,14 @@ namespace WarfareSurvivor
             tierUp.Show(options, Take);
         }
 
-        void Take(SurvivorClassSO klass)
+        void Take(TierUpOffer offer)
         {
-            squad.AddMember(klass);
+            switch (offer.Kind)
+            {
+                case OfferKind.AddUnit: squad.AddMember(offer.Class); break;
+                case OfferKind.Damage: squad.AddDamageBonus(config.tierUpDamageStep); break;
+                case OfferKind.Health: squad.AddHealthBonus(config.tierUpHealthStep); break;
+            }
 
             pending--;
             Current = resume;
@@ -169,28 +190,93 @@ namespace WarfareSurvivor
         }
 
         /// <summary>
-        /// Что предложить на выбор.
+        /// Собирает предложение: одно пополнение и два улучшения.
         ///
-        /// Классы тасуются и берутся первые N. Пока классов всего два,
-        /// выбор беднее задуманного — это ограничение содержания,
-        /// а не механики: добавится медик, и предложение станет настоящим.
+        /// Добор бойца — ровно одна карточка из трёх, и это главное отличие
+        /// от прежнего вида. Отряд, который только растёт числом, ощущается
+        /// одинаково от первой волны до последней: врагов больше, бойцов
+        /// больше, ничего не меняется. Улучшения дают второй способ стать
+        /// сильнее, и выбор между «шире» и «глубже» — это уже решение.
+        ///
+        /// Когда слоты кончились, пополнения в списке нет, и остаются одни
+        /// улучшения: тир-ап не должен пропадать впустую.
         /// </summary>
-        List<SurvivorClassSO> PickOptions()
+        List<TierUpOffer> BuildOffers()
+        {
+            var offers = new List<TierUpOffer>(3);
+
+            if (squad.MemberCount < config.squadSlotCap)
+            {
+                var klass = RandomClass();
+                if (klass != null)
+                    offers.Add(new TierUpOffer
+                    {
+                        Kind = OfferKind.AddUnit,
+                        Class = klass,
+                        Title = klass.displayName,
+                        Subtitle = "пополнение",
+                        Body = ClassBody(klass)
+                    });
+            }
+
+            // Улучшения РАЗНЫЕ, а не два случайных: выпадали две одинаковые
+            // карточки «+20% урона», и выбор из трёх превращался в выбор
+            // из двух. Пока видов улучшения два, они и берутся оба,
+            // а порядок тасуется, чтобы урон не всегда оказывался слева.
+            int upgrades = Mathf.Max(1, config.tierUpOptions - offers.Count);
+            var kinds = new List<OfferKind> { OfferKind.Damage, OfferKind.Health };
+            if (Random.value < 0.5f) kinds.Reverse();
+
+            for (int i = 0; i < upgrades; i++)
+            {
+                var kind = kinds[i % kinds.Count];
+                offers.Add(kind == OfferKind.Damage ? DamageOffer() : HealthOffer());
+            }
+
+            return offers;
+        }
+
+        TierUpOffer DamageOffer() => new TierUpOffer
+        {
+            Kind = OfferKind.Damage,
+            Title = "+" + Percent(config.tierUpDamageStep) + " урона",
+            Subtitle = "всему отряду",
+            Body = "Бьют сильнее все, включая тех,\nкто придёт потом.\n\nсейчас " +
+                   Percent(squad.DamageBonus - 1f) + " сверх базового"
+        };
+
+        TierUpOffer HealthOffer() => new TierUpOffer
+        {
+            Kind = OfferKind.Health,
+            Title = "+" + Percent(config.tierUpHealthStep) + " здоровья",
+            Subtitle = "всему отряду",
+            Body = "Живучести прибавляется сразу,\nа не только новичкам.\n\nсейчас " +
+                   Percent(squad.HealthBonus - 1f) + " сверх базового"
+        };
+
+        static string Percent(float value) => Mathf.RoundToInt(value * 100f) + "%";
+
+        static string ClassBody(SurvivorClassSO klass)
+        {
+            float dps = klass.attackInterval > 0f ? klass.damage / klass.attackInterval : 0f;
+            var text = new System.Text.StringBuilder();
+            text.Append("здоровье   ").Append(Mathf.RoundToInt(klass.maxHealth)).Append('\n');
+            text.Append("урон   ").Append(Mathf.RoundToInt(klass.damage)).Append('\n');
+            text.Append("раз в   ").Append(klass.attackInterval.ToString("0.0")).Append(" с\n");
+            text.Append("дальность   ").Append(Mathf.RoundToInt(klass.attackRange)).Append(" м\n\n");
+            text.Append("урон в секунду   ").Append(dps.ToString("0.#"));
+            if (klass.knockbackDistance > 0f) text.Append("\n\nотбрасывает тела");
+            return text.ToString();
+        }
+
+        SurvivorClassSO RandomClass()
         {
             var pool = new List<SurvivorClassSO>();
             if (config.squadComposition != null)
                 foreach (var entry in config.squadComposition)
                     if (entry.Class != null && !pool.Contains(entry.Class)) pool.Add(entry.Class);
 
-            for (int i = pool.Count - 1; i > 0; i--)
-            {
-                int j = Random.Range(0, i + 1);
-                (pool[i], pool[j]) = (pool[j], pool[i]);
-            }
-
-            int take = Mathf.Clamp(config.tierUpOptions, 1, pool.Count);
-            pool.RemoveRange(take, pool.Count - take);
-            return pool;
+            return pool.Count == 0 ? null : pool[Random.Range(0, pool.Count)];
         }
 
         int CostOf(int taken) =>

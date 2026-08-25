@@ -205,7 +205,7 @@ namespace WarfareSurvivor
             // Из реестра убираем сразу, чтобы бойцы не расстреливали труп.
             Registry.Zombies.Remove(this);
             Died?.Invoke(this);
-            if (baked != null) baked.Play(ClipDying);
+            if (baked != null) baked.Play(ClipDying, config.zombieDeathSpeed);
             else if (animator != null) animator.SetTrigger(DieParam);
             despawnTime = Time.time + config.zombieCorpseTime;
         }

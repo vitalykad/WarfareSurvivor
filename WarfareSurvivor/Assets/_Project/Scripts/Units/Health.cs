@@ -26,6 +26,22 @@ namespace WarfareSurvivor
             Current = max;
         }
 
+        /// <summary>
+        /// Поднимает потолок здоровья и доливает столько же текущему.
+        ///
+        /// Доливает намеренно: улучшение, поднявшее только потолок, читается
+        /// как ослабление — полоска у всех разом становится короче, хотя
+        /// игрок только что вложился в живучесть.
+        /// </summary>
+        public void RaiseMax(float multiplier)
+        {
+            if (multiplier <= 1f) return;
+
+            float added = Max * (multiplier - 1f);
+            Max += added;
+            Current = Mathf.Min(Max, Current + added);
+        }
+
         public void TakeDamage(float amount, Vector3 point)
         {
             if (IsDead || amount <= 0f) return;

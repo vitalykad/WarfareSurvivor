@@ -69,6 +69,15 @@ namespace WarfareSurvivor
         /// <summary>Боец выбыл. Отряд по этому событию пересобирает строй.</summary>
         public event System.Action<Survivor> Lost;
 
+        /// <summary>
+        /// Урон с учётом улучшений, взятых за забег.
+        ///
+        /// Бонус хранится у ОТРЯДА, а не у бойца: иначе пополнение приходило
+        /// бы без вложенного игроком, и каждый добор класса обесценивал бы
+        /// предыдущие улучшения.
+        /// </summary>
+        float Damage => klass.damage * (squad != null ? squad.DamageBonus : 1f);
+
         public void Bind(SquadController owner, ArenaConfig cfg, SurvivorClassSO survivorClass)
         {
             squad = owner;
@@ -76,7 +85,9 @@ namespace WarfareSurvivor
             klass = survivorClass;
 
             health = GetComponent<Health>();
-            health.Init(klass.maxHealth);
+            // Пополнение приходит уже с накопленной живучестью: иначе
+            // новичок оказывался бы слабее тех, кто пришёл раньше.
+            health.Init(klass.maxHealth * squad.HealthBonus);
 
             animator = GetComponentInChildren<Animator>();
             muzzle = FindMuzzle();
@@ -399,7 +410,7 @@ namespace WarfareSurvivor
         void Shoot()
         {
             TracerLayer.Fire(MuzzlePosition(), target.HitPoint);
-            target.TakeHit(klass.damage);
+            target.TakeHit(Damage);
         }
 
         void StrikeMelee()
@@ -449,7 +460,7 @@ namespace WarfareSurvivor
             float reach = klass.attackRange * 1.35f;
             if (to.sqrMagnitude > reach * reach) return;
 
-            victim.TakeHit(klass.damage);
+            victim.TakeHit(Damage);
             if (klass.knockbackDistance > 0f)
                 victim.Knockback(to.normalized, klass.knockbackDistance, klass.knockbackDuration);
         }

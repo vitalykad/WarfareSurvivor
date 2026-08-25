@@ -54,14 +54,15 @@ MonoBehaviour:
   zombieContactDamage: 4
   zombieContactInterval: 0.8
   zombieTiers: 4
-  zombieHitsPerTier: 10
+  zombieHitsPerTier: 25
   minZombieTier: 3
   zombieTierTint: 0.45
   zombieTierColorLow: {r: 0.42, g: 0.75, b: 0.3, a: 1}
   zombieTierColorHigh: {r: 0.95, g: 0.88, b: 0.25, a: 1}
   zombieScaleLow: 1
   zombieScaleHigh: 1.4
-  zombieCorpseTime: 2.5
+  zombieCorpseTime: 1.2
+  zombieDeathSpeed: 2.2
   useBakedZombies: 1
   bakedZombies: {fileID: 11400000, guid: 65a969dcc580044ef8b8b060dddc3dc8, type: 2}
   zombieSeparationRadius: 0.45
@@ -112,27 +113,27 @@ MonoBehaviour:
   updateBakedFrames: 1
   runWaves:
   - Name: "\u041F\u0435\u0440\u0432\u0430\u044F"
-    Duration: 45
-    SpawnInterval: 2.5
+    Duration: 20
+    SpawnInterval: 1.6
     GroupMin: 2
     GroupMax: 3
     MinTier: 1
     MaxTier: 1
-    MaxAlive: 12
+    MaxAlive: 14
   - Name: "\u0412\u0442\u043E\u0440\u0430\u044F"
-    Duration: 90
-    SpawnInterval: 2
+    Duration: 75
+    SpawnInterval: 1.8
     GroupMin: 3
-    GroupMax: 4
-    MinTier: 1
+    GroupMax: 5
+    MinTier: 2
     MaxTier: 2
-    MaxAlive: 25
+    MaxAlive: 28
   - Name: "\u0422\u0440\u0435\u0442\u044C\u044F"
     Duration: 120
-    SpawnInterval: 1.5
+    SpawnInterval: 1.4
     GroupMin: 4
     GroupMax: 6
-    MinTier: 1
+    MinTier: 2
     MaxTier: 3
     MaxAlive: 45
   waveBreak: 4
@@ -141,6 +142,8 @@ MonoBehaviour:
   tierUpCostBase: 10
   tierUpCostGrowth: 1.4
   tierUpOptions: 3
+  tierUpDamageStep: 0.2
+  tierUpHealthStep: 0.25
   sparkScatterMin: 3
   sparkScatterMax: 6
   sparkScatterTime: 0.4
