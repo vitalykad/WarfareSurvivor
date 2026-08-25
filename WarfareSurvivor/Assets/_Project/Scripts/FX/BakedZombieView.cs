@@ -105,9 +105,16 @@ namespace WarfareSurvivor
             return twin;
         }
 
+        /// <summary>
+        /// Выключается стендом, чтобы отделить цену обновления кадров
+        /// от цены логики зомби. Обновление идёт каждому зомби каждый кадр
+        /// независимо от видимости, и на нескольких сотнях это заметно.
+        /// </summary>
+        public static bool UpdateFrames = true;
+
         void LateUpdate()
         {
-            if (clip < 0 || set == null) return;
+            if (clip < 0 || set == null || !UpdateFrames) return;
             time += Time.deltaTime;
             Apply();
         }

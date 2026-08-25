@@ -102,10 +102,11 @@ MonoBehaviour:
   showFrameMeter: 1
   frameMeterLogInterval: 5
   frameMeterWindow: 1
-  debugSweep: 0
-  sweepMode: 3
+  debugSweep: 1
+  sweepMode: 6
   simulateZombies: 1
   simulateSurvivors: 1
+  updateBakedFrames: 1
   rampStep: 25
   rampMax: 400
   rampStepSeconds: 5

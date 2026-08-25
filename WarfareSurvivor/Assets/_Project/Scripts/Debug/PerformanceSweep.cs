@@ -69,6 +69,12 @@ namespace WarfareSurvivor
 
             /// <summary>Пакетчик SRP. null — не трогать.</summary>
             public bool? SrpBatcher;
+
+            /// <summary>Обновлять ли номера кадров запечённых зомби. null — не трогать.</summary>
+            public bool? BakedFrames;
+
+            /// <summary>Потолок толпы на ступени. Ноль — не трогать.</summary>
+            public int CrowdSize;
         }
 
         [SerializeField] ArenaConfig config;
@@ -251,6 +257,62 @@ namespace WarfareSurvivor
             ZombieShader = shader, ZombieShadows = shadows
         };
 
+        /// <summary>
+        /// Что упирается в процессор на большой толпе.
+        ///
+        /// Убрав скиннинг, мы впервые за всё расследование увидели, что время
+        /// кадра разошлось со временем GPU: на 330 зомби 23.0 против 17.4.
+        /// До этого они совпадали всегда, и вся логика вместе стоила меньше
+        /// погрешности.
+        ///
+        /// Подозреваемых двое, и один из них — наш собственный новый код.
+        /// Логика зомби считает цели, расталкивание и обходы. Обновление
+        /// кадров задаёт каждому зомби блок свойств КАЖДЫЙ кадр и НЕЗАВИСИМО
+        /// от видимости — у скиннинга этого не было вовсе, номер кадра держал
+        /// аниматор внутри себя.
+        ///
+        /// Толпа здесь больше, чем в остальных сравнениях: на сотне процессор
+        /// ещё успевает всё, и разницу видно только на нескольких сотнях.
+        /// </summary>
+        static readonly Stage[] CrowdAB =
+        {
+            // Малая толпа: видеочасть ещё не забита, и если мозги чего-то
+            // стоят, здесь это видно лучше всего.
+            Crowd("120: толпа как есть", 120, brains: true, frames: true, draw: true),
+            Crowd("120: толпа не рисуется", 120, brains: true, frames: true, draw: false),
+            Crowd("120: не рисуется, без мозгов", 120, brains: false, frames: true, draw: false),
+            Crowd("120: не рисуется, без кадров", 120, brains: true, frames: false, draw: false),
+
+            // Большая толпа: тот же разбор там, где прошлый прогон упёрся
+            // в видеочасть наглухо.
+            Crowd("400: толпа как есть", 400, brains: true, frames: true, draw: true),
+            Crowd("400: толпа не рисуется", 400, brains: true, frames: true, draw: false),
+            Crowd("400: не рисуется, без мозгов", 400, brains: false, frames: true, draw: false),
+            Crowd("400: не рисуется, без кадров", 400, brains: true, frames: false, draw: false),
+        };
+
+        /// <summary>
+        /// Ступень процессорного разбора толпы.
+        ///
+        /// Гасим толпу МАСКОЙ КАМЕРЫ, а не логикой: рисование выключается,
+        /// счёт продолжается. Разница с видимой ступенью — цена отрисовки,
+        /// а дальше на невидимой толпе вычитанием берутся мозги и обновление
+        /// кадров по отдельности, уже без вмешательства видеочасти.
+        ///
+        /// Бойцы не считаются НИ НА ОДНОЙ ступени, и это здесь главное.
+        /// В прошлом прогоне они стреляли, зомби гибли, и численность гуляла
+        /// между 163 и 356 — ступени оказались несравнимы между собой.
+        /// Без стрельбы толпа встаёт на потолке и стоит.
+        /// </summary>
+        static Stage Crowd(string name, int size, bool brains, bool frames, bool draw) => new Stage
+        {
+            Name = name,
+            HiddenLayers = draw ? new string[0] : new[] { LayerUtility.Zombies },
+            Shadows = true, Separation = true, Ui = true,
+            Zombies = brains, Survivors = false,
+            BakedFrames = frames, CrowdSize = size
+        };
+
         Stage[] Current
         {
             get
@@ -261,6 +323,7 @@ namespace WarfareSurvivor
                     case SweepMode.Pipeline: return PipelineAB;
                     case SweepMode.Zombies: return ZombieAB;
                     case SweepMode.Skinning: return SkinningAB;
+                    case SweepMode.Crowd: return CrowdAB;
                     default: return Stages;
                 }
             }
@@ -281,7 +344,8 @@ namespace WarfareSurvivor
         /// сравнивают не настройку, а размер толпы — то есть ничего.
         /// </summary>
         bool CrowdPinned => config.sweepMode == SweepMode.Zombies
-                         || config.sweepMode == SweepMode.Skinning;
+                         || config.sweepMode == SweepMode.Skinning
+                         || config.sweepMode == SweepMode.Crowd;
 
         static Stage Ground(string name, string shader) => new Stage
         {
@@ -308,6 +372,9 @@ namespace WarfareSurvivor
 
         /// <summary>Толпа на этой ступени уже набрана — счёт пошёл.</summary>
         bool crowdReady;
+
+        /// <summary>Сколько зомби было в момент начала счёта.</summary>
+        int crowdAtStart;
 
         /// <summary>
         /// Успел ли стенд запомнить исходное состояние сцены.
@@ -407,7 +474,14 @@ namespace WarfareSurvivor
                 // Долив частый: чем быстрее наберём потолок, тем меньше
                 // прогон стоит в ожидании.
                 config.debugSquadInvincible = true;
-                config.maxAliveZombies = 150;
+                // Толпа под процессорное сравнение больше: на сотне
+                // процессор ещё успевает всё, и мерить там нечего.
+                // В процессорном разборе потолок задаёт сама ступень:
+                // прогон идёт от малой толпы к большой, потому что убавить
+                // её обратно спавнер не умеет.
+                config.maxAliveZombies = config.sweepMode == SweepMode.Crowd
+                    ? CrowdAB[0].CrowdSize
+                    : 150;
                 config.spawnInterval = 0.05f;
             }
 
@@ -454,6 +528,8 @@ namespace WarfareSurvivor
 
             config.simulateZombies = true;
             config.simulateSurvivors = true;
+            config.updateBakedFrames = true;
+            BakedZombieView.UpdateFrames = true;
             if (savedSeparation > 0f) config.zombieSeparationRadius = savedSeparation;
 
             if (baseTargetRate > 0) config.targetFrameRate = baseTargetRate;
@@ -537,6 +613,7 @@ namespace WarfareSurvivor
                 }
 
                 crowdReady = true;
+                crowdAtStart = Registry.Zombies.Count;
                 settleLeft = 30;
             }
 
@@ -880,6 +957,12 @@ namespace WarfareSurvivor
             }
 
             if (Pipe != null) Pipe.useSRPBatcher = current.SrpBatcher ?? baseSrpBatcher;
+
+            if (current.CrowdSize > 0 && config.maxAliveZombies < current.CrowdSize)
+                config.maxAliveZombies = current.CrowdSize;
+
+            config.updateBakedFrames = current.BakedFrames ?? true;
+            BakedZombieView.UpdateFrames = config.updateBakedFrames;
             ApplyToZombies();
 
             // Первые кадры после переключения не считаем: там перестройка
@@ -910,16 +993,14 @@ namespace WarfareSurvivor
                 line.Append(" || gpu ").Append((gpuTotal / timed).ToString("F1"))
                     .Append(" мс, cpu ").Append((cpuTotal / timed).ToString("F1")).Append(" мс");
 
-            // Сравнивать надо с той численностью, на которой ступень реально
-            // идёт, а не с потолком спавнера: потолок считает и трупы,
-            // доигрывающие смерть, а счётчик — только живых, и равновесие
-            // сцены выходит заметно ниже потолка. С потолком в мерке
-            // проверка ругалась на исправные ступени.
-            int expected = CrowdPinned
-                ? config.maxAliveZombies * 2 / 3
-                : SweepZombies;
+            // Сравниваем с тем, сколько зомби было В НАЧАЛЕ СЧЁТА этой же
+            // ступени, а не с потолком спавнера. Потолок — плохая мерка:
+            // он считает и трупы, а счётчик только живых, и всякая мерка
+            // из потолка ругалась либо на все ступени подряд, либо ни на одну.
+            // Вопрос ведь простой: изменилась ли нагрузка ВНУТРИ ступени.
+            int expected = CrowdPinned ? crowdAtStart : SweepZombies;
             int drift = Mathf.Abs(Registry.Zombies.Count - expected);
-            if (drift > expected / 3)
+            if (expected > 0 && drift > expected / 5)
                 line.Append("  <- толпа уплыла, ступень несравнима");
 
             if (frames > 1 && total / frames > worst + 0.01f)
