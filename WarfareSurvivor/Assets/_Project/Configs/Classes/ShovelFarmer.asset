@@ -22,3 +22,9 @@ MonoBehaviour:
   knockbackDistance: 3
   attackHitTime: 0.5
   knockbackDuration: 0.22
+  showAttackArc: 0
+  arcDegrees: 140
+  arcInner: 0.74
+  arcStretch: 1.2
+  arcHeight: 1.05
+  arcTilt: 14

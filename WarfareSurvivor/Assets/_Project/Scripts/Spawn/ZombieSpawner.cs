@@ -60,6 +60,11 @@ namespace WarfareSurvivor
                 float t = config.zombieTiers <= 1 ? 0f : i / (float)(config.zombieTiers - 1);
                 var color = Color.Lerp(config.zombieTierColorLow, config.zombieTierColorHigh, t);
 
+                // Подкраска ослабляется к белому: цвет тира — подсказка,
+                // а не заливка. На полной силе текстура зомби исчезала
+                // под ровным зелёным, и модель переставала читаться.
+                color = Color.Lerp(Color.white, color, Mathf.Clamp01(config.zombieTierTint));
+
                 tierMaterials[i] = MakeMaterial(source, $"Zombie_Tier{i + 1}", color, emissive: false);
 
                 // Вспышка — отдельный ГОТОВЫЙ материал на тир, а не правка

@@ -32,7 +32,7 @@ MonoBehaviour:
   - Class: {fileID: 11400000, guid: d7934318956704e09acd034c08018278, type: 2}
     Count: 0
   - Class: {fileID: 11400000, guid: 626208014da524a00b5ee0123e9acebc, type: 2}
-    Count: 4
+    Count: 8
   squadSpeed: 7
   formationRingSpacingMin: 1.5
   formationRingSpacingStep: 1
@@ -60,12 +60,6 @@ MonoBehaviour:
   zombieTierColorHigh: {r: 0.95, g: 0.88, b: 0.25, a: 1}
   zombieScaleLow: 0.9
   zombieScaleHigh: 1.5
-  showMeleeArc: 0
-  meleeArcDegrees: 140
-  meleeArcInner: 0.74
-  meleeArcStretch: 1.2
-  meleeArcHeight: 1.05
-  meleeArcTilt: 14
   zombieCorpseTime: 2.5
   useBakedZombies: 1
   bakedZombies: {fileID: 11400000, guid: 65a969dcc580044ef8b8b060dddc3dc8, type: 2}

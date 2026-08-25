@@ -35,6 +35,13 @@ Shader "WarfareSurvivor/CheapToon"
 
         // Вклад непрямого света. Больше — площе картинка.
         _ToonAmbient ("Непрямой свет", Range(0,1)) = 0.45
+
+        // Сколько формы остаётся ВНУТРИ освещённой полосы. Ноль — плоская
+        // заливка одним цветом, единица — полный градиент по углу.
+        _ToonGradient ("Форма на свету", Range(0,1)) = 0.45
+
+        // Насколько тень подкрашивается цветом света.
+        _ToonShadowTint ("Тень в цвете света", Range(0,1)) = 0.7
     }
 
     SubShader
@@ -89,6 +96,8 @@ Shader "WarfareSurvivor/CheapToon"
                 half _ToonEdge;
                 half _ToonSoft;
                 half _ToonAmbient;
+                half _ToonGradient;
+                half _ToonShadowTint;
             CBUFFER_END
 
             Varyings vert(Attributes IN)
@@ -124,7 +133,23 @@ Shader "WarfareSurvivor/CheapToon"
                 // Та самая ступенька — весь тун держится на ней.
                 half band = smoothstep(_ToonEdge - _ToonSoft, _ToonEdge + _ToonSoft, lightness);
 
-                half3 lighting = lerp(_ToonShadow.rgb, mainLight.color, band);
+                // ФОРМА ВНУТРИ СВЕТЛОЙ ПОЛОСЫ.
+                //
+                // Одной ступеньки мало: она насыщается, и всё, что повёрнуто
+                // к солнцу сильнее порога, заливается одним цветом — макушка,
+                // плечо и грудь становятся неразличимы, объём пропадает.
+                // Поэтому внутри света остаётся градиент по углу, а резким
+                // остаётся только сам терминатор — в нём и есть тун.
+                half shaping = 1.0h - _ToonGradient * (1.0h - ndotl);
+
+                // ТЕНЬ ТОЖЕ КРАСИТСЯ СВЕТОМ.
+                //
+                // Была константой, одинаковой при любом солнце: рядом
+                // с тёплым светом выходила серой, чего не бывает. Тень —
+                // тот же свет, только ослабленный.
+                half3 shade = _ToonShadow.rgb * lerp(half3(1.0h, 1.0h, 1.0h), mainLight.color, _ToonShadowTint);
+
+                half3 lighting = lerp(shade, mainLight.color * shaping, band);
 
                 // Непрямой свет одной константой: сферические гармоники
                 // на каждом пикселе тут не окупаются. Вклад держим малым —
