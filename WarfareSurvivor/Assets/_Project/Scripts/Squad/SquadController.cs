@@ -26,6 +26,9 @@ namespace WarfareSurvivor
         const float HexAreaFactor = 0.866f;
 
         [SerializeField] ArenaConfig config;
+
+        [SerializeField, Tooltip("Брать стартовый состав забега, а не состав стенда.")]
+        bool useRunComposition;
         [SerializeField] VirtualJoystick joystick;
         [SerializeField] Camera viewCamera;
 
@@ -62,6 +65,44 @@ namespace WarfareSurvivor
         }
 
         void OnDestroy() => Registry.Survivors.Clear();
+
+        /// <summary>Сколько бойцов сейчас живо.</summary>
+        public int MemberCount => living.Count;
+
+        /// <summary>Живые бойцы — для подсчёта состава в интерфейсе.</summary>
+        public System.Collections.Generic.IReadOnlyList<Survivor> Members => living;
+
+        /// <summary>
+        /// Добавляет бойца по ходу забега — это и есть тир-ап.
+        ///
+        /// Новичок встаёт в центр отряда и сам доходит до своего места:
+        /// ставить его сразу в слот нельзя, потому что слоты пересчитаются
+        /// только на следующем кадре.
+        ///
+        /// Список живых пересортировывается по роли — от этого порядка
+        /// зависит раскладка по кольцам, и вставка в конец сломала бы её:
+        /// добавленный медик оказался бы снаружи, за ближним боем.
+        /// </summary>
+        public Survivor AddMember(SurvivorClassSO klass)
+        {
+            if (klass == null || klass.prefab == null) return null;
+
+            var prefab = klass.prefab.GetComponent<Survivor>();
+            if (prefab == null) return null;
+
+            var member = Instantiate(prefab, anchor, Quaternion.identity, transform);
+            member.name = $"{klass.displayName}_{living.Count:00}";
+            member.Bind(this, config, klass);
+            member.Lost += OnMemberLost;
+            LayerUtility.Apply(member.gameObject, LayerUtility.Survivors);
+
+            living.Add(member);
+            living.Sort((a, b) => ((int)a.Class.role).CompareTo((int)b.Class.role));
+
+            UnitRadius = Mathf.Max(UnitRadius, MeasureUnitRadius(member));
+            formationDirty = true;
+            return member;
+        }
 
         // --- создание -------------------------------------------------------
 
@@ -138,13 +179,21 @@ namespace WarfareSurvivor
         List<SurvivorClassSO> BuildPlan()
         {
             var plan = new List<SurvivorClassSO>();
-            if (config.squadComposition == null || config.squadComposition.Length == 0)
+
+            // Сцена забега берёт свой стартовый состав: там отряд выходит
+            // малым и растёт на тир-апах, а на стенде замеров стоят те же
+            // двадцать пять бойцов, при которых сняты все цифры.
+            var source = useRunComposition && config.runSquadStart != null && config.runSquadStart.Length > 0
+                ? config.runSquadStart
+                : config.squadComposition;
+
+            if (source == null || source.Length == 0)
             {
-                Debug.LogError($"[{name}] Состав отряда пуст: squadComposition не заполнен в конфиге.", this);
+                Debug.LogError($"[{name}] Состав отряда пуст: заполни squadComposition в конфиге.", this);
                 return plan;
             }
 
-            foreach (var entry in config.squadComposition)
+            foreach (var entry in source)
             {
                 if (entry.Class == null || entry.Count <= 0) continue;
                 if (entry.Class.prefab == null || entry.Class.prefab.GetComponent<Survivor>() == null)

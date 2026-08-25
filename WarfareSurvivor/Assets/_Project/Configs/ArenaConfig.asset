@@ -102,11 +102,51 @@ MonoBehaviour:
   showFrameMeter: 1
   frameMeterLogInterval: 5
   frameMeterWindow: 1
-  debugSweep: 1
+  debugSweep: 0
   sweepMode: 6
   simulateZombies: 1
   simulateSurvivors: 1
   updateBakedFrames: 1
+  runSquadStart:
+  - Class: {fileID: 11400000, guid: 626208014da524a00b5ee0123e9acebc, type: 2}
+    Count: 4
+  - Class: {fileID: 11400000, guid: d7934318956704e09acd034c08018278, type: 2}
+    Count: 2
+  runWaves:
+  - Name: "\u041F\u0435\u0440\u0432\u0430\u044F"
+    Duration: 45
+    SpawnInterval: 2
+    GroupMin: 3
+    GroupMax: 5
+    MinTier: 1
+    MaxTier: 2
+    MaxAlive: 40
+  - Name: "\u0412\u0442\u043E\u0440\u0430\u044F"
+    Duration: 90
+    SpawnInterval: 1.5
+    GroupMin: 4
+    GroupMax: 7
+    MinTier: 1
+    MaxTier: 3
+    MaxAlive: 60
+  - Name: "\u0422\u0440\u0435\u0442\u044C\u044F"
+    Duration: 120
+    SpawnInterval: 1.1
+    GroupMin: 5
+    GroupMax: 9
+    MinTier: 2
+    MaxTier: 4
+    MaxAlive: 80
+  waveBreak: 4
+  squadSlotCap: 15
+  sparkPerKill: 1
+  tierUpCostBase: 10
+  tierUpCostGrowth: 1.4
+  tierUpOptions: 3
+  sparkAttractRadius: 6
+  sparkPickupRadius: 1.2
+  sparkFlySpeed: 12
+  maxSparks: 150
   rampStep: 25
   rampMax: 400
   rampStepSeconds: 5

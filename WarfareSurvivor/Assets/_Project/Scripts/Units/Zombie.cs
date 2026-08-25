@@ -59,6 +59,13 @@ namespace WarfareSurvivor
 
         public event System.Action<Zombie> Released;
 
+        /// <summary>
+        /// Убит. Отличается от Released: тот приходит через пару секунд,
+        /// когда труп уходит в пул, а искру ронять надо в момент смерти,
+        /// на том месте, где зомби упал.
+        /// </summary>
+        public event System.Action<Zombie> Died;
+
         void Awake()
         {
             health = GetComponent<Health>();
@@ -197,6 +204,7 @@ namespace WarfareSurvivor
             // куда его отбросило, а не замереть в точке смерти.
             // Из реестра убираем сразу, чтобы бойцы не расстреливали труп.
             Registry.Zombies.Remove(this);
+            Died?.Invoke(this);
             if (baked != null) baked.Play(ClipDying);
             else if (animator != null) animator.SetTrigger(DieParam);
             despawnTime = Time.time + config.zombieCorpseTime;

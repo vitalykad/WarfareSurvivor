@@ -44,6 +44,37 @@ namespace WarfareSurvivor
         Pipeline = 2
     }
 
+    /// <summary>
+    /// Одна волна забега. Забег — это последовательность волн, между
+    /// которыми игрок успевает выдохнуть.
+    ///
+    /// Каждая волна задаёт СВОЙ темп спавна и свои тиры, потому что
+    /// нарастание сложности здесь и живёт: третья волна должна ощущаться
+    /// иначе первой, а не просто длиться дольше.
+    /// </summary>
+    [System.Serializable]
+    public struct WaveEntry
+    {
+        public string Name;
+
+        [Tooltip("Сколько секунд идёт волна.")]
+        public float Duration;
+
+        [Tooltip("Секунд между группами.")]
+        public float SpawnInterval;
+
+        public int GroupMin;
+        public int GroupMax;
+
+        [Tooltip("Диапазон тиров зомби в этой волне.")]
+        public int MinTier;
+        public int MaxTier;
+
+        [Tooltip("Потолок живых зомби. Держит кадр в бюджете: цена зомби " +
+                 "измерена и линейна, см. PERFORMANCE.md §6.")]
+        public int MaxAlive;
+    }
+
     /// <summary>Сколько бойцов какого класса взять в отряд.</summary>
     [System.Serializable]
     public struct SquadEntry
@@ -456,6 +487,66 @@ namespace WarfareSurvivor
                  "независимо от того, видно его или нет, и на нескольких " +
                  "сотнях это может стоить дороже их логики.")]
         public bool updateBakedFrames = true;
+
+        [Header("Забег")]
+
+        [Tooltip("С кем отряд ВЫХОДИТ на забег. Отдельно от squadComposition, " +
+                 "потому что стенду замеров нужны те же 25 бойцов, а забег " +
+                 "должен начинаться с малого и расти на тир-апах. Пусто — " +
+                 "берётся squadComposition.")]
+        public SquadEntry[] runSquadStart = new SquadEntry[0];
+
+        [Tooltip("Волны забега по порядку. Забег кончается, когда отыграна " +
+                 "последняя, — или раньше, если отряд выбит.")]
+        public WaveEntry[] runWaves =
+        {
+            new WaveEntry { Name = "Первая", Duration = 45f, SpawnInterval = 2f,
+                            GroupMin = 3, GroupMax = 5, MinTier = 1, MaxTier = 2, MaxAlive = 40 },
+            new WaveEntry { Name = "Вторая", Duration = 90f, SpawnInterval = 1.5f,
+                            GroupMin = 4, GroupMax = 7, MinTier = 1, MaxTier = 3, MaxAlive = 60 },
+            new WaveEntry { Name = "Третья", Duration = 120f, SpawnInterval = 1.1f,
+                            GroupMin = 5, GroupMax = 9, MinTier = 2, MaxTier = 4, MaxAlive = 80 },
+        };
+
+        [Tooltip("Пауза между волнами. Нужна не для отдыха, а чтобы конец " +
+                 "волны читался как событие: поле пустеет, и игрок видит, " +
+                 "что отбился.")]
+        public float waveBreak = 4f;
+
+        [Tooltip("Сколько бойцов может быть в отряде. Тир-ап сверх этого " +
+                 "числа бойца не добавляет.")]
+        public int squadSlotCap = 15;
+
+        [Header("Тир-ап")]
+
+        [Tooltip("Сколько искр даёт один убитый зомби. Тир зомби на это " +
+                 "не влияет: крупный и так дороже достаётся.")]
+        public int sparkPerKill = 1;
+
+        [Tooltip("Сколько искр стоит ПЕРВЫЙ тир-ап.")]
+        public int tierUpCostBase = 10;
+
+        [Tooltip("Во сколько раз дорожает каждый следующий тир-ап. " +
+                 "Единица — все стоят одинаково.")]
+        public float tierUpCostGrowth = 1.4f;
+
+        [Tooltip("Сколько классов предлагать на выбор. Больше, чем есть " +
+                 "классов, предложить нельзя.")]
+        public int tierUpOptions = 3;
+
+        [Tooltip("С какого расстояния искра летит к отряду.")]
+        public float sparkAttractRadius = 6f;
+
+        [Tooltip("С какого расстояния засчитывается подбор.")]
+        public float sparkPickupRadius = 1.2f;
+
+        [Tooltip("Скорость полёта искры к отряду.")]
+        public float sparkFlySpeed = 12f;
+
+        [Tooltip("Потолок искр на поле. Сверх него самые старые " +
+                 "засчитываются сами: прогресс терять нельзя, а вот " +
+                 "рисовать тысячу искр незачем.")]
+        public int maxSparks = 150;
 
         [Tooltip("Растущая толпа: на сколько прибавлять потолок живых зомби " +
                  "на каждой ступени.")]

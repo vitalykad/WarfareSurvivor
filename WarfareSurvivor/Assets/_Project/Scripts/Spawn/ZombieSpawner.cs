@@ -89,22 +89,53 @@ namespace WarfareSurvivor
             return material;
         }
 
+        /// <summary>
+        /// Настройки текущей волны. Пока их нет, спавнер живёт по конфигу —
+        /// так работает старая тестовая арена.
+        ///
+        /// Волна задаётся ИЗВНЕ, а не записью в конфиг: конфиг принадлежит
+        /// разработчику, и правки в него из рантайма переживают выход
+        /// из игры. Стенд замеров на этом уже обжигался.
+        /// </summary>
+        WaveEntry? wave;
+        bool paused;
+
+        /// <summary>Убит зомби — вот здесь. Забег вешает сюда искры.</summary>
+        public event System.Action<Zombie> Killed;
+
+        public void ApplyWave(in WaveEntry entry) => wave = entry;
+        public void ClearWave() => wave = null;
+        public void SetPaused(bool value) => paused = value;
+
+        /// <summary>Убирает всех живых с поля — конец волны, конец забега.</summary>
+        public void ClearField()
+        {
+            for (int i = alive.Count - 1; i >= 0; i--)
+                if (alive[i] != null) Release(alive[i]);
+        }
+
         void Update()
         {
+            if (paused) return;
             if (Time.time < nextSpawnTime) return;
-            nextSpawnTime = Time.time + config.spawnInterval;
+            nextSpawnTime = Time.time + (wave?.SpawnInterval ?? config.spawnInterval);
             SpawnGroup();
         }
 
         void SpawnGroup()
         {
-            int room = config.maxAliveZombies - alive.Count;
+            int cap = wave?.MaxAlive ?? config.maxAliveZombies;
+            int room = cap - alive.Count;
             if (room <= 0) return;
 
-            int size = Mathf.Min(room, Random.Range(config.groupSizeMin, config.groupSizeMax + 1));
+            int groupMin = wave?.GroupMin ?? config.groupSizeMin;
+            int groupMax = wave?.GroupMax ?? config.groupSizeMax;
+
+            int size = Mathf.Min(room, Random.Range(groupMin, groupMax + 1));
             float baseAngle = Random.value * 360f;
-            int minTier = MinTier();
-            int maxTier = UnlockedTier();
+            int minTier = wave?.MinTier ?? MinTier();
+            int maxTier = wave?.MaxTier ?? UnlockedTier();
+            if (maxTier < minTier) maxTier = minTier;
 
             for (int i = 0; i < size; i++)
             {
@@ -154,6 +185,7 @@ namespace WarfareSurvivor
         {
             var zombie = Instantiate(zombiePrefab, pool);
             zombie.Released += Release;
+            zombie.Died += OnZombieDied;
             LayerUtility.Apply(zombie.gameObject, LayerUtility.Zombies);
             ApplyBakedView(zombie);
             zombie.gameObject.SetActive(false);
@@ -198,6 +230,8 @@ namespace WarfareSurvivor
             var view = BakedZombieView.Convert(zombie.gameObject, config.bakedZombies, shader);
             if (view != null) zombie.UseBakedView(view);
         }
+
+        void OnZombieDied(Zombie zombie) => Killed?.Invoke(zombie);
 
         void Release(Zombie zombie)
         {

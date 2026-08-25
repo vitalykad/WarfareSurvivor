@@ -18,6 +18,7 @@ namespace WarfareSurvivor.EditorTools
     public static class TestArenaBuilder
     {
         const string ScenePath = "Assets/_Project/Scenes/Sandbox/TestArena.unity";
+        const string RunScenePath = "Assets/_Project/Scenes/Run.unity";
         const string ConfigPath = "Assets/_Project/Configs/ArenaConfig.asset";
         const string PolicePrefab = "Assets/_Project/Prefabs/Survivors/Survivor_Police.prefab";
         const string SouthPolicePrefab = "Assets/_Project/Prefabs/Survivors/Survivor_SouthPoliceman.prefab";
@@ -28,8 +29,25 @@ namespace WarfareSurvivor.EditorTools
         const string RuinPrefab = "Assets/_Project/Prefabs/Environment/Ruin.prefab";
         const string GroundMaterial = "Assets/Materials/Ground/DesertGround1/DesertGround1.mat";
 
+        /// <summary>
+        /// Стенд замеров: та же арена плюс счётчик кадра и стенд нагрузки,
+        /// бесконечные волны, никакого забега. Сюда ходят мерить.
+        /// </summary>
         [MenuItem("WarfareSurvivor/Build Test Arena")]
-        public static void Build()
+        public static void Build() => BuildScene(gameplay: false);
+
+        /// <summary>
+        /// Сцена забега: три волны, тир-апы, победа и поражение. Ни счётчика
+        /// кадра, ни стенда — сюда ходят ИГРАТЬ, и всё, что мешает смотреть
+        /// на игру глазами, отсюда убрано.
+        ///
+        /// Обе сцены собираются одним кодом. Разойтись руками они не могут:
+        /// правка арены сама попадает в забег после пересборки.
+        /// </summary>
+        [MenuItem("WarfareSurvivor/Build Run Scene")]
+        public static void BuildRun() => BuildScene(gameplay: true);
+
+        static void BuildScene(bool gameplay)
         {
             // Шейдеры, которые ищутся через Shader.Find, надо явно включить
             // в сборку — иначе на устройстве их не окажется.
@@ -60,9 +78,10 @@ namespace WarfareSurvivor.EditorTools
             CreateRuins(config);
 
             var squad = CreateSquad(config);
+            Wire(squad, "useRunComposition", gameplay);
             var camera = CreateCamera(squad.transform);
             var joystick = CreateUI();
-            CreateFrameMeter(config);
+            if (!gameplay) CreateFrameMeter(config);
 
             var frameRate = new GameObject("FrameRate").AddComponent<FrameRateController>();
             Wire(frameRate, nameof(config), config);
@@ -70,7 +89,7 @@ namespace WarfareSurvivor.EditorTools
             // Стенд нагрузки в сцену не кладём, пока он не нужен: это
             // инструмент замера, а не часть игры. Включается галочкой
             // debugSweep в конфиге и пересборкой сцены.
-            if (config.debugSweep)
+            if (config.debugSweep && !gameplay)
             {
                 var sweep = new GameObject("PerformanceSweep").AddComponent<PerformanceSweep>();
                 Wire(sweep, nameof(config), config);
@@ -92,12 +111,16 @@ namespace WarfareSurvivor.EditorTools
             Wire(spawner, "zombiePrefab", AssetDatabase.LoadAssetAtPath<Zombie>(ZombiePrefab));
             Wire(spawner, "squad", squad);
 
+            if (gameplay) CreateRun(config, squad, spawner);
+
             EditorSceneManager.MarkSceneDirty(scene);
-            EnsureFolder("Assets/_Project/Scenes/Sandbox");
-            EditorSceneManager.SaveScene(scene, ScenePath);
+
+            string path = gameplay ? RunScenePath : ScenePath;
+            EnsureFolder(gameplay ? "Assets/_Project/Scenes" : "Assets/_Project/Scenes/Sandbox");
+            EditorSceneManager.SaveScene(scene, path);
             AssetDatabase.SaveAssets();
 
-            Debug.Log($"[TestArena] Сцена собрана: {ScenePath}");
+            Debug.Log($"[{(gameplay ? "Забег" : "TestArena")}] Сцена собрана: {path}");
         }
 
         [MenuItem("WarfareSurvivor/Setup/Reset Config to Defaults")]
@@ -530,6 +553,186 @@ namespace WarfareSurvivor.EditorTools
             Wire(meter, "label", text);
         }
 
+        /// <summary>
+        /// Собирает всё, чем забег отличается от арены: искры, ведущий
+        /// забега, окно тир-апа и панель состояния.
+        /// </summary>
+        static void CreateRun(ArenaConfig config, SquadController squad, ZombieSpawner spawner)
+        {
+            var canvas = Object.FindFirstObjectByType<Canvas>();
+
+            var sparks = new GameObject("SparkField").AddComponent<SparkField>();
+            Wire(sparks, nameof(config), config);
+            Wire(sparks, "squad", squad);
+            Wire(sparks, "spawner", spawner);
+            Wire(sparks, "sparkMaterial", EnsureSparkMaterial());
+
+            var panel = CreateTierUpPanel(canvas, config);
+            var hud = CreateRunHud(canvas);
+
+            var run = new GameObject("RunController").AddComponent<RunController>();
+            Wire(run, nameof(config), config);
+            Wire(run, "squad", squad);
+            Wire(run, "spawner", spawner);
+            Wire(run, "sparks", sparks);
+            Wire(run, "tierUp", panel);
+
+            Wire(hud, "run", run);
+            Wire(hud, "squad", squad);
+        }
+
+        /// <summary>
+        /// Материал искры: аддитивный, без освещения. Тот же шейдер, что
+        /// у трассеров, — светящаяся точка на песке должна читаться, а не
+        /// подчиняться солнцу.
+        /// </summary>
+        static Material EnsureSparkMaterial()
+        {
+            const string path = "Assets/_Project/Art/Materials/Spark.mat";
+            var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (existing != null) return existing;
+
+            var shader = Shader.Find("WarfareSurvivor/AdditiveTracer");
+            if (shader == null) return null;
+
+            var material = new Material(shader) { name = "Spark" };
+            if (material.HasProperty("_Boost")) material.SetFloat("_Boost", 2.4f);
+
+            EnsureFolder("Assets/_Project/Art/Materials");
+            AssetDatabase.CreateAsset(material, path);
+            return material;
+        }
+
+        static TierUpPanel CreateTierUpPanel(Canvas canvas, ArenaConfig config)
+        {
+            if (canvas == null) return null;
+
+            var go = new GameObject("TierUpPanel", typeof(RectTransform), typeof(TierUpPanel));
+            go.transform.SetParent(canvas.transform, false);
+
+            var backdrop = new GameObject("Backdrop", typeof(RectTransform), typeof(Image));
+            var backdropRect = (RectTransform)backdrop.transform;
+            backdropRect.SetParent(go.transform, false);
+            Stretch(backdropRect);
+            // Перехватывает касания: под окном выбора джойстик работать
+            // не должен, иначе отряд уедет, пока игрок читает карточки.
+            backdrop.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.72f);
+
+            var title = CreateLabel(backdropRect, "Title", 56, TextAnchor.UpperCenter);
+            var titleRect = (RectTransform)title.transform;
+            titleRect.anchorMin = new Vector2(0f, 1f);
+            titleRect.anchorMax = new Vector2(1f, 1f);
+            titleRect.pivot = new Vector2(0.5f, 1f);
+            titleRect.anchoredPosition = new Vector2(0f, -160f);
+            titleRect.sizeDelta = new Vector2(-40f, 90f);
+
+            var row = new GameObject("Cards", typeof(RectTransform),
+                typeof(HorizontalLayoutGroup)).GetComponent<RectTransform>();
+            row.SetParent(backdropRect, false);
+            row.anchorMin = row.anchorMax = new Vector2(0.5f, 0.5f);
+            row.pivot = new Vector2(0.5f, 0.5f);
+            row.sizeDelta = new Vector2(1000f, 440f);
+
+            var layout = row.GetComponent<HorizontalLayoutGroup>();
+            layout.spacing = 28f;
+            layout.childAlignment = TextAnchor.MiddleCenter;
+            layout.childForceExpandWidth = false;
+            layout.childForceExpandHeight = false;
+
+            var panel = go.GetComponent<TierUpPanel>();
+            Wire(panel, nameof(config), config);
+            Wire(panel, "root", backdropRect);
+            Wire(panel, "title", title);
+            Wire(panel, "cardRow", row);
+            return panel;
+        }
+
+        static RunHud CreateRunHud(Canvas canvas)
+        {
+            if (canvas == null) return null;
+
+            // RectTransform добавляем ЯВНО: new GameObject даёт обычный
+            // Transform, и родство с канвасом его не превращает.
+            var go = new GameObject("RunHud", typeof(RectTransform), typeof(RunHud));
+            go.transform.SetParent(canvas.transform, false);
+            var parent = (RectTransform)go.transform;
+            Stretch(parent);
+
+            var wave = CreateLabel(parent, "Wave", 42, TextAnchor.UpperCenter);
+            var waveRect = (RectTransform)wave.transform;
+            waveRect.anchorMin = new Vector2(0f, 1f);
+            waveRect.anchorMax = new Vector2(1f, 1f);
+            waveRect.pivot = new Vector2(0.5f, 1f);
+            waveRect.anchoredPosition = new Vector2(0f, -36f);
+            waveRect.sizeDelta = new Vector2(-40f, 60f);
+
+            var squadLabel = CreateLabel(parent, "Squad", 34, TextAnchor.UpperLeft);
+            var squadRect = (RectTransform)squadLabel.transform;
+            squadRect.anchorMin = squadRect.anchorMax = new Vector2(0f, 1f);
+            squadRect.pivot = new Vector2(0f, 1f);
+            squadRect.anchoredPosition = new Vector2(28f, -110f);
+            squadRect.sizeDelta = new Vector2(700f, 50f);
+
+            // Полоска искр — над джойстиком, во всю ширину: это единственный
+            // индикатор, за которым игрок следит по ходу боя.
+            var barBack = new GameObject("SparkBar", typeof(RectTransform), typeof(Image));
+            var barRect = (RectTransform)barBack.transform;
+            barRect.SetParent(parent, false);
+            barRect.anchorMin = new Vector2(0.5f, 0f);
+            barRect.anchorMax = new Vector2(0.5f, 0f);
+            barRect.pivot = new Vector2(0.5f, 0f);
+            barRect.anchoredPosition = new Vector2(0f, 46f);
+            barRect.sizeDelta = new Vector2(720f, 26f);
+            barBack.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.55f);
+
+            var fillGo = new GameObject("Fill", typeof(RectTransform), typeof(Image));
+            var fillRect = (RectTransform)fillGo.transform;
+            fillRect.SetParent(barRect, false);
+            Stretch(fillRect);
+
+            var fill = fillGo.GetComponent<Image>();
+            fill.color = new Color(1f, 0.86f, 0.35f, 0.95f);
+            fill.type = Image.Type.Filled;
+            fill.fillMethod = Image.FillMethod.Horizontal;
+            fill.fillAmount = 0f;
+            fill.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+
+            var sparkLabel = CreateLabel(barRect, "SparkCount", 26, TextAnchor.MiddleCenter);
+            Stretch((RectTransform)sparkLabel.transform);
+
+            var banner = CreateLabel(parent, "Banner", 72, TextAnchor.MiddleCenter);
+            Stretch((RectTransform)banner.transform);
+
+            var hud = go.GetComponent<RunHud>();
+            Wire(hud, "waveLabel", wave);
+            Wire(hud, "squadLabel", squadLabel);
+            Wire(hud, "sparkFill", fill);
+            Wire(hud, "sparkLabel", sparkLabel);
+            Wire(hud, "banner", banner);
+            return hud;
+        }
+
+        static Text CreateLabel(RectTransform parent, string name, int size, TextAnchor align)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(Text));
+            var rect = (RectTransform)go.transform;
+            rect.SetParent(parent, false);
+
+            var text = go.GetComponent<Text>();
+            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.fontSize = size;
+            text.alignment = align;
+            text.color = Color.white;
+            text.raycastTarget = false;
+            text.horizontalOverflow = HorizontalWrapMode.Overflow;
+            text.verticalOverflow = VerticalWrapMode.Overflow;
+
+            var shadow = go.AddComponent<Shadow>();
+            shadow.effectColor = new Color(0f, 0f, 0f, 0.8f);
+            shadow.effectDistance = new Vector2(2f, -2f);
+            return text;
+        }
+
         static void CreateEventSystem()
         {
             var go = new GameObject("EventSystem", typeof(EventSystem));
@@ -570,6 +773,24 @@ namespace WarfareSurvivor.EditorTools
         /// Поля компонентов приватные и с [SerializeField] — присвоить их
         /// снаружи можно только через SerializedObject.
         /// </summary>
+        /// <summary>Тот же Wire, но для булевых флагов: перегрузка с Object их не берёт.</summary>
+        static void Wire(Object component, string fieldName, bool value)
+        {
+            var field = component.GetType().GetField(fieldName,
+                System.Reflection.BindingFlags.Instance |
+                System.Reflection.BindingFlags.NonPublic |
+                System.Reflection.BindingFlags.Public);
+
+            if (field == null)
+            {
+                Debug.LogError($"[TestArena] Нет поля {fieldName} у {component.GetType().Name}");
+                return;
+            }
+
+            field.SetValue(component, value);
+            EditorUtility.SetDirty(component);
+        }
+
         static void Wire(Object component, string fieldName, Object value)
         {
             var so = new SerializedObject(component);
