@@ -91,7 +91,16 @@ Shader "WarfareSurvivor/Pickup"
             half4 frag(Varyings IN) : SV_Target
             {
                 half alpha = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, IN.uv).a;
-                half strength = alpha * _GlowPower * Pulse();
+
+                // Круглое затухание от центра. Без него ореол повторяет форму
+                // плоскости, и у квадратной добычи получается квадратное
+                // свечение с резкой границей — читается как ошибка, а не
+                // как подсветка.
+                half2 fromCenter = IN.uv * 2.0h - 1.0h;
+                half falloff = saturate(1.0h - length(fromCenter));
+                falloff *= falloff;
+
+                half strength = alpha * falloff * _GlowPower * Pulse();
                 return half4(_GlowColor.rgb * strength, strength);
             }
             ENDHLSL

@@ -49,6 +49,9 @@ namespace WarfareSurvivor
         Transform muzzle;
         int attackLayer = -1;
         bool hasAttackSpeed;
+
+        /// <summary>Круг досягаемости под ногами. Только у ближнего боя.</summary>
+        AttackRangeRing rangeRing;
         float attackLayerWeight;
         float attackClipLength = 0.5f;
         float pendingHitTime;
@@ -82,6 +85,27 @@ namespace WarfareSurvivor
 
             torsoAim = GetComponent<TorsoAim>();
             if (torsoAim != null) torsoAim.Configure(config.torsoAimMaxAngle, config.torsoAimSpeed);
+
+            // Круг только у ближнего боя: у стрелка дальность в девять метров,
+            // и такой круг накрыл бы половину отряда, ничего не объясняя.
+            //
+            // Под try по той же причине, что и полоска здоровья ниже: это
+            // украшение, и его поломка не должна мешать бойцу появиться.
+            // Пренебрёг — и получил ровно тот же отказ, что уже был однажды:
+            // исключение внутри косметики оборвало создание отряда на первом
+            // же бойце, отряд вышел пустым, и забег проигрывался мгновенно.
+            if (config.showMeleeRange && klass.role == SquadRole.Melee)
+            {
+                try
+                {
+                    rangeRing = AttackRangeRing.Attach(
+                        transform, klass.attackRange, squad.RangeRingMaterial, config.meleeRangeFade);
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogError($"[{name}] Круг досягаемости не собрался: {e.Message}", this);
+                }
+            }
 
             var bar = GetComponent<HealthBarView>();
             if (bar != null)
@@ -415,6 +439,8 @@ namespace WarfareSurvivor
             // Без запаса часть ударов уходила бы в пустоту по формальности.
             float reach = klass.attackRange * 1.35f;
             if (to.sqrMagnitude > reach * reach) return;
+
+            if (rangeRing != null) rangeRing.Flash();
 
             victim.TakeHit(klass.damage);
             if (klass.knockbackDistance > 0f)

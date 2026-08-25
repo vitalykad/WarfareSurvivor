@@ -296,6 +296,14 @@ namespace WarfareSurvivor
                  "камеры — иначе градация по размеру не работает как подсказка.")]
         public float zombieScaleHigh = 1.5f;
 
+        [Tooltip("Показывать круг досягаемости под бойцами ближнего боя. " +
+                 "Вспыхивает в момент удара: даёт лопате отдачу и заодно " +
+                 "показывает, откуда докуда она достаёт.")]
+        public bool showMeleeRange = true;
+
+        [Tooltip("За сколько секунд круг досягаемости гаснет после удара.")]
+        public float meleeRangeFade = 0.35f;
+
         [Tooltip("Сколько секунд труп лежит до возврата в пул.")]
         public float zombieCorpseTime = 2.5f;
 
@@ -504,12 +512,15 @@ namespace WarfareSurvivor
                  "последняя, — или раньше, если отряд выбит.")]
         public WaveEntry[] runWaves =
         {
-            new WaveEntry { Name = "Первая", Duration = 45f, SpawnInterval = 2f,
-                            GroupMin = 3, GroupMax = 5, MinTier = 1, MaxTier = 2, MaxAlive = 40 },
-            new WaveEntry { Name = "Вторая", Duration = 90f, SpawnInterval = 1.5f,
-                            GroupMin = 4, GroupMax = 7, MinTier = 1, MaxTier = 3, MaxAlive = 60 },
-            new WaveEntry { Name = "Третья", Duration = 120f, SpawnInterval = 1.1f,
-                            GroupMin = 5, GroupMax = 9, MinTier = 2, MaxTier = 4, MaxAlive = 80 },
+            // Числа подобраны от ПЕРВОГО забега: отряд выходит вшестером,
+            // и сорок зомби на поле выбивали его за первые полминуты.
+            // Потолок живых растёт вместе с отрядом, а не опережает его.
+            new WaveEntry { Name = "Первая", Duration = 45f, SpawnInterval = 2.5f,
+                            GroupMin = 2, GroupMax = 3, MinTier = 1, MaxTier = 1, MaxAlive = 12 },
+            new WaveEntry { Name = "Вторая", Duration = 90f, SpawnInterval = 2f,
+                            GroupMin = 3, GroupMax = 4, MinTier = 1, MaxTier = 2, MaxAlive = 25 },
+            new WaveEntry { Name = "Третья", Duration = 120f, SpawnInterval = 1.5f,
+                            GroupMin = 4, GroupMax = 6, MinTier = 1, MaxTier = 3, MaxAlive = 45 },
         };
 
         [Tooltip("Пауза между волнами. Нужна не для отдыха, а чтобы конец " +

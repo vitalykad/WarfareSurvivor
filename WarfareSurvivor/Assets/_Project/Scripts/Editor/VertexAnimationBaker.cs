@@ -212,6 +212,7 @@ namespace WarfareSurvivor
             }
 
             set.shader = Shader.Find(ShaderName);
+            set.material = EnsureBaseMaterial(label, set.shader);
             if (set.shader == null)
                 Debug.LogWarning("[Запекание] Не найден шейдер " + ShaderName +
                                  ": набор запечётся, но рисовать его будет нечем.");
@@ -271,6 +272,32 @@ namespace WarfareSurvivor
             mesh.bounds = bounds;
             mesh.UploadMeshData(false);
             return mesh;
+        }
+
+        /// <summary>
+        /// Материал-основа: отдельный ассет, который можно править руками.
+        ///
+        /// Существующий НЕ трогаем. Подобранные цвет тени и мягкость границы
+        /// не должны слетать от перепечки анимации — это разные вещи,
+        /// и связывать их нельзя.
+        /// </summary>
+        static Material EnsureBaseMaterial(string label, Shader shader)
+        {
+            string path = "Assets/_Project/Art/Materials/" + label + "Baked.mat";
+
+            var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (existing != null) return existing;
+
+            if (shader == null) return null;
+
+            if (!AssetDatabase.IsValidFolder("Assets/_Project/Art/Materials"))
+                AssetDatabase.CreateFolder("Assets/_Project/Art", "Materials");
+
+            var material = new Material(shader) { name = label + "Baked" };
+            AssetDatabase.CreateAsset(material, path);
+            Debug.Log("[Запекание] Создан материал-основа " + path +
+                      " — правь его, чтобы поменять вид запечённых зомби");
+            return material;
         }
 
         static Texture2D BuildTexture(string name, Color[] pixels, int width, int rows)

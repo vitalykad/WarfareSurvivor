@@ -93,6 +93,7 @@ namespace WarfareSurvivor.EditorTools
             CreateRuins(config);
 
             var squad = CreateSquad(config);
+            Wire(squad, "rangeRingMaterial", EnsureRangeRingMaterial());
             var camera = CreateCamera(squad.transform, config);
             var joystick = CreateUI();
             if (!gameplay) CreateFrameMeter(config);
@@ -644,7 +645,6 @@ namespace WarfareSurvivor.EditorTools
 
             var sparks = new GameObject("SparkField").AddComponent<SparkField>();
             Wire(sparks, nameof(config), config);
-            Wire(sparks, "squad", squad);
             Wire(sparks, "spawner", spawner);
             Wire(sparks, "sparkMaterial", EnsureSparkMaterial());
             Wire(sparks, "view", Object.FindFirstObjectByType<Camera>());
@@ -666,13 +666,40 @@ namespace WarfareSurvivor.EditorTools
         const string BottleTexture = "Assets/Sprites/BottleOfWater.png";
 
         /// <summary>
-        /// Материал ресурса: картинка бутылки плюс свечение вокруг неё.
-        /// Освещение не считается — предмет должен читаться одинаково
-        /// и на солнце, и в тени руин.
+        /// Материал круга досягаемости. Один на всех бойцов: круги
+        /// отличаются только прозрачностью, а её задаёт блок свойств.
+        /// </summary>
+        static Material EnsureRangeRingMaterial()
+        {
+            const string path = "Assets/_Project/Art/Materials/RangeRing.mat";
+
+            var shader = Shader.Find("WarfareSurvivor/RangeRing");
+            if (shader == null)
+            {
+                Debug.LogError("[Сборка] Не найден шейдер WarfareSurvivor/RangeRing");
+                return null;
+            }
+
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material == null)
+            {
+                material = new Material(shader) { name = "RangeRing" };
+                material.enableInstancing = true;
+                EnsureFolder("Assets/_Project/Art/Materials");
+                AssetDatabase.CreateAsset(material, path);
+            }
+
+            if (material.shader != shader) material.shader = shader;
+            EditorUtility.SetDirty(material);
+            return material;
+        }
+
+        /// <summary>
+        /// Материал добычи: светящийся синий квадрат. Освещение не считается —
+        /// предмет должен читаться одинаково и на солнце, и в тени руин.
         ///
-        /// Шейдер и текстуру проставляем при каждой сборке, а подобранные
-        /// цвет и сила свечения остаются: их правят в инспекторе, и стирать
-        /// подобранное пересборкой нельзя.
+        /// Шейдер проставляем при каждой сборке, а подобранные цвет и силу
+        /// свечения не трогаем: их правят в инспекторе.
         /// </summary>
         static Material EnsureSparkMaterial()
         {
@@ -685,11 +712,10 @@ namespace WarfareSurvivor.EditorTools
                 return null;
             }
 
-            PrepareBottleTexture();
-            var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(BottleTexture);
-
             var material = AssetDatabase.LoadAssetAtPath<Material>(path);
-            if (material == null)
+            bool fresh = material == null;
+
+            if (fresh)
             {
                 material = new Material(shader) { name = "Spark" };
                 EnsureFolder("Assets/_Project/Art/Materials");
@@ -697,7 +723,21 @@ namespace WarfareSurvivor.EditorTools
             }
 
             if (material.shader != shader) material.shader = shader;
-            if (texture != null) material.SetTexture("_BaseMap", texture);
+
+            // Картинки нет — добыча это светящийся квадрат, и форму ему
+            // задаёт сама плоскость.
+            material.SetTexture("_BaseMap", null);
+
+            // Цвета ставим только у нового материала: подобранные руками
+            // пересборка сцены стирать не должна.
+            if (fresh)
+            {
+                material.SetColor("_BaseColor", new Color(0.35f, 0.72f, 1f, 0.85f));
+                material.SetColor("_GlowColor", new Color(0.30f, 0.70f, 1f, 1f));
+                material.SetFloat("_GlowPower", 0.9f);
+                material.SetFloat("_GlowSize", 1.8f);
+            }
+
             EditorUtility.SetDirty(material);
             return material;
         }

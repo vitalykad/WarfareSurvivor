@@ -94,9 +94,22 @@ namespace WarfareSurvivor
         {
             if (Twins.TryGetValue(source, out var ready) && ready != null) return ready;
 
-            var twin = new Material(vatShader) { name = source.name + "_ЗапечённыйТун" };
+            // Копия материала-ОСНОВЫ, а не голый материал на шейдере.
+            //
+            // Иначе настройки туна — цвет тени, граница света, мягкость —
+            // существуют только в коде, и поменять вид зомби негде: тот
+            // материал, что лежит на префабе, при запечённой анимации
+            // не используется вовсе.
+            var twin = set.material != null
+                ? new Material(set.material)
+                : new Material(vatShader);
+
+            twin.name = source.name + "_ЗапечённыйТун";
+
+            // От материала тира берём только то, что различает тиры.
             if (source.HasProperty("_BaseMap")) twin.SetTexture("_BaseMap", source.GetTexture("_BaseMap"));
             if (source.HasProperty("_BaseColor")) twin.SetColor("_BaseColor", source.GetColor("_BaseColor"));
+
             twin.SetTexture("_PosTex", set.positions);
             twin.SetTexture("_NrmTex", set.normals);
             twin.enableInstancing = true;

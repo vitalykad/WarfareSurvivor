@@ -11,28 +11,23 @@ namespace WarfareSurvivor
     /// монстры приходили сами, идти было некуда. Искра лежит там, где упал
     /// зомби, и за ней надо прийти.
     ///
-    /// Поэтому подбор идёт от ЦЕНТРА ОТРЯДА, а не от отдельных бойцов:
-    /// игрок ведёт отряд как курсор, и собирать он должен тем же движением,
-    /// которым ведёт.
-    ///
-    /// Выглядит ресурс бутылкой воды: узнаваемый предмет читается на песке
-    /// лучше абстрактного огонька, а подсветку ему даёт шейдер.
+    /// Подбирает БЛИЖАЙШИЙ БОЕЦ, а не центр отряда. От центра выходило
+    /// неправильно вдвойне: у большого отряда центр далеко от края, где
+    /// зомби и гибнут, поэтому добыча улетала через весь строй и выглядела
+    /// так, будто появляется прямо под ногами у игрока. От бойца она
+    /// подбирается там, где упала.
     /// </summary>
     public class SparkField : MonoBehaviour
     {
         [SerializeField] ArenaConfig config;
-        [SerializeField] SquadController squad;
         [SerializeField] ZombieSpawner spawner;
         [SerializeField] Material sparkMaterial;
 
         [SerializeField, Tooltip("Камера: к ней разворачиваются бутылки.")]
         Camera view;
 
-        [SerializeField, Tooltip("Высота бутылки в метрах.")]
-        float sparkHeight = 1.1f;
-
-        /// <summary>Пропорции картинки: она вытянута по вертикали.</summary>
-        const float SparkAspect = 1024f / 1536f;
+        [SerializeField, Tooltip("Сторона квадрата в метрах.")]
+        float sparkHeight = 0.55f;
 
         /// <summary>Подобрана искра, столько-то штук.</summary>
         public event System.Action<int> Collected;
@@ -77,9 +72,9 @@ namespace WarfareSurvivor
             // иначе игрок наказан за то, что бой шёл слишком хорошо.
             if (sparks.Count >= Mathf.Max(8, config.maxSparks)) CollectAt(0);
 
-            // Приподнимаем на половину высоты: центр плоскости должен
+            // Приподнимаем на половину стороны: центр плоскости должен
             // оказаться над землёй, иначе нижняя половина уходит под неё.
-            position.y = Mathf.Max(0.2f, sparkHeight) * 0.45f;
+            position.y = Mathf.Max(0.2f, sparkHeight) * 0.5f;
 
             var item = idle.Count > 0 ? idle.Pop() : CreateView();
             item.position = position;
@@ -119,9 +114,8 @@ namespace WarfareSurvivor
 
         void Update()
         {
-            if (config == null || squad == null || sparks.Count == 0) return;
+            if (config == null || sparks.Count == 0) return;
 
-            var center = squad.transform.position;
             float attract = config.sparkAttractRadius * config.sparkAttractRadius;
             float pickup = config.sparkPickupRadius * config.sparkPickupRadius;
             float step = config.sparkFlySpeed * Time.deltaTime;
@@ -130,7 +124,10 @@ namespace WarfareSurvivor
             {
                 var spark = sparks[i];
 
-                var delta = center - spark.Position;
+                var collector = Nearest(spark.Position);
+                if (collector == null) continue;
+
+                var delta = collector.transform.position - spark.Position;
                 delta.y = 0f;
                 float sqr = delta.sqrMagnitude;
 
@@ -149,6 +146,37 @@ namespace WarfareSurvivor
 
                 if (sqr <= pickup) CollectAt(i);
             }
+        }
+
+        /// <summary>
+        /// Ближайший к добыче боец.
+        ///
+        /// Перебором: бойцов пятнадцать, добычи полторы сотни — это две
+        /// тысячи сравнений в кадр, что на фоне измеренной цены логики
+        /// зомби (PERFORMANCE.md §7) не стоит ничего. Сетка соседей тут
+        /// была бы преждевременной.
+        /// </summary>
+        static Survivor Nearest(Vector3 point)
+        {
+            Survivor best = null;
+            float bestSqr = float.MaxValue;
+
+            var members = Registry.Survivors;
+            for (int i = 0; i < members.Count; i++)
+            {
+                var member = members[i];
+                if (member == null) continue;
+
+                var delta = member.transform.position - point;
+                delta.y = 0f;
+
+                float sqr = delta.sqrMagnitude;
+                if (sqr >= bestSqr) continue;
+
+                bestSqr = sqr;
+                best = member;
+            }
+            return best;
         }
 
         void CollectAt(int index)
@@ -186,18 +214,15 @@ namespace WarfareSurvivor
         }
 
         /// <summary>
-        /// Плоскость с картинкой, стоящая в плоскости XY.
-        ///
-        /// Разворачивает её к камере уже трансформ объекта. Пропорции взяты
-        /// с самой картинки — квадрат сплющил бы бутылку.
+        /// Квадрат в плоскости XY. Разворачивает его к камере уже трансформ
+        /// объекта, поэтому здесь плоскость, а не лежачий прямоугольник.
         /// </summary>
         Mesh BuildQuad()
         {
-            float height = Mathf.Max(0.2f, sparkHeight);
-            float halfHeight = height * 0.5f;
-            float halfWidth = halfHeight * SparkAspect;
+            float halfHeight = Mathf.Max(0.2f, sparkHeight) * 0.5f;
+            float halfWidth = halfHeight;
 
-            var mesh = new Mesh { name = "Бутылка" };
+            var mesh = new Mesh { name = "Добыча" };
             mesh.vertices = new[]
             {
                 new Vector3(-halfWidth, -halfHeight, 0f), new Vector3(-halfWidth, halfHeight, 0f),

@@ -30,6 +30,7 @@ namespace WarfareSurvivor.EditorTools
             "WarfareSurvivor/CheapToon",                   // персонажи и враги
             "WarfareSurvivor/VertexAnimationToon",         // зомби на запечённой анимации
             "WarfareSurvivor/Pickup",                      // ресурс тир-апа
+            "WarfareSurvivor/RangeRing",                   // круг досягаемости
             "Universal Render Pipeline/Simple Lit"         // для сравнения на стенде
         };
 

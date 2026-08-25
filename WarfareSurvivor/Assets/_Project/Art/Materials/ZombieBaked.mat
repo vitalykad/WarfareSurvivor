@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Spark
-  m_Shader: {fileID: 4800000, guid: 4d1e876809a11447f990c92494baa8c3, type: 3}
+  m_Name: ZombieBaked
+  m_Shader: {fileID: 4800000, guid: 0389df958bdd841d6b48d33104ad3cef, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -27,20 +27,21 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-    - _MainTex:
+    - _NrmTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _PosTex:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _Boost: 2.4
-    - _GlowPower: 1.1
-    - _GlowSize: 1.9
-    - _PulseDepth: 0.4
-    - _PulseSpeed: 2.2
-    - _Rolloff: 0
+    - _ToonAmbient: 0.45
+    - _ToonEdge: 0.3
+    - _ToonSoft: 0.16
     m_Colors:
-    - _BaseColor: {r: 0.3, g: 0.68, b: 1, a: 0.9}
-    - _GlowColor: {r: 0.25, g: 0.62, b: 1, a: 1}
+    - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
+    - _ToonShadow: {r: 0.52, g: 0.4699999, b: 0.39999998, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
