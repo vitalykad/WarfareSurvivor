@@ -33,7 +33,7 @@ MonoBehaviour:
     Count: 0
   - Class: {fileID: 11400000, guid: 626208014da524a00b5ee0123e9acebc, type: 2}
     Count: 8
-  squadSpeed: 7
+  squadSpeed: 5.5
   formationRingSpacingMin: 1.5
   formationRingSpacingStep: 1
   formationRingGap: 1.4
@@ -139,8 +139,8 @@ MonoBehaviour:
   waveBreak: 4
   squadSlotCap: 15
   sparkPerKill: 1
-  tierUpCostBase: 10
-  tierUpCostGrowth: 1.4
+  tierUpCostBase: 5
+  tierUpCostGrowth: 1.15
   tierUpOptions: 3
   tierUpDamageStep: 0.2
   tierUpHealthStep: 0.25
