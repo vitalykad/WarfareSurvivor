@@ -27,7 +27,11 @@ namespace WarfareSurvivor
         {
             choice = onPick;
             if (root != null) root.gameObject.SetActive(true);
-            if (title != null) title.text = "ПОПОЛНЕНИЕ";
+
+            // Заголовка нет намеренно: три карточки и так не оставляют
+            // сомнений, что от игрока ждут выбора, а надпись только лезла
+            // из-под них.
+            if (title != null) title.text = string.Empty;
 
             BuildCards(options);
         }
@@ -71,25 +75,16 @@ namespace WarfareSurvivor
 
             if (offer.Art != null)
             {
-                // Картинка — сама карточка. Подложку делаем белой, чтобы
-                // не красить рисунок, и растягиваем на всю карточку.
+                // Картинка И ЕСТЬ карточка — никаких подписей поверх.
+                //
+                // Подписи дублировали нарисованное: на рисунке крупно
+                // написано, что это за карточка, а мы писали то же самое
+                // сверху и снизу, да ещё поверх лица. Что именно даёт
+                // карточка, игрок читает с рисунка, а точные проценты
+                // ему в момент выбора не нужны.
                 background.sprite = offer.Art;
                 background.color = Color.white;
                 background.preserveAspect = true;
-
-                // Затемнение поверх картинки, но ПОД текстом: рисунки светлые
-                // и пёстрые, и белые буквы на них не читаются. Градиентом
-                // не делаем — хватает ровной вуали в нижней половине, где
-                // и стоит текст.
-                AddVeil(rect, new Vector2(0f, 0f), new Vector2(1f, 0.42f),
-                        new Color(0f, 0f, 0f, 0.72f));
-                AddVeil(rect, new Vector2(0f, 0.84f), new Vector2(1f, 1f),
-                        new Color(0f, 0f, 0f, 0.55f));
-
-                AddText(rect, offer.Title, 34, FontStyle.Bold,
-                        new Vector2(0f, 0.855f), new Vector2(1f, 0.995f));
-                AddText(rect, offer.Subtitle + "\n" + offer.Body, 22, FontStyle.Normal,
-                        new Vector2(0f, 0.02f), new Vector2(1f, 0.40f));
 
                 return go.GetComponent<Button>();
             }

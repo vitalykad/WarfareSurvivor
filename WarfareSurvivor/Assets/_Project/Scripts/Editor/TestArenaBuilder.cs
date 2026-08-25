@@ -795,13 +795,18 @@ namespace WarfareSurvivor.EditorTools
             var go = new GameObject("TierUpPanel", typeof(RectTransform), typeof(TierUpPanel));
             go.transform.SetParent(canvas.transform, false);
 
+            // Растягиваем САМ корень панели. Без этого он нулевого размера,
+            // и подложка, растянутая по нему, тоже выходит нулевой:
+            // затемнения на экране не появлялось вовсе, хотя объект был.
+            Stretch((RectTransform)go.transform);
+
             var backdrop = new GameObject("Backdrop", typeof(RectTransform), typeof(Image));
             var backdropRect = (RectTransform)backdrop.transform;
             backdropRect.SetParent(go.transform, false);
             Stretch(backdropRect);
             // Перехватывает касания: под окном выбора джойстик работать
             // не должен, иначе отряд уедет, пока игрок читает карточки.
-            backdrop.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.72f);
+            backdrop.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.86f);
 
             var title = CreateLabel(backdropRect, "Title", 56, TextAnchor.UpperCenter);
             var titleRect = (RectTransform)title.transform;
