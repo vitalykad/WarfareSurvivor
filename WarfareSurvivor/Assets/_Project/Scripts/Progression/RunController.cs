@@ -218,8 +218,14 @@ namespace WarfareSurvivor
             bool roomLeft = squad.MemberCount < config.squadSlotCap;
             if (roomLeft && Random.value < config.tierUpAddUnitChance)
             {
-                var klass = RandomClass();
-                if (klass != null) offers.Add(AddUnitOffer(klass));
+                // Раз уж пополнение выпало — предлагаем ВСЕ классы разом,
+                // а не один случайный.
+                //
+                // Пополнение и есть то самое решение, ради которого игра
+                // затевалась: из кого собран отряд. Показывать один случайный
+                // класс значит подменять выбор жребием — игрок не решает,
+                // кого взять, он берёт того, кого выпало.
+                foreach (var klass in AllClasses()) offers.Add(AddUnitOffer(klass));
             }
 
             AddUpgrades(offers);
@@ -227,10 +233,7 @@ namespace WarfareSurvivor
             // Улучшать некого и слот свободен — лучше предложить пополнение,
             // чем показать пустое окно.
             if (offers.Count == 0 && roomLeft)
-            {
-                var klass = RandomClass();
-                if (klass != null) offers.Add(AddUnitOffer(klass));
-            }
+                foreach (var klass in AllClasses()) offers.Add(AddUnitOffer(klass));
 
             return offers;
         }
@@ -313,14 +316,22 @@ namespace WarfareSurvivor
             return text.ToString();
         }
 
-        SurvivorClassSO RandomClass()
+        /// <summary>
+        /// Все классы, какие вообще бывают в отряде.
+        ///
+        /// Берутся из состава конфига, а не из строя: класс с нулевым
+        /// количеством на старте — это по-прежнему класс, которым отряд
+        /// можно расширить, и не предлагать его значит запереть игрока
+        /// в том составе, с которым он вышел.
+        /// </summary>
+        List<SurvivorClassSO> AllClasses()
         {
             var pool = new List<SurvivorClassSO>();
             if (config.squadComposition != null)
                 foreach (var entry in config.squadComposition)
                     if (entry.Class != null && !pool.Contains(entry.Class)) pool.Add(entry.Class);
 
-            return pool.Count == 0 ? null : pool[Random.Range(0, pool.Count)];
+            return pool;
         }
 
         int CostOf(int taken) =>
