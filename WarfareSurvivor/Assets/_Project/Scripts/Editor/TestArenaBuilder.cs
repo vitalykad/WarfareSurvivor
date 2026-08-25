@@ -93,7 +93,7 @@ namespace WarfareSurvivor.EditorTools
             CreateRuins(config);
 
             var squad = CreateSquad(config);
-            var camera = CreateCamera(squad.transform);
+            var camera = CreateCamera(squad.transform, config);
             var joystick = CreateUI();
             if (!gameplay) CreateFrameMeter(config);
 
@@ -126,6 +126,8 @@ namespace WarfareSurvivor.EditorTools
             Wire(spawner, "squad", squad);
 
             if (gameplay) CreateRun(config, squad, spawner);
+
+            VerifyConfigWiring(config);
 
             EditorSceneManager.MarkSceneDirty(scene);
 
@@ -505,7 +507,7 @@ namespace WarfareSurvivor.EditorTools
             return go.AddComponent<SquadController>();
         }
 
-        static GameObject CreateCamera(Transform target)
+        static GameObject CreateCamera(Transform target, ArenaConfig config)
         {
             var go = new GameObject("Main Camera");
             go.tag = "MainCamera";
@@ -517,7 +519,10 @@ namespace WarfareSurvivor.EditorTools
 
             var follow = go.AddComponent<IsoCameraFollow>();
             Wire(follow, "target", target);
-            Wire(follow, "config", AssetDatabase.LoadAssetAtPath<ArenaConfig>(ConfigPath));
+            // Конфиг берём ТОТ, которым собирается сцена, а не по жёсткому
+            // пути. Пока путь был зашит, камера забега читала конфиг стенда,
+            // и правка дистанции в конфиге забега не давала ничего.
+            Wire(follow, nameof(config), config);
             return go;
         }
 
@@ -863,6 +868,45 @@ namespace WarfareSurvivor.EditorTools
             shadow.effectColor = new Color(0f, 0f, 0f, 0.8f);
             shadow.effectDistance = new Vector2(2f, -2f);
             return text;
+        }
+
+        /// <summary>
+        /// Проверяет, что ВСЕ компоненты сцены смотрят в один конфиг.
+        ///
+        /// Ставится после того, как камера забега месяц читала конфиг стенда:
+        /// путь к ассету был зашит в её создание, правки в конфиге забега
+        /// не давали ничего, и понять это со стороны было невозможно —
+        /// поле-то заполнено, просто не тем.
+        ///
+        /// Проверка дешёвая и разовая, а ловит целый класс ошибок: любую
+        /// забытую ссылку на чужой ассет.
+        /// </summary>
+        static void VerifyConfigWiring(ArenaConfig expected)
+        {
+            var flags = System.Reflection.BindingFlags.Instance |
+                        System.Reflection.BindingFlags.NonPublic |
+                        System.Reflection.BindingFlags.Public;
+
+            int wrong = 0;
+            foreach (var behaviour in Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+            {
+                if (behaviour == null) continue;
+
+                foreach (var field in behaviour.GetType().GetFields(flags))
+                {
+                    if (field.FieldType != typeof(ArenaConfig)) continue;
+
+                    var value = field.GetValue(behaviour) as ArenaConfig;
+                    if (value == expected) continue;
+
+                    wrong++;
+                    Debug.LogError($"[Сборка] {behaviour.GetType().Name}.{field.Name} смотрит " +
+                                   $"в «{(value != null ? value.name : "пусто")}», а сцена собрана " +
+                                   $"на «{expected.name}»", behaviour);
+                }
+            }
+
+            if (wrong == 0) Debug.Log($"[Сборка] Все компоненты читают {expected.name}");
         }
 
         static void CreateEventSystem()

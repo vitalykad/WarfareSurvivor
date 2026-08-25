@@ -15,7 +15,9 @@ MonoBehaviour:
   cameraPitch: 58
   cameraYaw: 0
   cameraFieldOfView: 28
-  cameraDistance: 55
+  cameraDistance: 11
+  cameraDistancePerMember: 1.6
+  cameraDistanceMax: 75
   cameraNearClip: 5
   cameraFarClip: 140
   cameraSmoothTime: 0.18
