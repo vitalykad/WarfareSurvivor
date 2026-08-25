@@ -14,6 +14,7 @@ Survivors-like про **группу выживших**, а не про одно
 - Выводы прошлого проекта про толпу: [CROWD_PROJECT_LESSONS.md](SwarmSurvivorExpirience/CROWD_PROJECT_LESSONS.md),
   [VISUAL_OPTIMIZATION.md](SwarmSurvivorExpirience/VISUAL_OPTIMIZATION.md)
 - Замеры этого проекта на устройстве: [PERFORMANCE.md](PERFORMANCE.md)
+- Что собрано и работает прямо сейчас: [GAMEPLAY.md](GAMEPLAY.md)
 
 ---
 
