@@ -16,6 +16,8 @@ MonoBehaviour:
   cameraYaw: 0
   cameraFieldOfView: 28
   cameraDistance: 55
+  cameraDistancePerMember: 1.6
+  cameraDistanceMax: 75
   cameraNearClip: 5
   cameraFarClip: 140
   cameraSmoothTime: 0.18
@@ -58,6 +60,8 @@ MonoBehaviour:
   zombieTierColorHigh: {r: 0.95, g: 0.88, b: 0.25, a: 1}
   zombieScaleLow: 0.9
   zombieScaleHigh: 1.5
+  showMeleeRange: 0
+  meleeRangeFade: 0.35
   zombieCorpseTime: 2.5
   useBakedZombies: 1
   bakedZombies: {fileID: 11400000, guid: 65a969dcc580044ef8b8b060dddc3dc8, type: 2}
@@ -107,11 +111,6 @@ MonoBehaviour:
   simulateZombies: 1
   simulateSurvivors: 1
   updateBakedFrames: 1
-  runSquadStart:
-  - Class: {fileID: 11400000, guid: 626208014da524a00b5ee0123e9acebc, type: 2}
-    Count: 4
-  - Class: {fileID: 11400000, guid: d7934318956704e09acd034c08018278, type: 2}
-    Count: 2
   runWaves:
   - Name: "\u041F\u0435\u0440\u0432\u0430\u044F"
     Duration: 45
@@ -143,6 +142,10 @@ MonoBehaviour:
   tierUpCostBase: 10
   tierUpCostGrowth: 1.4
   tierUpOptions: 3
+  sparkScatterMin: 3
+  sparkScatterMax: 6
+  sparkScatterTime: 0.4
+  sparkScatterHop: 1.2
   sparkAttractRadius: 6
   sparkPickupRadius: 1.2
   sparkFlySpeed: 12

@@ -60,7 +60,7 @@ MonoBehaviour:
   zombieTierColorHigh: {r: 0.95, g: 0.88, b: 0.25, a: 1}
   zombieScaleLow: 0.9
   zombieScaleHigh: 1.5
-  showMeleeRange: 1
+  showMeleeRange: 0
   meleeRangeFade: 0.35
   zombieCorpseTime: 2.5
   useBakedZombies: 1
