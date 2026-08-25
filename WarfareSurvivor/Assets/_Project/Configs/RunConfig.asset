@@ -73,11 +73,12 @@ MonoBehaviour:
   ruinScaleMin: 0.22
   ruinScaleMax: 0.55
   ruinSeed: 20260821
-  firstSpawnDelay: 2
+  firstSpawnDelay: 0.2
   spawnInterval: 1.3
   groupSizeMin: 5
   groupSizeMax: 9
   spawnRadius: 14
+  spawnMargin: 4
   groupAngleSpread: 25
   maxAliveZombies: 200
   tierUnlockInterval: 25
@@ -143,6 +144,7 @@ MonoBehaviour:
   tierUpCostBase: 5
   tierUpCostGrowth: 1.15
   tierUpOptions: 3
+  tierUpAddUnitChance: 0.5
   tierUpDamageStep: 0.2
   tierUpHealthStep: 0.25
   sparkScatterMin: 3

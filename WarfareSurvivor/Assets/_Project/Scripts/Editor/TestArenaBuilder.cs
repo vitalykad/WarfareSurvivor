@@ -132,6 +132,7 @@ namespace WarfareSurvivor.EditorTools
             var spawner = new GameObject("ZombieSpawner").AddComponent<ZombieSpawner>();
             Wire(spawner, nameof(config), config);
             WireZombiePrefabs(spawner);
+            Wire(spawner, "view", camera.GetComponent<Camera>());
             Wire(spawner, "squad", squad);
 
             if (gameplay) CreateRun(config, squad, spawner);

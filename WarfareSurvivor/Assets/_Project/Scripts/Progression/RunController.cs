@@ -208,34 +208,62 @@ namespace WarfareSurvivor
         {
             var offers = new List<TierUpOffer>(3);
 
-            if (squad.MemberCount < config.squadSlotCap)
+            // Пополнение попадается НЕ ВСЕГДА.
+            //
+            // Пока оно было в каждом наборе, выбор сводился к «взять бойца
+            // или улучшить», и вложиться сразу в двух разных бойцов игрок
+            // не мог. Через раз пополнения нет, и набор целиком уходит
+            // под улучшения — тогда решение становится «кого именно
+            // усиливать».
+            bool roomLeft = squad.MemberCount < config.squadSlotCap;
+            if (roomLeft && Random.value < config.tierUpAddUnitChance)
             {
                 var klass = RandomClass();
                 if (klass != null) offers.Add(AddUnitOffer(klass));
             }
 
-            // Улучшения РАЗНЫЕ, а не два случайных: выпадали две одинаковые
-            // карточки «+20% урона», и выбор из трёх превращался в выбор
-            // из двух.
-            //
-            // Класс для улучшения берётся из ПРИСУТСТВУЮЩИХ в отряде:
-            // предлагать усиление револьвера тому, у кого ни одного стрелка,
-            // значит тратить карточку впустую.
-            int upgrades = Mathf.Max(1, config.tierUpOptions - offers.Count);
-            var kinds = new List<OfferKind> { OfferKind.Damage, OfferKind.Health };
-            if (Random.value < 0.5f) kinds.Reverse();
+            AddUpgrades(offers);
 
-            for (int i = 0; i < upgrades; i++)
+            // Улучшать некого и слот свободен — лучше предложить пополнение,
+            // чем показать пустое окно.
+            if (offers.Count == 0 && roomLeft)
             {
-                var target = PresentClass();
-                if (target == null) break;
-
-                offers.Add(kinds[i % kinds.Count] == OfferKind.Damage
-                    ? DamageOffer(target)
-                    : HealthOffer(target));
+                var klass = RandomClass();
+                if (klass != null) offers.Add(AddUnitOffer(klass));
             }
 
             return offers;
+        }
+
+        /// <summary>
+        /// Добирает набор улучшениями, не повторяя одно и то же.
+        ///
+        /// Пара «что усилить и у кого» должна быть уникальной: две карточки
+        /// «+20% урона фермеру» — это выбор из одного варианта, притворяющийся
+        /// выбором из двух. Если различных пар меньше, чем мест, карточек
+        /// будет меньше: лучше две настоящих, чем три с обманкой.
+        /// </summary>
+        void AddUpgrades(List<TierUpOffer> offers)
+        {
+            var pool = new List<TierUpOffer>();
+
+            foreach (var member in squad.Members)
+            {
+                if (member == null || member.Class == null) continue;
+                if (pool.Exists(o => o.Class == member.Class)) continue;
+
+                pool.Add(DamageOffer(member.Class));
+                pool.Add(HealthOffer(member.Class));
+            }
+
+            for (int i = pool.Count - 1; i > 0; i--)
+            {
+                int j = Random.Range(0, i + 1);
+                (pool[i], pool[j]) = (pool[j], pool[i]);
+            }
+
+            int take = Mathf.Min(pool.Count, Mathf.Max(0, config.tierUpOptions - offers.Count));
+            for (int i = 0; i < take; i++) offers.Add(pool[i]);
         }
 
         TierUpOffer AddUnitOffer(SurvivorClassSO klass) => new TierUpOffer
@@ -269,20 +297,6 @@ namespace WarfareSurvivor
             Body = "Живучести прибавляется сразу,\nа не только новичкам.\n\nсейчас " +
                    Percent(squad.HealthBonusFor(klass) - 1f) + " сверх базового"
         };
-
-        /// <summary>
-        /// Случайный класс ИЗ ТЕХ, кто есть в строю. Улучшать некого —
-        /// возвращает пусто, и карточка не появляется.
-        /// </summary>
-        SurvivorClassSO PresentClass()
-        {
-            var pool = new List<SurvivorClassSO>();
-            foreach (var member in squad.Members)
-                if (member != null && member.Class != null && !pool.Contains(member.Class))
-                    pool.Add(member.Class);
-
-            return pool.Count == 0 ? null : pool[Random.Range(0, pool.Count)];
-        }
 
         static string Percent(float value) => Mathf.RoundToInt(value * 100f) + "%";
 

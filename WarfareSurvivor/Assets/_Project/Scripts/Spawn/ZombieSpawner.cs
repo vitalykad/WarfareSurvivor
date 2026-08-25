@@ -21,6 +21,10 @@ namespace WarfareSurvivor
 
         [SerializeField] SquadController squad;
 
+        [SerializeField, Tooltip("Камера: по её кадру считается, где начинается " +
+                                 "«за экраном».")]
+        Camera view;
+
         /// <summary>
         /// Один вид зомби со всем своим хозяйством.
         ///
@@ -176,6 +180,7 @@ namespace WarfareSurvivor
 
             int size = Mathf.Min(room, Random.Range(groupMin, groupMax + 1));
             float baseAngle = Random.value * 360f;
+            float radius = OffscreenRadius();
             int minTier = wave?.MinTier ?? MinTier();
             int maxTier = wave?.MaxTier ?? UnlockedTier();
             if (maxTier < minTier) maxTier = minTier;
@@ -183,7 +188,7 @@ namespace WarfareSurvivor
             for (int i = 0; i < size; i++)
             {
                 float angle = baseAngle + Random.Range(-config.groupAngleSpread, config.groupAngleSpread);
-                var offset = Quaternion.Euler(0f, angle, 0f) * Vector3.forward * config.spawnRadius;
+                var offset = Quaternion.Euler(0f, angle, 0f) * Vector3.forward * radius;
                 var position = SquadCenter() + offset;
 
                 int tier = Random.Range(minTier, maxTier + 1);
@@ -206,6 +211,52 @@ namespace WarfareSurvivor
         }
 
         Vector3 SquadCenter() => squad != null ? squad.transform.position : Vector3.zero;
+
+        /// <summary>Углы кадра. Держим массив, чтобы не сорить в куче каждый спавн.</summary>
+        static readonly Vector3[] Corners =
+        {
+            new Vector3(0f, 0f, 0f), new Vector3(1f, 0f, 0f),
+            new Vector3(0f, 1f, 0f), new Vector3(1f, 1f, 0f)
+        };
+
+        /// <summary>
+        /// Радиус, на котором зомби заведомо за краем экрана.
+        ///
+        /// Считается ПО КАДРУ, а не берётся числом из конфига. Камера
+        /// отъезжает по мере роста отряда, и постоянный радиус рано или
+        /// поздно оказывается внутри кадра — зомби появляются из воздуха
+        /// на глазах у игрока, и волна перестаёт читаться как приход
+        /// откуда-то извне.
+        ///
+        /// Берём самый дальний угол кадра на земле и добавляем запас.
+        /// Луч через верхние углы при пологой камере может уйти выше
+        /// горизонта и землю не встретить — тогда считаем, что видно
+        /// далеко, и держим тройной радиус.
+        /// </summary>
+        float OffscreenRadius()
+        {
+            float fallback = Mathf.Max(1f, config.spawnRadius);
+            if (view == null) return fallback;
+
+            var center = SquadCenter();
+            float farthest = 0f;
+
+            for (int i = 0; i < Corners.Length; i++)
+            {
+                var ray = view.ViewportPointToRay(Corners[i]);
+
+                if (Mathf.Abs(ray.direction.y) < 0.0001f) { farthest = Mathf.Max(farthest, fallback * 3f); continue; }
+
+                float t = -ray.origin.y / ray.direction.y;
+                if (t <= 0f) { farthest = Mathf.Max(farthest, fallback * 3f); continue; }
+
+                var hit = ray.origin + ray.direction * t;
+                float distance = Vector2.Distance(new Vector2(hit.x, hit.z), new Vector2(center.x, center.z));
+                if (distance > farthest) farthest = distance;
+            }
+
+            return Mathf.Max(fallback, farthest + Mathf.Max(0f, config.spawnMargin));
+        }
 
         void Spawn(Vector3 position, int tier)
         {
