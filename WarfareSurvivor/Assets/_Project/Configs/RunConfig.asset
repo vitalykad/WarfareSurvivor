@@ -33,6 +33,8 @@ MonoBehaviour:
     Count: 0
   - Class: {fileID: 11400000, guid: 626208014da524a00b5ee0123e9acebc, type: 2}
     Count: 8
+  - Class: {fileID: 11400000, guid: b918375cf7edc44c78c84a24a1759210, type: 2}
+    Count: 1
   squadSpeed: 5.5
   formationRingSpacingMin: 1.5
   formationRingSpacingStep: 1
@@ -89,6 +91,14 @@ MonoBehaviour:
   popupLifetime: 0.7
   popupRiseSpeed: 1.8
   popupScale: 0.14
+  maxHealPluses: 24
+  healPlusLifetime: 0.9
+  healPlusRiseSpeed: 2.2
+  healPlusSway: 0.5
+  healPlusScale: 0.85
+  healPlusColor: {r: 0.35, g: 1, b: 0.5, a: 1}
+  healPlusBoost: 1.6
+  healPlusHeight: 2.2
   tracersEnabled: 1
   tracerLife: 0.11
   tracerDashMeters: 2.5
@@ -115,8 +125,8 @@ MonoBehaviour:
   simulateSurvivors: 1
   updateBakedFrames: 1
   uiFont: {fileID: 12800000, guid: e39bb5b09f9274bd7ae7f47a28aaf8f2, type: 3}
-  musicOn: 1
-  sfxOn: 1
+  musicOn: 0
+  sfxOn: 0
   musicVolume: 0.45
   sfxVolume: 0.8
   sfxMinInterval: 0.05

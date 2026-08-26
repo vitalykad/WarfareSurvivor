@@ -72,9 +72,7 @@ namespace WarfareSurvivor.EditorTools
 
             LoadOrCreateConfig();
             if (gameplay) EnsureRunConfig();
-            PrepareSurvivorPrefab(PolicePrefab);
-            PrepareSurvivorPrefab(SouthPolicePrefab);
-            PrepareSurvivorPrefab(FarmerPrefab);
+            foreach (var survivorPath in SurvivorPrefabs()) PrepareSurvivorPrefab(survivorPath);
             PrepareZombiePrefab();
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -299,6 +297,31 @@ namespace WarfareSurvivor.EditorTools
                 PrefabUtility.SaveAsPrefabAsset(root, path);
                 PrefabUtility.UnloadPrefabContents(root);
             }
+        }
+
+        /// <summary>
+        /// Все префабы бойцов, какие есть в проекте.
+        ///
+        /// По папке, а не списком. Перечисление здесь уже подвело: медик
+        /// собрался, но в список не попал, компонентов не получил — и отряд
+        /// вышел без него, отругавшись «нет префаба с компонентом Survivor».
+        /// Ровно та же причина, по которой по папке ищутся и зомби.
+        /// </summary>
+        static List<string> SurvivorPrefabs()
+        {
+            var paths = new List<string>();
+
+            foreach (var guid in AssetDatabase.FindAssets("t:Prefab", new[] { "Assets/_Project/Prefabs/Survivors" }))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                var go = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                if (go == null) continue;
+                if (go.GetComponentInChildren<SkinnedMeshRenderer>(true) == null) continue;
+                paths.Add(path);
+            }
+
+            paths.Sort(System.StringComparer.Ordinal);
+            return paths;
         }
 
         /// <summary>

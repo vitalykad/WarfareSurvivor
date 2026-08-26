@@ -28,6 +28,12 @@ namespace WarfareSurvivor.EditorTools
         const string ZombieController = AnimatorsDir + "/Monster_Zombie.controller";
         const string PolicePrefab = SurvivorsDir + "/Survivor_Police.prefab";
         const string SouthPolicePrefab = SurvivorsDir + "/Survivor_SouthPoliceman.prefab";
+
+        // Медик. Контроллер общий с полицейским: она не атакует, ей нужны
+        // только покой, бег и падение — всё это в нём уже есть, а анимация
+        // гуманоидная и переносится на её скелет сама.
+        const string MedicModel = "Assets/Models/Characters/Medic/Medic.fbx";
+        public const string MedicPrefab = SurvivorsDir + "/Survivor_Medic.prefab";
         const string FarmerController = AnimatorsDir + "/Survivor_ShovelFarmer.controller";
         const string FarmerPrefab = SurvivorsDir + "/Survivor_ShovelFarmer.prefab";
         const string UpperBodyMask = AnimatorsDir + "/UpperBody.mask";
@@ -71,7 +77,8 @@ namespace WarfareSurvivor.EditorTools
             EditorApplication.delayCall += () =>
             {
                 if (EditorApplication.isCompiling || EditorApplication.isUpdating) return;
-                if (AssetDatabase.LoadAssetAtPath<GameObject>(PolicePrefab) != null &&
+                if (AssetDatabase.LoadAssetAtPath<GameObject>(MedicPrefab) != null &&
+                    AssetDatabase.LoadAssetAtPath<GameObject>(PolicePrefab) != null &&
                     AssetDatabase.LoadAssetAtPath<GameObject>(SouthPolicePrefab) != null &&
                     AssetDatabase.LoadAssetAtPath<GameObject>(FarmerPrefab) != null &&
                     AssetDatabase.LoadAssetAtPath<GameObject>(ZombiePrefab) != null)
@@ -140,6 +147,10 @@ namespace WarfareSurvivor.EditorTools
             // Второй облик того же класса. Контроллер общий: клипы те же,
             // риг тот же — отличается только модель.
             BuildPrefab(SouthPoliceModel, PoliceController, SouthPolicePrefab, force);
+
+            // Медик. Оружия ей не вешаем — она не боец, и револьвер в руке
+            // противоречил бы и роли, и месту в центре строя.
+            BuildPrefab(MedicModel, PoliceController, MedicPrefab, force);
         }
 
         static void BuildFarmer(Dictionary<string, AnimationClip> clips, bool force)

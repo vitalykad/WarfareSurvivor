@@ -415,7 +415,13 @@ namespace WarfareSurvivor
             var pool = new List<SurvivorClassSO>();
             if (config.squadComposition != null)
                 foreach (var entry in config.squadComposition)
-                    if (entry.Class != null && !pool.Contains(entry.Class)) pool.Add(entry.Class);
+                {
+                    // Класс без нарисованных карточек в набор не идёт: пустая
+                    // картинка читается как поломка, а не как новый боец.
+                    // Взять такой класс можно только стартовым составом.
+                    if (entry.Class == null || !entry.Class.offerInTierUp) continue;
+                    if (!pool.Contains(entry.Class)) pool.Add(entry.Class);
+                }
 
             return pool;
         }

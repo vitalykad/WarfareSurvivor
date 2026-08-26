@@ -65,8 +65,18 @@ namespace WarfareSurvivor
         float nextStanceChangeTime;
         Vector3 lastPosition;
 
+        /// <summary>Время следующего лечения. Копится, пока лечить некого.</summary>
+        float nextHealTime;
+
         /// <summary>Точка строя, которую держит этот боец. Ставит SquadController.</summary>
         public Vector3 SlotPosition { get; set; }
+
+        /// <summary>
+        /// Кого этот медик взял на себя. Читается ЧУЖИМИ медиками: пока боец
+        /// числится за одним, второй его не берёт и уходит к следующему
+        /// по тяжести.
+        /// </summary>
+        public Survivor HealTarget { get; private set; }
 
         public Health Health => health;
         public SurvivorClassSO Class => klass;
@@ -201,6 +211,7 @@ namespace WarfareSurvivor
             if (!config.simulateSurvivors) return;
 
             Move();
+            Heal();
             UpdateTarget();
             UpdateStance();
             Aim();
@@ -410,6 +421,85 @@ namespace WarfareSurvivor
                 transform.rotation,
                 Quaternion.LookRotation(direction, Vector3.up),
                 config.bodyTurnSpeed * Time.deltaTime);
+        }
+
+        // --- лечение ---------------------------------------------------------
+
+        /// <summary>
+        /// Медик доливает здоровье самому тяжёлому из тех, кем ещё никто
+        /// не занят.
+        ///
+        /// Готовность КОПИТСЯ: пока в отряде все целы, отсчёт не идёт. Иначе
+        /// медик, простоявший спокойную минуту, встречал бы первый же наплыв
+        /// с неостывшим отсчётом — то есть простаивал ровно в тот момент,
+        /// ради которого его и берут.
+        /// </summary>
+        void Heal()
+        {
+            if (!klass.Heals) return;
+            if (Time.time < nextHealTime) return;
+
+            var patient = FindPatient();
+            if (patient == null)
+            {
+                // Лечить некого — снимаем заявку, чтобы не держать целого
+                // бойца занятым перед чужими медиками.
+                HealTarget = null;
+                return;
+            }
+
+            HealTarget = patient;
+            nextHealTime = Time.time + Mathf.Max(0.05f, klass.healInterval);
+
+            float healed = patient.health.Heal(klass.healPerTick);
+            if (healed <= 0f) return;
+
+            HealPlus.Spawn(patient.transform.position + Vector3.up * config.healPlusHeight);
+        }
+
+        /// <summary>
+        /// Самый тяжёлый из свободных.
+        ///
+        /// Тяжесть считается ДОЛЕЙ здоровья, а не остатком: у классов разные
+        /// потолки, и разные бонусы живучести за забег. Боец с сорока очками
+        /// из двухсот ближе к смерти, чем боец с сорока из пятидесяти,
+        /// хотя остаток у них одинаковый.
+        /// </summary>
+        Survivor FindPatient()
+        {
+            Survivor best = null;
+            float lowest = 1f;
+
+            var all = Registry.Survivors;
+            for (int i = 0; i < all.Count; i++)
+            {
+                var other = all[i];
+                if (other == null || other.health == null || other.health.IsDead) continue;
+
+                float fraction = other.health.Fraction;
+                if (fraction >= 1f) continue;      // целого лечить нечем
+                if (fraction >= lowest) continue;
+                if (ClaimedByOther(other)) continue;
+
+                best = other;
+                lowest = fraction;
+            }
+
+            return best;
+        }
+
+        /// <summary>Этим бойцом уже занят другой медик?</summary>
+        bool ClaimedByOther(Survivor patient)
+        {
+            var all = Registry.Survivors;
+            for (int i = 0; i < all.Count; i++)
+            {
+                var medic = all[i];
+                if (medic == null || medic == this) continue;
+                if (medic.HealTarget == patient) return true;
+            }
+
+            return false;
         }
 
         // --- атака -----------------------------------------------------------

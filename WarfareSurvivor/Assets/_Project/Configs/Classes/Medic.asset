@@ -10,24 +10,24 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 047e0fb614137482896a8550eead25b4, type: 3}
-  m_Name: Police
+  m_Name: Medic
   m_EditorClassIdentifier: Assembly-CSharp::WarfareSurvivor.SurvivorClassSO
-  displayName: "\u041F\u043E\u043B\u0438\u0446\u0435\u0439\u0441\u043A\u0438\u0439"
-  prefab: {fileID: 4004322837743000134, guid: eb2f07e81b79c413196e2dceb3f27334, type: 3}
-  role: 1
-  maxHealth: 100
-  attackRange: 9
-  attackInterval: 0.5
-  damage: 10
+  displayName: "\u041C\u0435\u0434\u0438\u043A"
+  prefab: {fileID: 1195767931321094266, guid: 14418f8b0be524b5ba9270b5effbae90, type: 3}
+  role: 0
+  maxHealth: 90
+  attackRange: 0
+  attackInterval: 0.9
+  damage: 0
   knockbackDistance: 0
   attackHitTime: 0.5
   knockbackDuration: 0.25
-  healPerTick: 0
-  healInterval: 2.5
-  offerInTierUp: 1
-  cardAddUnit: {fileID: 21300000, guid: 5b39b4d77d2c549b19c011e1766b618d, type: 3}
-  cardDamage: {fileID: 21300000, guid: ee9333033c1554982935528262585e36, type: 3}
-  cardHealth: {fileID: 21300000, guid: 81864073426c94512980ad09c939c64c, type: 3}
+  healPerTick: 15
+  healInterval: 2
+  offerInTierUp: 0
+  cardAddUnit: {fileID: 0}
+  cardDamage: {fileID: 0}
+  cardHealth: {fileID: 0}
   showAttackArc: 0
   arcDegrees: 140
   arcInner: 0.74

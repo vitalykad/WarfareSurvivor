@@ -15,6 +15,9 @@ namespace WarfareSurvivor
         public event Action<float, Vector3> Damaged;
         public event Action Died;
 
+        /// <summary>Сколько здоровья долили. Ноль сюда не приходит.</summary>
+        public event Action<float> Healed;
+
         /// <summary>
         /// Полный сброс состояния — вызывается пулом при выдаче объекта.
         /// Если не обнулять здесь, здоровье прошлого жильца протекает
@@ -40,6 +43,22 @@ namespace WarfareSurvivor
             float added = Max * (multiplier - 1f);
             Max += added;
             Current = Mathf.Min(Max, Current + added);
+        }
+
+        /// <summary>
+        /// Долить здоровья, но не выше потолка. Возвращает, сколько ДЕЙСТВИТЕЛЬНО
+        /// долилось: у целого это ноль, и по нему медик понимает, что лечить
+        /// тут нечего, а эффект показывать не за что.
+        /// </summary>
+        public float Heal(float amount)
+        {
+            if (IsDead || amount <= 0f) return 0f;
+
+            float before = Current;
+            Current = Mathf.Min(Max, Current + amount);
+            float healed = Current - before;
+            if (healed > 0f) Healed?.Invoke(healed);
+            return healed;
         }
 
         public void TakeDamage(float amount, Vector3 point)

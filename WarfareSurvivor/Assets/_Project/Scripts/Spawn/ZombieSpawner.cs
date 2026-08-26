@@ -64,6 +64,7 @@ namespace WarfareSurvivor
             pool = new GameObject("ZombiePool").transform;
             BuildTierMaterials();
             DamagePopup.Configure(config, Camera.main);
+            HealPlus.Configure(config, Camera.main);
         }
 
         /// <summary>

@@ -16,12 +16,15 @@ MonoBehaviour:
   prefab: {fileID: 7514476081002296282, guid: eb7c8380149cb49e1b3a8bbd54bb35b0, type: 3}
   role: 2
   maxHealth: 150
-  attackRange: 4
+  attackRange: 3.5
   attackInterval: 0.5
   damage: 25
   knockbackDistance: 3
   attackHitTime: 0.5
   knockbackDuration: 0.22
+  healPerTick: 0
+  healInterval: 2.5
+  offerInTierUp: 1
   cardAddUnit: {fileID: 21300000, guid: 82b43898b42004e018f82e20e6326eae, type: 3}
   cardDamage: {fileID: 21300000, guid: 235437a1544eb4dfb9f16793d4ded63c, type: 3}
   cardHealth: {fileID: 21300000, guid: 73c85f182e8b04172a870972ef4f4b76, type: 3}
