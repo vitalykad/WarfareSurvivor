@@ -316,6 +316,12 @@ namespace WarfareSurvivor
             int roleIndex = 0;
             int cursor = 0;
 
+            // Сколько ролей вообще в строю — нужно ЗАРАНЕЕ: простор
+            // отмеряется от внешнего кольца внутрь, а не наоборот.
+            int rolesPresent = 0;
+            for (int i = 0; i < living.Count; i++)
+                if (i == 0 || living[i].Class.role != living[i - 1].Class.role) rolesPresent++;
+
             while (cursor < living.Count)
             {
                 // living отсортирован по роли, поэтому одна роль — один отрезок.
@@ -323,7 +329,20 @@ namespace WarfareSurvivor
                 int count = 0;
                 while (cursor + count < living.Count && living[cursor + count].Class.role == role) count++;
 
-                float spacing = (config.formationRingSpacingMin + config.formationRingSpacingStep * roleIndex) * diameter;
+                // Простор считается ОТ ВНЕШНЕГО КОЛЬЦА ВНУТРЬ: самый плотный
+                // строй у тех, кто снаружи.
+                //
+                // Раньше было наоборот, и это разваливало строй: ближний бой
+                // всегда снаружи, а значит при всех трёх классах получал
+                // 3.5 диаметра на соседа вместо 1.5 — впятеро больше площади
+                // на бойца. Отряд выглядел не строем, а горсткой рассыпанных
+                // по полю людей. Между тем ближний бой — это стена, которую
+                // враг встречает первой, и стоять он должен плечом к плечу.
+                //
+                // Внутренним же кольцам простор не мешает: там медики
+                // и стрелки, их мало, и радиус от спейсинга почти не зависит.
+                int fromOutside = Mathf.Max(0, rolesPresent - 1 - roleIndex);
+                float spacing = (config.formationRingSpacingMin + config.formationRingSpacingStep * fromOutside) * diameter;
 
                 // Плотность задаём площадью на бойца — тогда круг заполняется
                 // равномерно, без разрежения к краю или сгущения в центре.

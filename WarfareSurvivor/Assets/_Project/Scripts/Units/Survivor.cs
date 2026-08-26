@@ -454,7 +454,7 @@ namespace WarfareSurvivor
             float healed = patient.health.Heal(klass.healPerTick);
             if (healed <= 0f) return;
 
-            HealPlus.Spawn(patient.transform.position + Vector3.up * config.healPlusHeight);
+            HealPlus.Burst(patient.transform.position + Vector3.up * config.healPlusHeight);
         }
 
         /// <summary>

@@ -31,6 +31,7 @@ namespace WarfareSurvivor
         float bornTime;
         float dieTime;
         float wobble;
+        float sizeScale = 1f;
 
         public static void Configure(ArenaConfig cfg, Camera camera)
         {
@@ -44,7 +45,39 @@ namespace WarfareSurvivor
             }
         }
 
-        public static void Spawn(Vector3 position)
+        /// <summary>
+        /// Пачка плюсиков над вылеченным.
+        ///
+        /// Пачкой, а не поштучно: один плюсик читается как одиночная цифра
+        /// урона, то есть как разовое событие. Лечение же должно читаться
+        /// потоком — поэтому их несколько, они разлетаются и поднимаются
+        /// каскадом, с задержкой друг за другом.
+        /// </summary>
+        public static void Burst(Vector3 position)
+        {
+            if (config == null) return;
+
+            int count = Mathf.Max(1, config.healPlusPerHeal);
+            float spread = Mathf.Max(0f, config.healPlusSpread);
+
+            for (int i = 0; i < count; i++)
+            {
+                // По окружности с случайным поворотом, а не наугад: чистый
+                // случай сбивает плюсики в кучу и оставляет пустые стороны.
+                float angle = (i + Random.value * 0.6f) / count * Mathf.PI * 2f;
+                float reach = spread * Mathf.Lerp(0.35f, 1f, Random.value);
+
+                var offset = new Vector3(Mathf.Cos(angle) * reach,
+                                         (Random.value - 0.5f) * spread,
+                                         Mathf.Sin(angle) * reach);
+
+                Spawn(position + offset, i * Mathf.Max(0f, config.healPlusStagger));
+            }
+        }
+
+        public static void Spawn(Vector3 position) => Spawn(position, 0f);
+
+        public static void Spawn(Vector3 position, float delay)
         {
             if (config == null || root == null) return;
 
@@ -59,9 +92,13 @@ namespace WarfareSurvivor
                 material.SetFloat("_Boost", Mathf.Max(0.1f, config.healPlusBoost));
 
             plus.transform.position = position;
-            plus.transform.localScale = Vector3.one * Mathf.Max(0.05f, config.healPlusScale);
-            plus.bornTime = Time.time;
-            plus.dieTime = Time.time + Mathf.Max(0.1f, config.healPlusLifetime);
+
+            // Разнобой в размере: одинаковые плюсики читаются штампом.
+            plus.sizeScale = Random.Range(0.8f, 1.15f);
+            plus.transform.localScale = Vector3.zero;
+
+            plus.bornTime = Time.time + Mathf.Max(0f, delay);
+            plus.dieTime = plus.bornTime + Mathf.Max(0.1f, config.healPlusLifetime);
 
             // Разброс по фазе, чтобы два плюсика подряд не шли одной колонной.
             plus.wobble = Random.value * Mathf.PI * 2f;
@@ -241,6 +278,14 @@ namespace WarfareSurvivor
                 return;
             }
 
+            // Свой черёд ещё не настал — ждём невидимым. Так пачка
+            // поднимается каскадом, а не одной кляксой.
+            if (Time.time < bornTime)
+            {
+                transform.localScale = Vector3.zero;
+                return;
+            }
+
             float life = Mathf.InverseLerp(bornTime, dieTime, Time.time);
 
             // Взлёт с замедлением: рывок вверх в начале, зависание в конце.
@@ -266,7 +311,7 @@ namespace WarfareSurvivor
 
             // Чуть разрастается по мере подъёма: плюсик, гаснущий без роста,
             // выглядит выключенным, а не растворившимся.
-            transform.localScale = Vector3.one * Mathf.Max(0.05f, config.healPlusScale) * (1f + life * 0.35f);
+            transform.localScale = Vector3.one * Mathf.Max(0.05f, config.healPlusScale) * sizeScale * (1f + life * 0.35f);
         }
     }
 }

@@ -24,7 +24,7 @@ MonoBehaviour:
   knockbackDuration: 0.25
   healPerTick: 15
   healInterval: 2
-  offerInTierUp: 0
+  offerInTierUp: 1
   cardAddUnit: {fileID: 0}
   cardDamage: {fileID: 0}
   cardHealth: {fileID: 0}

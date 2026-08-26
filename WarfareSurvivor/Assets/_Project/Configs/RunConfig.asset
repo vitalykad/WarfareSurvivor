@@ -37,8 +37,8 @@ MonoBehaviour:
     Count: 1
   squadSpeed: 5.5
   formationRingSpacingMin: 1.5
-  formationRingSpacingStep: 1
-  formationRingGap: 1.4
+  formationRingSpacingStep: 0
+  formationRingGap: 0.6
   memberSpeedMultiplier: 1.6
   separationRadius: 2.2
   separationStrength: 3.5
@@ -99,6 +99,9 @@ MonoBehaviour:
   healPlusColor: {r: 0.35, g: 1, b: 0.5, a: 1}
   healPlusBoost: 1.6
   healPlusHeight: 2.2
+  healPlusPerHeal: 4
+  healPlusSpread: 0.45
+  healPlusStagger: 0.09
   tracersEnabled: 1
   tracerLife: 0.11
   tracerDashMeters: 2.5
