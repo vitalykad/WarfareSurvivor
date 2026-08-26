@@ -409,6 +409,7 @@ namespace WarfareSurvivor
 
         void Shoot()
         {
+            AudioDirector.PistolShot();
             TracerLayer.Fire(MuzzlePosition(), target.HitPoint);
             target.TakeHit(Damage);
         }
@@ -459,6 +460,10 @@ namespace WarfareSurvivor
             // Без запаса часть ударов уходила бы в пустоту по формальности.
             float reach = klass.attackRange * 1.35f;
             if (to.sqrMagnitude > reach * reach) return;
+
+            // Звук в момент ПОПАДАНИЯ, а не замаха: удар читается по нему,
+            // и рассинхрон со вспышкой урона слышен сразу.
+            AudioDirector.ShovelHit();
 
             victim.TakeHit(Damage);
             if (klass.knockbackDistance > 0f)

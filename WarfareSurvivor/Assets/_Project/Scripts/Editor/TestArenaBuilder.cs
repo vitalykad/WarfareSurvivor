@@ -108,6 +108,8 @@ namespace WarfareSurvivor.EditorTools
             // он тоже нужен, когда проверяешь цену графики на устройстве.
             if (config.showFrameMeter) CreateFrameMeter(config);
 
+            CreateAudio(config, camera);
+
             var frameRate = new GameObject("FrameRate").AddComponent<FrameRateController>();
             Wire(frameRate, nameof(config), config);
 
@@ -1208,6 +1210,52 @@ namespace WarfareSurvivor.EditorTools
             field.SetValue(spawner, prefabs.ToArray());
             EditorUtility.SetDirty(spawner);
             Debug.Log($"[Сборка] Видов зомби подключено: {prefabs.Count}");
+        }
+
+        /// <summary>
+        /// Распорядитель звука и слушатель.
+        ///
+        /// Слушатель вешаем на камеру: без него в сцене не слышно ничего,
+        /// а собранная кодом камера его не получает — Unity добавляет
+        /// слушателя только к камере, созданной через меню.
+        /// </summary>
+        static void CreateAudio(ArenaConfig config, GameObject camera)
+        {
+            if (camera != null && camera.GetComponent<AudioListener>() == null)
+                camera.AddComponent<AudioListener>();
+
+            var go = new GameObject("Audio");
+            var director = go.AddComponent<AudioDirector>();
+
+            Wire(director, nameof(config), config);
+            Wire(director, "music", FindClip("Assets/Music"));
+            Wire(director, "shovelHit", FindClip("Assets/SFX", "shovel"));
+            Wire(director, "pistolShot", FindClip("Assets/SFX", "pistol"));
+        }
+
+        /// <summary>
+        /// Ищет звук в папке по куску имени. По папке, а не по точному пути:
+        /// файл могут переименовать или заменить другим, и сборка сцены
+        /// не должна от этого ломаться.
+        /// </summary>
+        static AudioClip FindClip(string folder, string contains = null)
+        {
+            if (!AssetDatabase.IsValidFolder(folder)) return null;
+
+            foreach (var guid in AssetDatabase.FindAssets("t:AudioClip", new[] { folder }))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+
+                if (contains != null &&
+                    System.IO.Path.GetFileNameWithoutExtension(path)
+                        .IndexOf(contains, System.StringComparison.OrdinalIgnoreCase) < 0) continue;
+
+                return AssetDatabase.LoadAssetAtPath<AudioClip>(path);
+            }
+
+            Debug.LogWarning($"[Сборка] В {folder} не найден звук" +
+                             (contains != null ? $" с «{contains}» в имени" : ""));
+            return null;
         }
 
         static void CreateEventSystem()
