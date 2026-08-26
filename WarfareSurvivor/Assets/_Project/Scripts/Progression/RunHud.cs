@@ -14,14 +14,11 @@ namespace WarfareSurvivor
     public class RunHud : MonoBehaviour
     {
         [SerializeField] RunController run;
-        [SerializeField] SquadController squad;
         [SerializeField] Text waveLabel;
-        [SerializeField] Text squadLabel;
         [SerializeField] Image sparkFill;
         [SerializeField] Text sparkLabel;
         [SerializeField] Text banner;
 
-        int lastMembers = -1;
         int lastSparks = -1;
 
         /// <summary>Сколько осталось от толчка: 1 — только что подобрали, 0 — покой.</summary>
@@ -46,7 +43,6 @@ namespace WarfareSurvivor
 
             UpdateWave();
             UpdateSparks();
-            UpdateSquad();
             UpdateBanner();
         }
 
@@ -100,37 +96,6 @@ namespace WarfareSurvivor
             // как отклик на подбор, ровная синусоида — как мигание.
             float grow = 1f + pulseScale * pulse * pulse;
             sparkLabel.transform.localScale = sparkLabelScale * grow;
-        }
-
-        /// <summary>
-        /// Состав пересобираем только когда он изменился: строка собирается
-        /// склейкой, а кадр здесь дороже удобства.
-        /// </summary>
-        void UpdateSquad()
-        {
-            if (squadLabel == null || squad == null) return;
-            if (squad.MemberCount == lastMembers) return;
-            lastMembers = squad.MemberCount;
-
-            int melee = 0, ranged = 0, support = 0;
-            var members = squad.Members;
-            for (int i = 0; i < members.Count; i++)
-            {
-                if (members[i] == null || members[i].Class == null) continue;
-                switch (members[i].Class.role)
-                {
-                    case SquadRole.Melee: melee++; break;
-                    case SquadRole.Ranged: ranged++; break;
-                    default: support++; break;
-                }
-            }
-
-            var text = new System.Text.StringBuilder(48);
-            text.Append("ОТРЯД ").Append(squad.MemberCount);
-            if (melee > 0) text.Append("   лопаты ").Append(melee);
-            if (ranged > 0) text.Append("   стрелки ").Append(ranged);
-            if (support > 0) text.Append("   ядро ").Append(support);
-            squadLabel.text = text.ToString();
         }
 
         void UpdateBanner()

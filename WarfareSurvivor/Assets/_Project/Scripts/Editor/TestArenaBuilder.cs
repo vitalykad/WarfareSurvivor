@@ -706,7 +706,6 @@ namespace WarfareSurvivor.EditorTools
             Wire(run, "tierUp", panel);
 
             Wire(hud, "run", run);
-            Wire(hud, "squad", squad);
         }
 
         const string BottleTexture = "Assets/Sprites/BottleOfWater.png";
@@ -957,17 +956,11 @@ namespace WarfareSurvivor.EditorTools
             waveRect.anchorMin = new Vector2(0f, 1f);
             waveRect.anchorMax = new Vector2(1f, 1f);
             waveRect.pivot = new Vector2(0.5f, 1f);
-            waveRect.anchoredPosition = new Vector2(0f, -36f);
-            waveRect.sizeDelta = new Vector2(-40f, 60f);
 
-            var squadLabel = CreateLabel(parent, "Squad", 34, TextAnchor.UpperLeft);
-            var squadRect = (RectTransform)squadLabel.transform;
-            squadRect.anchorMin = squadRect.anchorMax = new Vector2(0f, 1f);
-            squadRect.pivot = new Vector2(0f, 1f);
-            // Ниже счётчика кадра: он занимает верхние строки, и состав
-            // на него налезал.
-            squadRect.anchoredPosition = new Vector2(28f, -300f);
-            squadRect.sizeDelta = new Vector2(700f, 50f);
+            // Ниже выреза камеры. На части телефонов «остров» занимает верх
+            // экрана, и подпись волны уходила прямо под него.
+            waveRect.anchoredPosition = new Vector2(0f, -190f);
+            waveRect.sizeDelta = new Vector2(-40f, 60f);
 
             // Полоска искр — над джойстиком, во всю ширину: это единственный
             // индикатор, за которым игрок следит по ходу боя.
@@ -1008,7 +1001,6 @@ namespace WarfareSurvivor.EditorTools
 
             var hud = go.GetComponent<RunHud>();
             Wire(hud, "waveLabel", wave);
-            Wire(hud, "squadLabel", squadLabel);
             Wire(hud, "sparkFill", fill);
             Wire(hud, "sparkLabel", sparkLabel);
             Wire(hud, "banner", banner);

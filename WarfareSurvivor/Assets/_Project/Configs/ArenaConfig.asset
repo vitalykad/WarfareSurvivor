@@ -105,6 +105,7 @@ MonoBehaviour:
   targetFrameRate: 60
   vSyncCount: 0
   showFrameMeter: 1
+  frameMeterDetailed: 1
   frameMeterLogInterval: 5
   frameMeterWindow: 1
   debugSweep: 0

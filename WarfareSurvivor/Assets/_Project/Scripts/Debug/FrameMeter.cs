@@ -133,8 +133,13 @@ namespace WarfareSurvivor
         {
             text.Clear();
 
-            text.Append(Mathf.RoundToInt(1000f / Mathf.Max(shownAverage, 0.01f))).Append(" fps   ")
-                .Append(shownAverage.ToString("F1")).Append(" мс сред\n");
+            text.Append(Mathf.RoundToInt(1000f / Mathf.Max(shownAverage, 0.01f))).Append(" fps");
+
+            // Короткий вид — только кадры. Остальное нужно на стенде замеров,
+            // а в забеге это пять строк поверх игры.
+            if (!config.frameMeterDetailed) return;
+
+            text.Append("   ").Append(shownAverage.ToString("F1")).Append(" мс сред\n");
 
             // Худший кадр — главная цифра. Целевой бюджет 16.7 мс.
             text.Append("худший ").Append(shownWorst.ToString("F1"))
