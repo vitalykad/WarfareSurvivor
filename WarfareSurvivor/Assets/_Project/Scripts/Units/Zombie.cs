@@ -66,8 +66,18 @@ namespace WarfareSurvivor
                                  "перестают быть событием.")]
         float spawnWeight = 1f;
 
+        [SerializeField, Tooltip("С какой секунды забега этот вид вообще " +
+                                 "появляется. Ноль — с самого начала. " +
+                                 "Крупный приходит в середине второй волны: " +
+                                 "первую игрок должен отстоять, разобравшись " +
+                                 "с обычными.")]
+        float unlockAfter;
+
         /// <summary>Как часто этот вид выпадает при спавне.</summary>
         public float SpawnWeight => Mathf.Max(0f, spawnWeight);
+
+        /// <summary>Секунда забега, раньше которой вид не спавнится.</summary>
+        public float UnlockAfter => Mathf.Max(0f, unlockAfter);
         Health health;
         Renderer[] renderers;
 

@@ -192,7 +192,6 @@ namespace WarfareSurvivor
 
             int size = Mathf.Min(room, Random.Range(groupMin, groupMax + 1));
             float baseAngle = Random.value * 360f;
-            float radius = OffscreenRadius();
             int minTier = wave?.MinTier ?? MinTier();
             int maxTier = wave?.MaxTier ?? UnlockedTier();
             if (maxTier < minTier) maxTier = minTier;
@@ -200,8 +199,8 @@ namespace WarfareSurvivor
             for (int i = 0; i < size; i++)
             {
                 float angle = baseAngle + Random.Range(-config.groupAngleSpread, config.groupAngleSpread);
-                var offset = Quaternion.Euler(0f, angle, 0f) * Vector3.forward * radius;
-                var position = SquadCenter() + offset;
+                var direction = Quaternion.Euler(0f, angle, 0f) * Vector3.forward;
+                var position = SquadCenter() + direction * OffscreenRadius(direction);
 
                 int tier = Random.Range(minTier, maxTier + 1);
                 Spawn(position, tier);
@@ -224,15 +223,9 @@ namespace WarfareSurvivor
 
         Vector3 SquadCenter() => squad != null ? squad.transform.position : Vector3.zero;
 
-        /// <summary>Углы кадра. Держим массив, чтобы не сорить в куче каждый спавн.</summary>
-        static readonly Vector3[] Corners =
-        {
-            new Vector3(0f, 0f, 0f), new Vector3(1f, 0f, 0f),
-            new Vector3(0f, 1f, 0f), new Vector3(1f, 1f, 0f)
-        };
-
         /// <summary>
-        /// Радиус, на котором зомби заведомо за краем экрана.
+        /// Радиус, на котором зомби заведомо за краем экрана — В ЭТОМ
+        /// направлении.
         ///
         /// Считается ПО КАДРУ, а не берётся числом из конфига. Камера
         /// отъезжает по мере роста отряда, и постоянный радиус рано или
@@ -240,34 +233,48 @@ namespace WarfareSurvivor
         /// на глазах у игрока, и волна перестаёт читаться как приход
         /// откуда-то извне.
         ///
-        /// Берём самый дальний угол кадра на земле и добавляем запас.
-        /// Луч через верхние углы при пологой камере может уйти выше
-        /// горизонта и землю не встретить — тогда считаем, что видно
-        /// далеко, и держим тройной радиус.
+        /// Но и один радиус на все стороны не годится. Экран вытянут
+        /// по вертикали: сбоку видно метров на десять, сверху на двадцать
+        /// с лишним. Радиус по самому дальнему углу отправлял боковых зомби
+        /// на двенадцать метров за видимый край — они шли до кадра пять
+        /// секунд, и волна начиналась заметно позже, чем начиналась.
+        ///
+        /// Ищем край двоичным поиском вдоль луча: где точка перестаёт
+        /// попадать в кадр, там и край. Дюжина умножений на матрицу
+        /// на зомби — на фоне всего остального ничто.
         /// </summary>
-        float OffscreenRadius()
+        float OffscreenRadius(Vector3 direction)
         {
             float fallback = Mathf.Max(1f, config.spawnRadius);
+            float margin = Mathf.Max(0f, config.spawnMargin);
             if (view == null) return fallback;
 
             var center = SquadCenter();
-            float farthest = 0f;
+            float near = 0f;
+            float far = fallback * 3f;
 
-            for (int i = 0; i < Corners.Length; i++)
+            // Отряд сам не в кадре — искать край не от чего.
+            if (!InView(center)) return margin;
+
+            // Даже дальняя точка в кадре: камера смотрит слишком полого,
+            // земля уходит за горизонт. Отступаем на весь запас.
+            if (InView(center + direction * far)) return far + margin;
+
+            for (int i = 0; i < 12; i++)
             {
-                var ray = view.ViewportPointToRay(Corners[i]);
-
-                if (Mathf.Abs(ray.direction.y) < 0.0001f) { farthest = Mathf.Max(farthest, fallback * 3f); continue; }
-
-                float t = -ray.origin.y / ray.direction.y;
-                if (t <= 0f) { farthest = Mathf.Max(farthest, fallback * 3f); continue; }
-
-                var hit = ray.origin + ray.direction * t;
-                float distance = Vector2.Distance(new Vector2(hit.x, hit.z), new Vector2(center.x, center.z));
-                if (distance > farthest) farthest = distance;
+                float middle = (near + far) * 0.5f;
+                if (InView(center + direction * middle)) near = middle;
+                else far = middle;
             }
 
-            return Mathf.Max(fallback, farthest + Mathf.Max(0f, config.spawnMargin));
+            return far + margin;
+        }
+
+        /// <summary>Точка на земле попадает в кадр?</summary>
+        bool InView(Vector3 world)
+        {
+            var point = view.WorldToViewportPoint(world);
+            return point.z > 0f && point.x >= 0f && point.x <= 1f && point.y >= 0f && point.y <= 1f;
         }
 
         void Spawn(Vector3 position, int tier)
@@ -303,19 +310,37 @@ namespace WarfareSurvivor
         /// </summary>
         Variant PickVariant()
         {
+            // Вид может быть заперт по времени: крупный приходит в середине
+            // второй волны, а не с первых секунд. Первую волну игрок должен
+            // отстоять, разобравшись с обычными, — иначе он не успевает
+            // понять, где безопасная дистанция, и учится не тому.
+            float elapsed = Time.time - startTime;
+
             float total = 0f;
-            for (int i = 0; i < variants.Count; i++) total += variants[i].Prefab.SpawnWeight;
+            for (int i = 0; i < variants.Count; i++)
+            {
+                var prefab = variants[i].Prefab;
+                if (elapsed < prefab.UnlockAfter) continue;
+                total += prefab.SpawnWeight;
+            }
 
             if (total <= 0f) return variants.Count > 0 ? variants[0] : null;
 
             float roll = Random.value * total;
             for (int i = 0; i < variants.Count; i++)
             {
-                roll -= variants[i].Prefab.SpawnWeight;
+                var prefab = variants[i].Prefab;
+                if (elapsed < prefab.UnlockAfter) continue;
+                roll -= prefab.SpawnWeight;
                 if (roll <= 0f) return variants[i];
             }
 
-            return variants[variants.Count - 1];
+            // Досюда доходим только на ошибке округления — берём любой
+            // из уже открытых, но никогда запертый.
+            for (int i = variants.Count - 1; i >= 0; i--)
+                if (elapsed >= variants[i].Prefab.UnlockAfter) return variants[i];
+
+            return variants[0];
         }
 
         /// <summary>Кто из какого вида вышел — чтобы вернуть его в свой пул.</summary>

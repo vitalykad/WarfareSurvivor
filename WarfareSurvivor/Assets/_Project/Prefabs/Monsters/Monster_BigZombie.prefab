@@ -109,4 +109,5 @@ MonoBehaviour:
   healthMultiplier: 4
   scaleMultiplier: 1.35
   knockbackResist: 2.2
-  spawnWeight: 0.25
+  spawnWeight: 0.4
+  unlockAfter: 70
