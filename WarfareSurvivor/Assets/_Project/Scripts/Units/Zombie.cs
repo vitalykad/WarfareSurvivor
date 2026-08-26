@@ -41,6 +41,33 @@ namespace WarfareSurvivor
 
         /// <summary>Набор запечённой анимации этого вида. Пусто — берётся из конфига.</summary>
         public BakedAnimationSet BakedSet => bakedSet;
+
+        [Header("Свойства вида")]
+
+        [SerializeField, Tooltip("Во сколько раз этот вид живучее обычного. " +
+                                 "Живучесть тира умножается на это число.")]
+        float healthMultiplier = 1f;
+
+        [SerializeField, Tooltip("Во сколько раз этот вид крупнее обычного. " +
+                                 "Умножается на масштаб тира, поэтому крупный " +
+                                 "вид остаётся крупным на любом тире.")]
+        float scaleMultiplier = 1f;
+
+        [SerializeField, Tooltip("Сопротивление отталкиванию, в метрах. " +
+                                 "Вычитается из дальности отброса ударившего: " +
+                                 "лопата бьёт на три метра, сопротивление два — " +
+                                 "отлетит на метр. Больше дальности удара — " +
+                                 "не сдвинется вовсе.")]
+        float knockbackResist;
+
+        [SerializeField, Tooltip("Насколько часто этот вид попадается. " +
+                                 "Единица у обычного; половина — вдвое реже. " +
+                                 "Крупные должны быть редкими, иначе они " +
+                                 "перестают быть событием.")]
+        float spawnWeight = 1f;
+
+        /// <summary>Как часто этот вид выпадает при спавне.</summary>
+        public float SpawnWeight => Mathf.Max(0f, spawnWeight);
         Health health;
         Renderer[] renderers;
 
@@ -106,9 +133,11 @@ namespace WarfareSurvivor
 
             // Здоровье тира — ровно N попаданий из пистолета. Так градация
             // читается игроком без цифр: «этот с трёх выстрелов».
-            health.Init(tier * cfg.zombieHitsPerTier);
+            // Живучесть и размер вида умножаются на тирные: крупный зомби
+            // первого тира всё равно крупнее и живучее обычного первого.
+            health.Init(tier * cfg.zombieHitsPerTier * Mathf.Max(0.01f, healthMultiplier));
 
-            transform.localScale = Vector3.one * scale;
+            transform.localScale = Vector3.one * (scale * Mathf.Max(0.01f, scaleMultiplier));
 
             tierMaterial = tierMat;
             flashMaterial = flashMat;
@@ -160,6 +189,14 @@ namespace WarfareSurvivor
         public void Knockback(Vector3 direction, float distance, float duration)
         {
             if (duration <= 0f) return;
+
+            // Сопротивление ВЫЧИТАЕТСЯ из дальности удара, а не делит её.
+            // Так тяжёлого врага можно сдвинуть только оружием, которое бьёт
+            // сильнее его упора, — и разница между лопатой на три метра
+            // и упором в два читается как «еле пошатнулся», а не как
+            // «отлетел чуть меньше».
+            distance -= Mathf.Max(0f, knockbackResist);
+            if (distance <= 0f) return;
 
             direction.y = 0f;
             if (direction.sqrMagnitude < 0.0001f) return;

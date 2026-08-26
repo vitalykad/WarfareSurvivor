@@ -42,6 +42,9 @@ namespace WarfareSurvivor.EditorTools
         const string OfficeZombieModel = "Assets/Models/Enemy/OfficeZombie/OfficeZombie.fbx";
         public const string OfficeZombiePrefab = MonstersDir + "/Monster_OfficeZombie.prefab";
 
+        const string BigZombieModel = "Assets/Models/Enemy/BigZombie/BigZombie.fbx";
+        public const string BigZombiePrefab = MonstersDir + "/Monster_BigZombie.prefab";
+
         // Скорость, ниже которой боец считается стоящим. Относительная величина:
         // сравнивается с параметром Speed, который код нормализует к 0..1.
         const float MoveThreshold = 0.1f;
@@ -200,6 +203,7 @@ namespace WarfareSurvivor.EditorTools
 
             BuildPrefab(ZombieModel, ZombieController, ZombiePrefab, force);
             BuildPrefab(OfficeZombieModel, ZombieController, OfficeZombiePrefab, force);
+            BuildPrefab(BigZombieModel, ZombieController, BigZombiePrefab, force);
         }
 
         /// <summary>

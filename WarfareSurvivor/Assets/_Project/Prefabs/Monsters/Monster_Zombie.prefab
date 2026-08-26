@@ -106,3 +106,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WarfareSurvivor.Zombie
   ignoresObstacles: 0
   bakedSet: {fileID: 11400000, guid: 65a969dcc580044ef8b8b060dddc3dc8, type: 2}
+  healthMultiplier: 1
+  scaleMultiplier: 1
+  knockbackResist: 0
+  spawnWeight: 1

@@ -68,7 +68,7 @@ MonoBehaviour:
   bakedZombies: {fileID: 11400000, guid: 65a969dcc580044ef8b8b060dddc3dc8, type: 2}
   zombieSeparationRadius: 0.45
   zombieSeparationStrength: 0.5
-  ruinCount: 14
+  ruinCount: 21
   ruinAreaRadius: 45
   ruinKeepClearRadius: 8
   ruinScaleMin: 0.22
@@ -123,7 +123,7 @@ MonoBehaviour:
   runWaves:
   - Name: "\u041F\u0435\u0440\u0432\u0430\u044F"
     Duration: 20
-    SpawnInterval: 1.6
+    SpawnInterval: 2
     GroupMin: 2
     GroupMax: 3
     MinTier: 1
@@ -132,16 +132,16 @@ MonoBehaviour:
   - Name: "\u0412\u0442\u043E\u0440\u0430\u044F"
     Duration: 75
     SpawnInterval: 1
-    GroupMin: 4
-    GroupMax: 6
+    GroupMin: 3
+    GroupMax: 5
     MinTier: 2
     MaxTier: 2
     MaxAlive: 40
   - Name: "\u0422\u0440\u0435\u0442\u044C\u044F"
     Duration: 120
     SpawnInterval: 0.7
-    GroupMin: 5
-    GroupMax: 8
+    GroupMin: 4
+    GroupMax: 6
     MinTier: 2
     MaxTier: 3
     MaxAlive: 60

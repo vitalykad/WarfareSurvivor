@@ -265,7 +265,8 @@ namespace WarfareSurvivor
             // Вид выбирается на КАЖДОГО зомби, а не на группу: иначе волна
             // приходит однородными пачками, и вместо смешанной толпы
             // получается чередование отрядов.
-            var variant = variants[Random.Range(0, variants.Count)];
+            var variant = PickVariant();
+            if (variant == null) return;
             var zombie = variant.Idle.Count > 0 ? variant.Idle.Pop() : CreateZombie(variant);
 
             float t = config.zombieTiers <= 1 ? 0f : (tier - 1) / (float)(config.zombieTiers - 1);
@@ -280,6 +281,30 @@ namespace WarfareSurvivor
 
         const string BakedShaderName = "WarfareSurvivor/VertexAnimationToon";
         Shader bakedShader;
+
+        /// <summary>
+        /// Выбирает вид с учётом его частоты.
+        ///
+        /// Равновероятный выбор не годится с появлением крупного зомби:
+        /// он вчетверо живучее, и встречаться должен вчетверо реже, иначе
+        /// перестаёт быть событием и просто утраивает время на зачистку.
+        /// </summary>
+        Variant PickVariant()
+        {
+            float total = 0f;
+            for (int i = 0; i < variants.Count; i++) total += variants[i].Prefab.SpawnWeight;
+
+            if (total <= 0f) return variants.Count > 0 ? variants[0] : null;
+
+            float roll = Random.value * total;
+            for (int i = 0; i < variants.Count; i++)
+            {
+                roll -= variants[i].Prefab.SpawnWeight;
+                if (roll <= 0f) return variants[i];
+            }
+
+            return variants[variants.Count - 1];
+        }
 
         /// <summary>Кто из какого вида вышел — чтобы вернуть его в свой пул.</summary>
         readonly Dictionary<Zombie, Variant> origin = new Dictionary<Zombie, Variant>();

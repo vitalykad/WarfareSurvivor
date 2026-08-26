@@ -18,6 +18,7 @@ namespace WarfareSurvivor
         [SerializeField] Text title;
         [SerializeField] RectTransform cardRow;
 
+
         System.Action<TierUpOffer> choice;
         readonly List<Button> cards = new List<Button>();
 
