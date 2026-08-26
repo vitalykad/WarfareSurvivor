@@ -59,7 +59,7 @@ MonoBehaviour:
   zombieTierTint: 0
   zombieTierColorLow: {r: 0.42, g: 0.75, b: 0.3, a: 1}
   zombieTierColorHigh: {r: 0.95, g: 0.88, b: 0.25, a: 1}
-  zombieScaleLow: 1
+  zombieScaleLow: 1.2
   zombieScaleHigh: 1.6
   survivorCorpseTime: 1.4
   zombieCorpseTime: 1.2

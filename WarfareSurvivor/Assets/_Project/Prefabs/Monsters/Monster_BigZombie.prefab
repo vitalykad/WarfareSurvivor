@@ -107,7 +107,7 @@ MonoBehaviour:
   ignoresObstacles: 0
   bakedSet: {fileID: 0}
   healthMultiplier: 4
-  scaleMultiplier: 1.35
+  scaleMultiplier: 1.125
   knockbackResist: 2.2
   spawnWeight: 0.2
   unlockAfter: 28
