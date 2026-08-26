@@ -696,7 +696,7 @@ namespace WarfareSurvivor.EditorTools
             Wire(sparks, "view", Object.FindFirstObjectByType<Camera>());
 
             var panel = CreateTierUpPanel(canvas, config);
-            var hud = CreateRunHud(canvas);
+            var hud = CreateRunHud(canvas, config);
 
             var run = new GameObject("RunController").AddComponent<RunController>();
             Wire(run, nameof(config), config);
@@ -941,7 +941,7 @@ namespace WarfareSurvivor.EditorTools
             return panel;
         }
 
-        static RunHud CreateRunHud(Canvas canvas)
+        static RunHud CreateRunHud(Canvas canvas, ArenaConfig config)
         {
             if (canvas == null) return null;
 
@@ -1001,6 +1001,8 @@ namespace WarfareSurvivor.EditorTools
             sparkLabel.color = new Color(0.62f, 0.90f, 1f, 1f);
             sparkLabel.fontStyle = FontStyle.Bold;
 
+            CreateAudioToggles(parent, config);
+
             var banner = CreateLabel(parent, "Banner", 72, TextAnchor.MiddleCenter);
             Stretch((RectTransform)banner.transform);
 
@@ -1011,6 +1013,73 @@ namespace WarfareSurvivor.EditorTools
             Wire(hud, "sparkLabel", sparkLabel);
             Wire(hud, "banner", banner);
             return hud;
+        }
+
+        /// <summary>
+        /// Две кнопки в правом верхнем углу: музыка и эффекты.
+        ///
+        /// Именно в углу и именно маленькие: это не игровая механика,
+        /// а настройка, и внимания она забирать не должна.
+        /// </summary>
+        static void CreateAudioToggles(RectTransform parent, ArenaConfig config)
+        {
+            CreateAudioToggle(parent, config, "MusicToggle", AudioToggle.Channel.Music,
+                              EnsureNoteIcon(), new Vector2(-140f, -28f));
+
+            CreateAudioToggle(parent, config, "SfxToggle", AudioToggle.Channel.Effects,
+                              EnsureSpeakerIcon(), new Vector2(-28f, -28f));
+        }
+
+        static void CreateAudioToggle(RectTransform parent, ArenaConfig config, string name,
+                                      AudioToggle.Channel channel, Sprite iconSprite, Vector2 position)
+        {
+            const float size = 96f;
+
+            var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button), typeof(AudioToggle));
+            var rect = (RectTransform)go.transform;
+            rect.SetParent(parent, false);
+            rect.anchorMin = rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(1f, 1f);
+            rect.anchoredPosition = position;
+            rect.sizeDelta = new Vector2(size, size);
+
+            // Подложка ловит касание: по прозрачному значку попасть трудно,
+            // а палец на телефоне неточен.
+            var background = go.GetComponent<Image>();
+            background.color = new Color(0f, 0f, 0f, 0.35f);
+
+            var iconGo = new GameObject("Icon", typeof(RectTransform), typeof(Image));
+            var iconRect = (RectTransform)iconGo.transform;
+            iconRect.SetParent(rect, false);
+            iconRect.anchorMin = new Vector2(0.15f, 0.15f);
+            iconRect.anchorMax = new Vector2(0.85f, 0.85f);
+            iconRect.offsetMin = Vector2.zero;
+            iconRect.offsetMax = Vector2.zero;
+
+            var icon = iconGo.GetComponent<Image>();
+            icon.sprite = iconSprite;
+            icon.raycastTarget = false;
+
+            // Перечёркивание: тонкая полоса наискось поверх значка.
+            var slashGo = new GameObject("Slash", typeof(RectTransform), typeof(Image));
+            var slashRect = (RectTransform)slashGo.transform;
+            slashRect.SetParent(rect, false);
+            slashRect.anchorMin = slashRect.anchorMax = new Vector2(0.5f, 0.5f);
+            slashRect.pivot = new Vector2(0.5f, 0.5f);
+            slashRect.sizeDelta = new Vector2(size * 0.82f, 6f);
+            slashRect.localRotation = Quaternion.Euler(0f, 0f, -45f);
+
+            var slash = slashGo.GetComponent<Image>();
+            slash.color = new Color(1f, 0.4f, 0.35f, 0.95f);
+            slash.raycastTarget = false;
+
+            var toggle = go.GetComponent<AudioToggle>();
+            Wire(toggle, nameof(config), config);
+            Wire(toggle, "channel", (int)channel);
+            Wire(toggle, "icon", icon);
+            Wire(toggle, "slash", slash);
+
+            go.GetComponent<Button>().onClick.AddListener(toggle.Toggle);
         }
 
         static Text CreateLabel(RectTransform parent, string name, int size, TextAnchor align)
@@ -1354,6 +1423,123 @@ namespace WarfareSurvivor.EditorTools
             Debug.LogWarning($"[Сборка] В {folder} не найден звук" +
                              (contains != null ? $" с «{contains}» в имени" : ""));
             return null;
+        }
+
+        /// <summary>Значок ноты. Рисуется кодом — ради двух фигур ассет заводить незачем.</summary>
+        static Sprite EnsureNoteIcon()
+        {
+            return EnsureIcon("Assets/_Project/Art/Materials/IconMusic.asset", (x, y) =>
+            {
+                // Головка ноты — наклонный овал внизу слева.
+                float hx = (x - 0.36f) / 0.20f;
+                float hy = (y - 0.26f) / 0.15f;
+                if (hx * hx + hy * hy <= 1f) return true;
+
+                // Стойка вверх от головки.
+                if (x > 0.52f && x < 0.61f && y > 0.26f && y < 0.86f) return true;
+
+                // Флажок вправо от вершины стойки.
+                if (y > 0.62f && y < 0.86f && x >= 0.61f && x < 0.61f + (0.86f - y) * 1.1f) return true;
+
+                return false;
+            });
+        }
+
+        /// <summary>Значок динамика.</summary>
+        static Sprite EnsureSpeakerIcon()
+        {
+            return EnsureIcon("Assets/_Project/Art/Materials/IconSound.asset", (x, y) =>
+            {
+                // Корпус — прямоугольник слева.
+                if (x > 0.16f && x < 0.36f && y > 0.38f && y < 0.62f) return true;
+
+                // Раструб — треугольник, расширяющийся вправо.
+                if (x >= 0.36f && x < 0.58f)
+                {
+                    float half = 0.06f + (x - 0.36f) * 1.4f;
+                    if (Mathf.Abs(y - 0.5f) < half) return true;
+                }
+
+                // Две дуги звука.
+                float dx = x - 0.58f;
+                float dy = y - 0.5f;
+                float r = Mathf.Sqrt(dx * dx + dy * dy);
+                if (dx > 0f && Mathf.Abs(dy) < r * 0.85f)
+                {
+                    if (Mathf.Abs(r - 0.16f) < 0.035f) return true;
+                    if (Mathf.Abs(r - 0.28f) < 0.035f) return true;
+                }
+
+                return false;
+            });
+        }
+
+        /// <summary>
+        /// Собирает значок по правилу «закрашен ли пиксель».
+        ///
+        /// Существующий не перерисовываем: значок могут заменить рисованным,
+        /// и пересборка сцены не должна его затирать.
+        /// </summary>
+        static Sprite EnsureIcon(string path, System.Func<float, float, bool> shape)
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            if (existing != null) return existing;
+
+            const int size = 96;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false, true)
+            {
+                name = System.IO.Path.GetFileNameWithoutExtension(path),
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear
+            };
+
+            var pixels = new Color[size * size];
+            for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                // Сглаживание простейшей выборкой четырёх точек внутри пикселя:
+                // без него значок на телефоне выглядит лесенкой.
+                int hits = 0;
+                for (int s = 0; s < 4; s++)
+                {
+                    float ox = (s % 2) * 0.5f + 0.25f;
+                    float oy = (s / 2) * 0.5f + 0.25f;
+                    if (shape((x + ox) / size, (y + oy) / size)) hits++;
+                }
+
+                pixels[y * size + x] = new Color(1f, 1f, 1f, hits / 4f);
+            }
+
+            texture.SetPixels(pixels);
+            texture.Apply(false, false);
+
+            EnsureFolder("Assets/_Project/Art/Materials");
+            AssetDatabase.CreateAsset(texture, path);
+
+            var sprite = Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+            sprite.name = texture.name + "_Sprite";
+            AssetDatabase.AddObjectToAsset(sprite, texture);
+            AssetDatabase.SaveAssets();
+
+            return AssetDatabase.LoadAssetAtPath<Sprite>(path);
+        }
+
+        /// <summary>Тот же Wire, но для целых — например для перечисления.</summary>
+        static void Wire(Object component, string fieldName, int value)
+        {
+            var field = component.GetType().GetField(fieldName,
+                System.Reflection.BindingFlags.Instance |
+                System.Reflection.BindingFlags.NonPublic |
+                System.Reflection.BindingFlags.Public);
+
+            if (field == null)
+            {
+                Debug.LogError($"[TestArena] Нет поля {fieldName} у {component.GetType().Name}");
+                return;
+            }
+
+            field.SetValue(component, System.Enum.ToObject(field.FieldType, value));
+            EditorUtility.SetDirty(component);
         }
 
         static void CreateEventSystem()

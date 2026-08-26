@@ -51,7 +51,7 @@ MonoBehaviour:
   healthBarVisibleTime: 3
   zombieSpeed: 2.6
   zombieContactRange: 1.1
-  zombieContactDamage: 4
+  zombieContactDamage: 6
   zombieContactInterval: 0.8
   zombieTiers: 4
   zombieHitsPerTier: 25
@@ -113,6 +113,8 @@ MonoBehaviour:
   simulateSurvivors: 1
   updateBakedFrames: 1
   uiFont: {fileID: 12800000, guid: e39bb5b09f9274bd7ae7f47a28aaf8f2, type: 3}
+  musicOn: 0
+  sfxOn: 0
   musicVolume: 0.45
   sfxVolume: 0.8
   sfxMinInterval: 0.05
@@ -127,20 +129,20 @@ MonoBehaviour:
     MaxAlive: 14
   - Name: "\u0412\u0442\u043E\u0440\u0430\u044F"
     Duration: 75
-    SpawnInterval: 1.8
-    GroupMin: 3
-    GroupMax: 5
-    MinTier: 2
-    MaxTier: 2
-    MaxAlive: 28
-  - Name: "\u0422\u0440\u0435\u0442\u044C\u044F"
-    Duration: 120
-    SpawnInterval: 1.4
+    SpawnInterval: 1
     GroupMin: 4
     GroupMax: 6
     MinTier: 2
+    MaxTier: 2
+    MaxAlive: 40
+  - Name: "\u0422\u0440\u0435\u0442\u044C\u044F"
+    Duration: 120
+    SpawnInterval: 0.7
+    GroupMin: 5
+    GroupMax: 8
+    MinTier: 2
     MaxTier: 3
-    MaxAlive: 45
+    MaxAlive: 60
   waveBreak: 4
   squadSlotCap: 20
   sparkPerKill: 1

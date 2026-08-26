@@ -78,6 +78,7 @@ MonoBehaviour:
   groupSizeMin: 5
   groupSizeMax: 9
   spawnRadius: 14
+  spawnMargin: 4
   groupAngleSpread: 25
   maxAliveZombies: 200
   tierUnlockInterval: 25
@@ -112,6 +113,11 @@ MonoBehaviour:
   simulateSurvivors: 1
   updateBakedFrames: 1
   uiFont: {fileID: 12800000, guid: e39bb5b09f9274bd7ae7f47a28aaf8f2, type: 3}
+  musicOn: 0
+  sfxOn: 0
+  musicVolume: 0.45
+  sfxVolume: 0.8
+  sfxMinInterval: 0.05
   runWaves:
   - Name: "\u041F\u0435\u0440\u0432\u0430\u044F"
     Duration: 45
@@ -143,6 +149,7 @@ MonoBehaviour:
   tierUpCostBase: 10
   tierUpCostGrowth: 1.4
   tierUpOptions: 3
+  tierUpAddUnitChance: 0.5
   tierUpDamageStep: 0.2
   tierUpHealthStep: 0.25
   sparkScatterMin: 3
@@ -152,6 +159,10 @@ MonoBehaviour:
   sparkAttractRadius: 6
   sparkPickupRadius: 1.2
   sparkFlySpeed: 12
+  sparkBobHeight: 0.12
+  sparkBobSpeed: 2.2
+  sparkSwayAngle: 14
+  sparkSwaySpeed: 1.5
   maxSparks: 150
   rampStep: 25
   rampMax: 400

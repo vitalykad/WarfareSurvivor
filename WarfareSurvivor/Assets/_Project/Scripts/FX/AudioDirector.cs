@@ -68,6 +68,8 @@ namespace WarfareSurvivor
                 sfx[i] = source;
             }
 
+            // Музыку запускаем всегда: источник играет с нулевой громкостью,
+            // и включение кнопкой отзывается сразу, а не с начала трека.
             if (music != null) musicSource.Play();
         }
 
@@ -82,9 +84,9 @@ namespace WarfareSurvivor
 
             // Каждый кадр, а не при старте: громкость должна отзываться
             // на правку в инспекторе сразу.
-            musicSource.volume = Mathf.Clamp01(config.musicVolume);
+            musicSource.volume = config.musicOn ? Mathf.Clamp01(config.musicVolume) : 0f;
 
-            float effects = Mathf.Clamp01(config.sfxVolume);
+            float effects = config.sfxOn ? Mathf.Clamp01(config.sfxVolume) : 0f;
             for (int i = 0; i < sfx.Length; i++) sfx[i].volume = effects;
         }
 
@@ -104,6 +106,20 @@ namespace WarfareSurvivor
         {
             get => config != null ? config.sfxVolume : 0f;
             set { if (config != null) config.sfxVolume = Mathf.Clamp01(value); }
+        }
+
+        /// <summary>Играет ли музыка. Переключается кнопкой в углу экрана.</summary>
+        public bool MusicOn
+        {
+            get => config != null && config.musicOn;
+            set { if (config != null) config.musicOn = value; }
+        }
+
+        /// <summary>Играют ли эффекты.</summary>
+        public bool SfxOn
+        {
+            get => config != null && config.sfxOn;
+            set { if (config != null) config.sfxOn = value; }
         }
 
         /// <summary>Заглушить или вернуть звук целиком.</summary>
