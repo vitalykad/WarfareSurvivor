@@ -24,6 +24,22 @@ namespace WarfareSurvivor
         int lastMembers = -1;
         int lastSparks = -1;
 
+        /// <summary>Сколько осталось от толчка: 1 — только что подобрали, 0 — покой.</summary>
+        float pulse;
+
+        [SerializeField, Tooltip("За сколько секунд гаснет толчок счётчика.")]
+        float pulseFade = 0.25f;
+
+        [SerializeField, Tooltip("Насколько счётчик подскакивает при подборе.")]
+        float pulseScale = 0.35f;
+
+        Vector3 sparkLabelScale = Vector3.one;
+
+        void Awake()
+        {
+            if (sparkLabel != null) sparkLabelScale = sparkLabel.transform.localScale;
+        }
+
         void LateUpdate()
         {
             if (run == null) return;
@@ -62,9 +78,28 @@ namespace WarfareSurvivor
             if (sparkFill != null && run.SparksNeeded > 0)
                 sparkFill.fillAmount = Mathf.Clamp01(run.Sparks / (float)run.SparksNeeded);
 
-            if (sparkLabel == null || run.Sparks == lastSparks) return;
-            lastSparks = run.Sparks;
-            sparkLabel.text = $"{run.Sparks} / {run.SparksNeeded}";
+            if (sparkLabel == null) return;
+
+            if (run.Sparks != lastSparks)
+            {
+                // Толчок ТОЛЬКО на прибавке. На сбросе после тир-апа счётчик
+                // тоже меняется, но подпрыгивать ему там незачем — там уже
+                // открывается окно выбора, и лишнее движение спорит с ним.
+                if (run.Sparks > lastSparks) pulse = 1f;
+
+                lastSparks = run.Sparks;
+                sparkLabel.text = $"{run.Sparks} / {run.SparksNeeded}";
+            }
+
+            if (pulse <= 0f) return;
+
+            pulse -= Time.unscaledDeltaTime / Mathf.Max(0.05f, pulseFade);
+            pulse = Mathf.Max(0f, pulse);
+
+            // Затухающий подскок: резкий рост и мягкий возврат читаются
+            // как отклик на подбор, ровная синусоида — как мигание.
+            float grow = 1f + pulseScale * pulse * pulse;
+            sparkLabel.transform.localScale = sparkLabelScale * grow;
         }
 
         /// <summary>

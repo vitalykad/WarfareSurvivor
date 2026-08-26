@@ -24,6 +24,16 @@ namespace WarfareSurvivor
         [SerializeField] AudioClip shovelHit;
         [SerializeField] AudioClip pistolShot;
 
+        [SerializeField, Tooltip("С какой секунды начинать удар лопатой. " +
+                                 "В файле перед звуком лежит тишина, и игра " +
+                                 "с нулевого сэмпла давала задержку в три " +
+                                 "с половиной секунды. Считается при сборке " +
+                                 "сцены по самому файлу.")]
+        float shovelStart;
+
+        [SerializeField, Tooltip("С какой секунды начинать выстрел.")]
+        float pistolStart;
+
         [SerializeField, Tooltip("Сколько эффектов может звучать одновременно.")]
         int voices = 8;
 
@@ -109,14 +119,14 @@ namespace WarfareSurvivor
         {
             if (Time.unscaledTime < shovelReady) return;
             shovelReady = Time.unscaledTime + Interval;
-            Play(shovelHit);
+            Play(shovelHit, shovelStart);
         }
 
         void PlayPistol()
         {
             if (Time.unscaledTime < pistolReady) return;
             pistolReady = Time.unscaledTime + Interval;
-            Play(pistolShot);
+            Play(pistolShot, pistolStart);
         }
 
         float Interval => config != null ? Mathf.Max(0f, config.sfxMinInterval) : 0.05f;
@@ -129,7 +139,7 @@ namespace WarfareSurvivor
         /// складываются в один громкий щелчок вместо частой дроби —
         /// то же самое сложение фаз, что даёт «металлический» призвук.
         /// </summary>
-        void Play(AudioClip clip)
+        void Play(AudioClip clip, float startAt)
         {
             if (clip == null || sfx == null || sfx.Length == 0) return;
 
@@ -137,6 +147,10 @@ namespace WarfareSurvivor
             nextVoice = (nextVoice + 1) % sfx.Length;
 
             source.clip = clip;
+
+            // Перематываем на начало собственно звука. PlayOneShot так
+            // не умеет — оттого и держим пул источников, а не один.
+            source.time = Mathf.Clamp(startAt, 0f, Mathf.Max(0f, clip.length - 0.01f));
             source.Play();
         }
     }

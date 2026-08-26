@@ -987,14 +987,19 @@ namespace WarfareSurvivor.EditorTools
             Stretch(fillRect);
 
             var fill = fillGo.GetComponent<Image>();
-            fill.color = new Color(1f, 0.86f, 0.35f, 0.95f);
+            fill.color = new Color(0.35f, 0.78f, 1f, 0.95f);
             fill.type = Image.Type.Filled;
             fill.fillMethod = Image.FillMethod.Horizontal;
             fill.fillAmount = 0f;
             fill.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
 
-            var sparkLabel = CreateLabel(barRect, "SparkCount", 26, TextAnchor.MiddleCenter);
+            var sparkLabel = CreateLabel(barRect, "SparkCount", 30, TextAnchor.MiddleCenter);
             Stretch((RectTransform)sparkLabel.transform);
+
+            // Голубой в цвет добычи: счётчик и то, что его наполняет,
+            // должны читаться как одно.
+            sparkLabel.color = new Color(0.62f, 0.90f, 1f, 1f);
+            sparkLabel.fontStyle = FontStyle.Bold;
 
             var banner = CreateLabel(parent, "Banner", 72, TextAnchor.MiddleCenter);
             Stretch((RectTransform)banner.transform);
@@ -1227,10 +1232,103 @@ namespace WarfareSurvivor.EditorTools
             var go = new GameObject("Audio");
             var director = go.AddComponent<AudioDirector>();
 
+            var music = FindClip("Assets/Music");
+            var shovel = FindClip("Assets/SFX", "shovel");
+            var pistol = FindClip("Assets/SFX", "pistol");
+
+            PrepareClip(music, streaming: true);
+            PrepareClip(shovel, streaming: false);
+            PrepareClip(pistol, streaming: false);
+
             Wire(director, nameof(config), config);
-            Wire(director, "music", FindClip("Assets/Music"));
-            Wire(director, "shovelHit", FindClip("Assets/SFX", "shovel"));
-            Wire(director, "pistolShot", FindClip("Assets/SFX", "pistol"));
+            Wire(director, "music", music);
+            Wire(director, "shovelHit", shovel);
+            Wire(director, "pistolShot", pistol);
+            Wire(director, "shovelStart", SoundStart(shovel));
+            Wire(director, "pistolStart", SoundStart(pistol));
+
+            // Меньший буфер — меньше задержка между вызовом и звуком.
+            // На Android разница между «хорошей» и «лучшей» задержкой
+            // слышна: это десятки миллисекунд на каждом ударе.
+            var audio = AudioSettings.GetConfiguration();
+            if (audio.dspBufferSize > 256)
+            {
+                audio.dspBufferSize = 256;
+                AudioSettings.Reset(audio);
+                Debug.Log("[Сборка] Буфер звука уменьшен до 256 сэмплов");
+            }
+        }
+
+        /// <summary>
+        /// С какой секунды в файле начинается собственно звук.
+        ///
+        /// В присланных файлах перед ударом лежит несколько секунд тишины:
+        /// у лопаты 3.5 из 4.7. Играя с нулевого сэмпла, мы получали
+        /// «запаздывающий» звук при полностью исправном коде.
+        ///
+        /// Считается здесь, а не в игре: сканировать сотни тысяч сэмплов
+        /// на устройстве при каждом запуске незачем, файл не меняется.
+        /// </summary>
+        static float SoundStart(AudioClip clip)
+        {
+            if (clip == null) return 0f;
+
+            var data = new float[clip.samples * clip.channels];
+            if (!clip.GetData(data, 0)) return 0f;
+
+            for (int i = 0; i < data.Length; i++)
+            {
+                if (Mathf.Abs(data[i]) <= 0.02f) continue;
+
+                // Небольшой запас назад: срезать самое начало атаки —
+                // значит лишить удар щелчка, по которому он и читается.
+                float seconds = i / (float)(clip.frequency * clip.channels);
+                return Mathf.Max(0f, seconds - 0.01f);
+            }
+
+            return 0f;
+        }
+
+        /// <summary>
+        /// Настройки импорта звука.
+        ///
+        /// Эффектам — распаковка при загрузке и предзагрузка: без неё первый
+        /// удар за сеанс приходит с задержкой на распаковку. Музыке —
+        /// потоковое чтение: три минуты, распакованные в память, это десятки
+        /// мегабайт на устройстве, где системе и так не хватает.
+        /// </summary>
+        static void PrepareClip(AudioClip clip, bool streaming)
+        {
+            if (clip == null) return;
+
+            string path = AssetDatabase.GetAssetPath(clip);
+            var importer = AssetImporter.GetAtPath(path) as AudioImporter;
+            if (importer == null) return;
+
+            var settings = importer.defaultSampleSettings;
+            bool dirty = false;
+
+            var wanted = streaming ? AudioClipLoadType.Streaming : AudioClipLoadType.DecompressOnLoad;
+            if (settings.loadType != wanted) { settings.loadType = wanted; dirty = true; }
+
+            if (settings.preloadAudioData != !streaming)
+            {
+                settings.preloadAudioData = !streaming;
+                dirty = true;
+            }
+
+            // Эффекты в моно: на телефоне стерео у короткого удара ничего
+            // не добавляет, а данных вдвое больше.
+            if (!streaming && !importer.forceToMono)
+            {
+                importer.forceToMono = true;
+                dirty = true;
+            }
+
+            if (!dirty) return;
+
+            importer.defaultSampleSettings = settings;
+            importer.SaveAndReimport();
         }
 
         /// <summary>
@@ -1299,6 +1397,24 @@ namespace WarfareSurvivor.EditorTools
         /// снаружи можно только через SerializedObject.
         /// </summary>
         /// <summary>Тот же Wire, но для булевых флагов: перегрузка с Object их не берёт.</summary>
+        /// <summary>Тот же Wire, но для чисел.</summary>
+        static void Wire(Object component, string fieldName, float value)
+        {
+            var field = component.GetType().GetField(fieldName,
+                System.Reflection.BindingFlags.Instance |
+                System.Reflection.BindingFlags.NonPublic |
+                System.Reflection.BindingFlags.Public);
+
+            if (field == null)
+            {
+                Debug.LogError($"[TestArena] Нет поля {fieldName} у {component.GetType().Name}");
+                return;
+            }
+
+            field.SetValue(component, value);
+            EditorUtility.SetDirty(component);
+        }
+
         static void Wire(Object component, string fieldName, bool value)
         {
             var field = component.GetType().GetField(fieldName,
