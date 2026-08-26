@@ -20,6 +20,19 @@ namespace WarfareSurvivor
         [SerializeField] Image icon;
         [SerializeField] Image slash;
 
+        void Awake()
+        {
+            // Подписываемся САМИ, а не через строителя сцены.
+            //
+            // AddListener в редакторе вешает НЕсохраняемый слушатель: в сцену
+            // он не записывается, и в сборке кнопка оказывается пустой —
+            // выглядит рабочей, нажимается, не делает ничего. Сохраняемый
+            // ставится только через UnityEventTools, и это лишняя зависимость
+            // от редактора ради того, что компонент может сделать сам.
+            var button = GetComponent<Button>();
+            if (button != null) button.onClick.AddListener(Toggle);
+        }
+
         void Start() => Refresh();
 
         /// <summary>Вешается на кнопку строителем сцены.</summary>

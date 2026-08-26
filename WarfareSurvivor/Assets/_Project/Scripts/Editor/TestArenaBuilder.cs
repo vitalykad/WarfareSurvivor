@@ -1071,7 +1071,9 @@ namespace WarfareSurvivor.EditorTools
             Wire(toggle, "icon", icon);
             Wire(toggle, "slash", slash);
 
-            go.GetComponent<Button>().onClick.AddListener(toggle.Toggle);
+            // Слушателя здесь НЕ вешаем: AddListener из редактора в сцену
+            // не сохраняется. Кнопка подписывается на себя в Awake.
+
         }
 
         static Text CreateLabel(RectTransform parent, string name, int size, TextAnchor align)
