@@ -285,38 +285,74 @@ namespace WarfareSurvivor
         /// </summary>
         void AddUpgrades(List<TierUpOffer> offers)
         {
-            var pool = new List<TierUpOffer>();
-
-            foreach (var member in squad.Members)
-            {
-                if (member == null || member.Class == null) continue;
-                if (pool.Exists(o => o.Class == member.Class)) continue;
-
-                pool.Add(DamageOffer(member.Class));
-                pool.Add(HealthOffer(member.Class));
-            }
-
-            for (int i = pool.Count - 1; i > 0; i--)
-            {
-                int j = Random.Range(0, i + 1);
-                (pool[i], pool[j]) = (pool[j], pool[i]);
-            }
-
-            // Вид улучшения в наборе не повторяется, даже если он для разных
-            // классов.
-            //
-            // Подписи с карточек убраны, и «+25% здоровья фермеру» рядом
-            // с «+25% здоровья полицейскому» отличаются только нарисованным
-            // персонажем — со стороны это две одинаковые карточки, и выбор
-            // выглядит бессмысленным. Один вид — одна карточка.
             int target = Mathf.Max(1, config.tierUpOptions);
+            if (offers.Count >= target) return;
 
+            // Сначала классы, которые ЕСТЬ в строю, потом остальные.
+            //
+            // Улучшение классу, которого в отряде нет, — не бессмыслица:
+            // пополнение может привести его в следующем наборе. Но пока
+            // в строю есть кого усиливать, предлагать надо их: вложение
+            // должно работать сразу.
+            // Перемешиваем ВНУТРИ групп, а не поверх них. Общая тасовка
+            // убивала весь смысл порядка: в набор попадали два улучшения
+            // полицейского, которого в отряде ноль, а фермеры оставались
+            // без вложений.
+            var present = new List<TierUpOffer>();
+            AddPairs(present, PresentClasses());
+            Shuffle(present);
+
+            var rest = new List<TierUpOffer>();
+            AddPairs(rest, AllClasses());
+            rest.RemoveAll(o => present.Exists(p => p.Class == o.Class));
+            Shuffle(rest);
+
+            var pool = new List<TierUpOffer>(present);
+            pool.AddRange(rest);
+
+            // Повторяться не должна ПАРА «что усилить и у кого». Одинаковый
+            // вид для разных классов — это разные вложения, и на карточках
+            // они отличаются нарисованным персонажем.
             foreach (var offer in pool)
             {
                 if (offers.Count >= target) break;
-                if (offers.Exists(o => o.Kind == offer.Kind)) continue;
+                if (offers.Exists(o => o.Kind == offer.Kind && o.Class == offer.Class)) continue;
                 offers.Add(offer);
             }
+        }
+
+        static void Shuffle(List<TierUpOffer> list)
+        {
+            for (int i = list.Count - 1; i > 0; i--)
+            {
+                int j = Random.Range(0, i + 1);
+                (list[i], list[j]) = (list[j], list[i]);
+            }
+        }
+
+        /// <summary>Добавляет в набор по паре карточек на каждый класс.</summary>
+        void AddPairs(List<TierUpOffer> pool, List<SurvivorClassSO> classes)
+        {
+            foreach (var klass in classes)
+            {
+                if (klass == null) continue;
+                if (pool.Exists(o => o.Class == klass)) continue;
+
+                pool.Add(DamageOffer(klass));
+                pool.Add(HealthOffer(klass));
+            }
+        }
+
+        /// <summary>Классы, которые сейчас в строю.</summary>
+        List<SurvivorClassSO> PresentClasses()
+        {
+            var present = new List<SurvivorClassSO>();
+
+            foreach (var member in squad.Members)
+                if (member != null && member.Class != null && !present.Contains(member.Class))
+                    present.Add(member.Class);
+
+            return present;
         }
 
         TierUpOffer AddUnitOffer(SurvivorClassSO klass) => new TierUpOffer
