@@ -306,6 +306,11 @@ namespace WarfareSurvivor
                  "камеры — иначе градация по размеру не работает как подсказка.")]
         public float zombieScaleHigh = 1.5f;
 
+        [Tooltip("Сколько секунд тело бойца лежит, доиграв падение, прежде " +
+                 "чем исчезнуть. Мгновенное исчезновение читается как сбой: " +
+                 "только что здесь дрались — и никого.")]
+        public float survivorCorpseTime = 1.4f;
+
         [Tooltip("Сколько секунд труп лежит до возврата в пул.")]
         public float zombieCorpseTime = 1.2f;
 

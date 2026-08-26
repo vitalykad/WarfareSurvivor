@@ -100,6 +100,8 @@ namespace WarfareSurvivor.EditorTools
             AttachWeapons();
             EnsureReverseRun(PoliceController);
             EnsureReverseRun(FarmerController);
+            EnsureDeath(PoliceController, clips);
+            EnsureDeath(FarmerController, clips);
             EnsureUpperBodyAttack(FarmerController, clips);
 
             AssetDatabase.SaveAssets();
@@ -433,6 +435,52 @@ namespace WarfareSurvivor.EditorTools
                     if (string.Equals(t.name, name, System.StringComparison.OrdinalIgnoreCase))
                         return t;
             return null;
+        }
+
+        /// <summary>
+        /// Добавляет бойцу состояние смерти.
+        ///
+        /// Клип берётся зомбиный: анимация гуманоидная, и Unity переносит
+        /// её на чужой скелет сама. Своя анимация смерти бойцу, конечно,
+        /// нужна — но падать он должен уже сейчас, а не исчезать в воздухе.
+        ///
+        /// Переход идёт ИЗ ЛЮБОГО состояния и без выхода обратно: умерший
+        /// не возвращается в бег, что бы ни говорили остальные параметры.
+        /// </summary>
+        static void EnsureDeath(string controllerPath, Dictionary<string, AnimationClip> clips)
+        {
+            var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(controllerPath);
+            if (controller == null) return;
+
+            var sm = controller.layers[0].stateMachine;
+            if (sm.states.Any(c => c.state.name == "Death")) return;
+
+            var dying = Find(clips, "Zombie Dying");
+            if (dying == null)
+            {
+                Debug.LogWarning("[CharacterSetup] Не найден клип смерти для " + controllerPath);
+                return;
+            }
+
+            if (!controller.parameters.Any(p => p.name == "Die"))
+                controller.AddParameter("Die", AnimatorControllerParameterType.Trigger);
+
+            var death = sm.AddState("Death");
+            death.motion = dying;
+
+            // Из любого состояния: боец может умереть на бегу, стоя
+            // и посреди замаха.
+            var transition = sm.AddAnyStateTransition(death);
+            transition.AddCondition(AnimatorConditionMode.If, 0f, "Die");
+            transition.duration = 0.08f;
+            transition.hasExitTime = false;
+
+            // Иначе переход сработает второй раз уже из самой смерти
+            // и клип начнётся заново.
+            transition.canTransitionToSelf = false;
+
+            EditorUtility.SetDirty(controller);
+            Debug.Log("[CharacterSetup] В " + controllerPath + " добавлена смерть");
         }
 
         static void EnsureReverseRun(string controllerPath)

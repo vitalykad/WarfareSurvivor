@@ -1003,6 +1003,7 @@ namespace WarfareSurvivor.EditorTools
             Wire(hud, "waveLabel", wave);
             Wire(hud, "sparkFill", fill);
             Wire(hud, "sparkLabel", sparkLabel);
+            Wire(hud, "sparkBar", barRect);
             Wire(hud, "banner", banner);
             return hud;
         }
@@ -1015,11 +1016,13 @@ namespace WarfareSurvivor.EditorTools
         /// </summary>
         static void CreateAudioToggles(RectTransform parent, ArenaConfig config)
         {
-            CreateAudioToggle(parent, config, "MusicToggle", AudioToggle.Channel.Music,
-                              EnsureNoteIcon(), new Vector2(-140f, -28f));
-
+            // Динамик ближе к краю, нота левее. Функции кнопок были верны
+            // с самого начала — не тот был порядок, в каком они стоят.
             CreateAudioToggle(parent, config, "SfxToggle", AudioToggle.Channel.Effects,
-                              EnsureSpeakerIcon(), new Vector2(-28f, -28f));
+                              EnsureSpeakerIcon(), new Vector2(-140f, -28f));
+
+            CreateAudioToggle(parent, config, "MusicToggle", AudioToggle.Channel.Music,
+                              EnsureNoteIcon(), new Vector2(-28f, -28f));
         }
 
         static void CreateAudioToggle(RectTransform parent, ArenaConfig config, string name,

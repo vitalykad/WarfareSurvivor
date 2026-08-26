@@ -15,6 +15,7 @@ namespace WarfareSurvivor
         static readonly int SpeedParam = Animator.StringToHash("Speed");
         static readonly int MoveDirParam = Animator.StringToHash("MoveDir");
         static readonly int AttackParam = Animator.StringToHash("Attack");
+        static readonly int DieParam = Animator.StringToHash("Die");
         static readonly int AttackSpeedParam = Animator.StringToHash("AttackSpeed");
 
         /// <summary>Имя слоя удара — тот же, что заводит CharacterSetupBuilder.</summary>
@@ -52,6 +53,10 @@ namespace WarfareSurvivor
 
         /// <summary>Дуга замаха под ногами. Только у ближнего боя.</summary>
         MeleeArc meleeArc;
+
+        /// <summary>Боец умер и доигрывает падение.</summary>
+        bool dying;
+        float hideTime;
         float attackLayerWeight;
         float attackClipLength = 0.5f;
         float pendingHitTime;
@@ -150,9 +155,23 @@ namespace WarfareSurvivor
 
         void OnDied()
         {
+            // Из реестра и из строя убираем СРАЗУ: мёртвый не должен
+            // ни стрелять, ни занимать место в формации, ни ловить на себя
+            // цели зомби. Из виду он уходит позже, доиграв падение.
             Registry.Survivors.Remove(this);
-            gameObject.SetActive(false);
             Lost?.Invoke(this);
+
+            dying = true;
+            hideTime = Time.time + Mathf.Max(0.1f, config.survivorCorpseTime);
+
+            if (animator != null)
+            {
+                animator.SetTrigger(DieParam);
+                animator.speed = Mathf.Max(0.05f, config.zombieDeathSpeed);
+            }
+
+            // Оружие в руке падающего выглядит приклеенным, но убирать его
+            // отдельно незачем: тело уходит через секунду с небольшим.
         }
 
         /// <summary>
@@ -168,7 +187,17 @@ namespace WarfareSurvivor
 
         void Update()
         {
-            if (config == null || health.IsDead) return;
+            if (config == null) return;
+
+            // Умерший доигрывает падение и уходит. Логику ему не считаем:
+            // он уже не боец, но ещё тело на земле.
+            if (dying)
+            {
+                if (Time.time >= hideTime) gameObject.SetActive(false);
+                return;
+            }
+
+            if (health.IsDead) return;
             if (!config.simulateSurvivors) return;
 
             Move();

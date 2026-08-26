@@ -61,6 +61,7 @@ MonoBehaviour:
   zombieTierColorHigh: {r: 0.95, g: 0.88, b: 0.25, a: 1}
   zombieScaleLow: 1
   zombieScaleHigh: 1.6
+  survivorCorpseTime: 1.4
   zombieCorpseTime: 1.2
   zombieDeathSpeed: 2.2
   useBakedZombies: 0
@@ -148,7 +149,7 @@ MonoBehaviour:
   squadSlotCap: 20
   sparkPerKill: 1
   tierUpCostBase: 8
-  tierUpCostGrowth: 1.3
+  tierUpCostGrowth: 1.15
   tierUpOptions: 3
   tierUpAddUnitChance: 0.5
   tierUpDamageStep: 0.2

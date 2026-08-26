@@ -16,6 +16,11 @@ namespace WarfareSurvivor
         [SerializeField] RunController run;
         [SerializeField] Text waveLabel;
         [SerializeField] Image sparkFill;
+
+        [SerializeField, Tooltip("Полоска целиком: её и толкаем при подборе. " +
+                                 "Подскакивающие цифры на неподвижной полоске " +
+                                 "читаются как сбой вёрстки, а не как отклик.")]
+        RectTransform sparkBar;
         [SerializeField] Text sparkLabel;
         [SerializeField] Text banner;
 
@@ -30,11 +35,11 @@ namespace WarfareSurvivor
         [SerializeField, Tooltip("Насколько счётчик подскакивает при подборе.")]
         float pulseScale = 0.35f;
 
-        Vector3 sparkLabelScale = Vector3.one;
+        Vector3 sparkBarScale = Vector3.one;
 
         void Awake()
         {
-            if (sparkLabel != null) sparkLabelScale = sparkLabel.transform.localScale;
+            if (sparkBar != null) sparkBarScale = sparkBar.localScale;
         }
 
         void LateUpdate()
@@ -95,7 +100,7 @@ namespace WarfareSurvivor
             // Затухающий подскок: резкий рост и мягкий возврат читаются
             // как отклик на подбор, ровная синусоида — как мигание.
             float grow = 1f + pulseScale * pulse * pulse;
-            sparkLabel.transform.localScale = sparkLabelScale * grow;
+            if (sparkBar != null) sparkBar.localScale = sparkBarScale * grow;
         }
 
         void UpdateBanner()
