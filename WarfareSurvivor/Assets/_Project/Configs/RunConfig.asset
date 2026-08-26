@@ -83,7 +83,7 @@ MonoBehaviour:
   groupAngleSpread: 25
   maxAliveZombies: 200
   tierUnlockInterval: 25
-  hitFlashDuration: 0.08
+  hitFlashDuration: 0.12
   hitFlashColor: {r: 1, g: 1, b: 1, a: 1}
   maxDamagePopups: 48
   popupLifetime: 0.7

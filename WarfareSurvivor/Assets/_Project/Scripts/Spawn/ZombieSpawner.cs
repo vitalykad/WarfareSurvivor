@@ -126,7 +126,19 @@ namespace WarfareSurvivor
             if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", color);
             if (material.HasProperty("_Color")) material.SetColor("_Color", color);
 
-            if (!emissive || !material.HasProperty("_EmissionColor")) return material;
+            if (!emissive) return material;
+
+            // ТЕКСТУРУ УБИРАЕМ. Вспышка красит модель ровным цветом, а с
+            // текстурой она остаётся собой, только чуть светлее.
+            //
+            // Раньше это сходило с рук: материал тира был крашен в зелёный,
+            // и белая вспышка читалась на его фоне. Когда покраску по тиру
+            // выключили, обычный материал стал белым — и белая вспышка на нём
+            // перестала быть заметна вовсе.
+            foreach (var n in new[] { "_BaseMap", "_MainTex", "_BaseColorMap" })
+                if (material.HasProperty(n)) material.SetTexture(n, null);
+
+            if (!material.HasProperty("_EmissionColor")) return material;
 
             // Без свечения белая заливка на солнце теряется среди светлого
             // песка: вспышка должна быть ярче фона, а не просто белее модели.

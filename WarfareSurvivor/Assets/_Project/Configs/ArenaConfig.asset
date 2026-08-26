@@ -61,6 +61,7 @@ MonoBehaviour:
   zombieTierColorHigh: {r: 0.95, g: 0.88, b: 0.25, a: 1}
   zombieScaleLow: 0.9
   zombieScaleHigh: 1.5
+  survivorCorpseTime: 1.4
   zombieCorpseTime: 2.5
   zombieDeathSpeed: 2.2
   useBakedZombies: 1
@@ -82,7 +83,7 @@ MonoBehaviour:
   groupAngleSpread: 25
   maxAliveZombies: 200
   tierUnlockInterval: 25
-  hitFlashDuration: 0.08
+  hitFlashDuration: 0.12
   hitFlashColor: {r: 1, g: 1, b: 1, a: 1}
   maxDamagePopups: 48
   popupLifetime: 0.7
