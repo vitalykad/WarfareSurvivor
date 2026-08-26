@@ -110,3 +110,4 @@ MonoBehaviour:
   scaleMultiplier: 1
   knockbackResist: 0
   spawnWeight: 1
+  unlockAfter: 0

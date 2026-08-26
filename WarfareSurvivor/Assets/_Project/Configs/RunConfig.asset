@@ -68,7 +68,7 @@ MonoBehaviour:
   bakedZombies: {fileID: 11400000, guid: 65a969dcc580044ef8b8b060dddc3dc8, type: 2}
   zombieSeparationRadius: 0.45
   zombieSeparationStrength: 0.5
-  ruinCount: 21
+  ruinCount: 32
   ruinAreaRadius: 45
   ruinKeepClearRadius: 8
   ruinScaleMin: 0.22
@@ -115,8 +115,8 @@ MonoBehaviour:
   simulateSurvivors: 1
   updateBakedFrames: 1
   uiFont: {fileID: 12800000, guid: e39bb5b09f9274bd7ae7f47a28aaf8f2, type: 3}
-  musicOn: 0
-  sfxOn: 0
+  musicOn: 1
+  sfxOn: 1
   musicVolume: 0.45
   sfxVolume: 0.8
   sfxMinInterval: 0.05

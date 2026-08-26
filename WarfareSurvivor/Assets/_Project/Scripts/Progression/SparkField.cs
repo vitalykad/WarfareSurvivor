@@ -77,7 +77,12 @@ namespace WarfareSurvivor
         void OnKilled(Zombie zombie)
         {
             if (zombie == null || config == null) return;
-            Drop(zombie.transform.position, Mathf.Max(1, config.sparkPerKill));
+            // Добыча — за ВЛОЖЕННЫЙ УРОН, а не за труп. Так доход искр
+            // держится ровно пропорционально урону отряда и не зависит
+            // от того, из кого сложена толпа: третьей волне больше не нужно
+            // убивать втрое больше, чтобы купить тот же тир-ап.
+            int worth = Mathf.Max(1, Mathf.RoundToInt(config.sparkPerKill * zombie.Effort));
+            Drop(zombie.transform.position, worth);
         }
 
         public void Drop(Vector3 position, int value)
