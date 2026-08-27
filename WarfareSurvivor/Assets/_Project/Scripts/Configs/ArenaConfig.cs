@@ -461,6 +461,42 @@ namespace WarfareSurvivor
                  "поднимаются каскадом.")]
         public float healPlusStagger = 0.09f;
 
+        [Header("Кислотный плевок")]
+
+        [Tooltip("Цвет заливки зоны поражения. Прозрачность важнее цвета: " +
+                 "зона должна темнить землю, а не закрашивать её.")]
+        public Color acidZoneColor = new Color(0.75f, 0.05f, 0.05f, 0.35f);
+
+        [Tooltip("Цвет кромки зоны. Именно кромка читается как граница " +
+                 "опасности — её видно даже поверх толпы.")]
+        public Color acidZoneRimColor = new Color(1f, 0.25f, 0.15f, 0.9f);
+
+        [Tooltip("Потолок одновременных зон на земле.")]
+        public int maxAcidZones = 16;
+
+        [Tooltip("Цвет капли. Аддитивный, так что это ещё и цвет свечения.")]
+        public Color acidDropColor = new Color(0.45f, 1f, 0.2f, 1f);
+
+        [Tooltip("Яркость свечения капли.")]
+        public float acidDropBoost = 2.4f;
+
+        [Tooltip("Размер летящего плевка в метрах.")]
+        public float acidSpitSize = 0.55f;
+
+        [Tooltip("Высота горки в долях дальности полёта. Ноль — плевок летит " +
+                 "по прямой, и на виде почти сверху выглядит скользящим " +
+                 "по земле, а не летящим.")]
+        public float acidArcHeight = 0.32f;
+
+        [Tooltip("Сколько брызг разлетается от упавшего плевка.")]
+        public int acidSplashCount = 10;
+
+        [Tooltip("Сколько летят брызги, секунд.")]
+        public float acidSplashTime = 0.42f;
+
+        [Tooltip("Потолок одновременных капель — и плевков, и брызг.")]
+        public int maxAcidDrops = 64;
+
         [Header("Трассеры")]
         [Tooltip("Общий выключатель эффекта. Отдельный от компонента: гасит " +
                  "вывод, не ломая счёт.")]

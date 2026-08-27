@@ -31,6 +31,8 @@ namespace WarfareSurvivor.EditorTools
             "WarfareSurvivor/VertexAnimationToon",         // зомби на запечённой анимации
             "WarfareSurvivor/Pickup",                      // ресурс тир-апа
             "WarfareSurvivor/MeleeArc",                    // дуга замаха
+            "WarfareSurvivor/AcidZone",                    // зона поражения плевка
+            "WarfareSurvivor/AcidDrop",                    // капля кислоты
             "Universal Render Pipeline/Simple Lit"         // для сравнения на стенде
         };
 

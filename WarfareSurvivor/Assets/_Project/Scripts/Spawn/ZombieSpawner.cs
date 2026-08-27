@@ -65,6 +65,8 @@ namespace WarfareSurvivor
             BuildTierMaterials();
             DamagePopup.Configure(config, Camera.main);
             HealPlus.Configure(config, Camera.main);
+            AcidZone.Configure(config);
+            AcidDrop.Configure(config, Camera.main);
         }
 
         /// <summary>

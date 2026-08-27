@@ -34,6 +34,7 @@ namespace WarfareSurvivor.EditorTools
         // гуманоидная и переносится на её скелет сама.
         const string MedicModel = "Assets/Models/Characters/Medic/Medic.fbx";
         public const string MedicPrefab = SurvivorsDir + "/Survivor_Medic.prefab";
+        const string MedicController = AnimatorsDir + "/Survivor_Medic.controller";
         const string FarmerController = AnimatorsDir + "/Survivor_ShovelFarmer.controller";
         const string FarmerPrefab = SurvivorsDir + "/Survivor_ShovelFarmer.prefab";
         const string UpperBodyMask = AnimatorsDir + "/UpperBody.mask";
@@ -50,6 +51,9 @@ namespace WarfareSurvivor.EditorTools
 
         const string BigZombieModel = "Assets/Models/Enemy/BigZombie/BigZombie.fbx";
         public const string BigZombiePrefab = MonstersDir + "/Monster_BigZombie.prefab";
+
+        const string SpitterModel = "Assets/Models/Enemy/SpittingZombie/tripo_convert_e8e86b92-37c9-472f-8cb9-6395a1a3782a.fbx";
+        public const string SpitterPrefab = MonstersDir + "/Monster_SpittingZombie.prefab";
 
         // Скорость, ниже которой боец считается стоящим. Относительная величина:
         // сравнивается с параметром Speed, который код нормализует к 0..1.
@@ -110,7 +114,9 @@ namespace WarfareSurvivor.EditorTools
             AttachWeapons();
             EnsureReverseRun(PoliceController);
             EnsureReverseRun(FarmerController);
+            EnsureSpit(ZombieController, clips);
             EnsureDeath(PoliceController, clips);
+            EnsureDeath(MedicController, clips);
             EnsureDeath(FarmerController, clips);
             EnsureUpperBodyAttack(FarmerController, clips);
 
@@ -148,9 +154,49 @@ namespace WarfareSurvivor.EditorTools
             // риг тот же — отличается только модель.
             BuildPrefab(SouthPoliceModel, PoliceController, SouthPolicePrefab, force);
 
-            // Медик. Оружия ей не вешаем — она не боец, и револьвер в руке
+            BuildMedic(clips, force);
+        }
+
+        /// <summary>
+        /// Медик. Контроллер СВОЙ, а не общий с полицейским.
+        ///
+        /// Всё дело в покое: у полицейского это "Pistol Idle", поза с оружием
+        /// наготове. Медик оружия не носит вовсе, и стойка стрелка с пустыми
+        /// руками выглядит так, будто пистолет у неё отобрали.
+        ///
+        /// Клип берётся ПОЛНЫМ именем "X Bot@Idle": короткое имя "Idle" есть
+        /// ещё и у Spearman, и по нему достался бы случайный из двух.
+        ///
+        /// Бег пока общий, стрелковый: обычного бега без оружия среди клипов
+        /// нет. Появится — менять здесь одну строку.
+        /// </summary>
+        static void BuildMedic(Dictionary<string, AnimationClip> clips, bool force)
+        {
+            var idle = Find(clips, "X Bot@Idle");
+            var run = Find(clips, "Pistol Run");
+            if (idle == null || run == null) return;
+
+            if (force || AssetDatabase.LoadAssetAtPath<AnimatorController>(MedicController) == null)
+            {
+                var ac = AnimatorController.CreateAnimatorControllerAtPath(MedicController);
+                ac.AddParameter("Speed", AnimatorControllerParameterType.Float);
+
+                var sm = ac.layers[0].stateMachine;
+                var idleState = sm.AddState("Idle");
+                idleState.motion = idle;
+                var runState = sm.AddState("Run");
+                runState.motion = run;
+                sm.defaultState = idleState;
+
+                Link(idleState, runState, AnimatorConditionMode.Greater, MoveThreshold);
+                Link(runState, idleState, AnimatorConditionMode.Less, MoveThreshold);
+
+                Debug.Log($"[CharacterSetup] Создан контроллер {MedicController}");
+            }
+
+            // Оружия медику не вешаем — она не боец, и револьвер в руке
             // противоречил бы и роли, и месту в центре строя.
-            BuildPrefab(MedicModel, PoliceController, MedicPrefab, force);
+            BuildPrefab(MedicModel, MedicController, MedicPrefab, force);
         }
 
         static void BuildFarmer(Dictionary<string, AnimationClip> clips, bool force)
@@ -215,6 +261,7 @@ namespace WarfareSurvivor.EditorTools
             BuildPrefab(ZombieModel, ZombieController, ZombiePrefab, force);
             BuildPrefab(OfficeZombieModel, ZombieController, OfficeZombiePrefab, force);
             BuildPrefab(BigZombieModel, ZombieController, BigZombiePrefab, force);
+            BuildPrefab(SpitterModel, ZombieController, SpitterPrefab, force);
         }
 
         /// <summary>
@@ -462,6 +509,52 @@ namespace WarfareSurvivor.EditorTools
         /// Переход идёт ИЗ ЛЮБОГО состояния и без выхода обратно: умерший
         /// не возвращается в бег, что бы ни говорили остальные параметры.
         /// </summary>
+        /// <summary>
+        /// Заводит в контроллере зомби состояние плевка.
+        ///
+        /// В ОБЩЕМ контроллере, а не в отдельном для плевуна: анимация
+        /// гуманоидная, Unity переносит её на любой скелет сама, а виды,
+        /// которые не плюются, просто никогда не дёргают триггер.
+        /// </summary>
+        static void EnsureSpit(string controllerPath, Dictionary<string, AnimationClip> clips)
+        {
+            var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(controllerPath);
+            if (controller == null) return;
+
+            var sm = controller.layers[0].stateMachine;
+            if (sm.states.Any(c => c.state.name == "Spit")) return;
+
+            var scream = Find(clips, "Zombie Scream");
+            if (scream == null)
+            {
+                Debug.LogWarning("[CharacterSetup] Не найден клип \"Zombie Scream\" для плевка");
+                return;
+            }
+
+            if (!controller.parameters.Any(p => p.name == "Spit"))
+                controller.AddParameter("Spit", AnimatorControllerParameterType.Trigger);
+
+            var spit = sm.AddState("Spit");
+            spit.motion = scream;
+
+            var toSpit = sm.AddAnyStateTransition(spit);
+            toSpit.AddCondition(AnimatorConditionMode.If, 0f, "Spit");
+            toSpit.duration = 0.1f;
+            toSpit.hasExitTime = false;
+            toSpit.canTransitionToSelf = false;
+
+            // Обратно в бег САМ, по концу клипа: код держит плевуна на месте
+            // своим отсчётом замаха, и завязывать возврат ещё и на параметр
+            // значило бы держать одно состояние в двух местах.
+            var back = spit.AddTransition(sm.defaultState);
+            back.hasExitTime = true;
+            back.exitTime = 0.92f;
+            back.duration = 0.15f;
+
+            EditorUtility.SetDirty(controller);
+            Debug.Log("[CharacterSetup] В " + controllerPath + " добавлен плевок");
+        }
+
         static void EnsureDeath(string controllerPath, Dictionary<string, AnimationClip> clips)
         {
             var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(controllerPath);
@@ -585,9 +678,28 @@ namespace WarfareSurvivor.EditorTools
             foreach (var guid in AssetDatabase.FindAssets("t:GameObject", new[] { "Assets/Animations" }))
             {
                 var path = AssetDatabase.GUIDToAssetPath(guid);
-                foreach (var clip in AssetDatabase.LoadAllAssetsAtPath(path).OfType<AnimationClip>())
+                string file = System.IO.Path.GetFileNameWithoutExtension(path);
+
+                var inFile = AssetDatabase.LoadAllAssetsAtPath(path).OfType<AnimationClip>()
+                    .Where(c => !c.name.StartsWith("__preview__")).ToList();
+
+                foreach (var clip in inFile)
                 {
-                    if (clip.name.StartsWith("__preview__")) continue;
+                    // Второй ключ — ПО ИМЕНИ ФАЙЛА, когда клип в нём один.
+                    // Файлы уже названы по правилу "Риг@Клип", и это имя
+                    // однозначно, тогда как само имя клипа — нет: "Idle"
+                    // лежит и в Spearman@Idle, и в X Bot@Idle, и по короткому
+                    // имени фермеру могла достаться чужая поза.
+                    if (inFile.Count == 1) result[file] = clip;
+
+                    if (result.TryGetValue(clip.name, out var already) && already != clip)
+                    {
+                        Debug.LogWarning($"[CharacterSetup] Клип \"{clip.name}\" встречается " +
+                                         $"больше одного раза ({path}). Обращайся к нему " +
+                                         "по имени файла, иначе достанется случайный.");
+                        continue;
+                    }
+
                     result[clip.name] = clip;
                 }
             }

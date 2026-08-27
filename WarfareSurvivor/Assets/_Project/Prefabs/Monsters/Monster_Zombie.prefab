@@ -110,4 +110,10 @@ MonoBehaviour:
   scaleMultiplier: 1
   knockbackResist: 0
   spawnWeight: 1
+  spitRange: 0
+  spitWindup: 1.1
+  spitInterval: 3.5
+  spitDamage: 18
+  spitRadius: 2.2
+  spitFlightTime: 0.75
   unlockAfter: 0

@@ -11,6 +11,7 @@ namespace WarfareSurvivor
     public class Zombie : MonoBehaviour
     {
         static readonly int DieParam = Animator.StringToHash("Die");
+        static readonly int SpitParam = Animator.StringToHash("Spit");
 
         // Имена клипов те же, что в контроллере: печь берёт их оттуда,
         // и расхождение сразу оставило бы зомби без анимации.
@@ -66,6 +67,39 @@ namespace WarfareSurvivor
                                  "перестают быть событием.")]
         float spawnWeight = 1f;
 
+        [Header("Кислотный плевок")]
+
+        [SerializeField, Tooltip("С какой дистанции плюётся, в метрах. " +
+                                 "Ноль — вид не плюётся вовсе, и вся эта " +
+                                 "секция его не касается.")]
+        float spitRange;
+
+        [SerializeField, Tooltip("Сколько секунд длится замах: от остановки " +
+                                 "и появления зоны до вылета плевка.\n\n" +
+                                 "Это ВРЕМЯ НА РЕАКЦИЮ. Слишком короткий замах " +
+                                 "превращает зону в украшение — увидеть её " +
+                                 "игрок успевает, а увести отряд уже нет.")]
+        float spitWindup = 1.1f;
+
+        [SerializeField, Tooltip("Секунд между плевками.")]
+        float spitInterval = 3.5f;
+
+        [SerializeField, Tooltip("Урон в момент попадания. Достаётся всем, " +
+                                 "кто оказался в круге.")]
+        float spitDamage = 18f;
+
+        [SerializeField, Tooltip("Радиус поражения в метрах. Он же радиус " +
+                                 "красного круга на земле — иначе круг врал бы.")]
+        float spitRadius = 2.2f;
+
+        [SerializeField, Tooltip("Сколько летит плевок, секунд. Складывается " +
+                                 "с замахом: столько всего есть у игрока, " +
+                                 "чтобы уйти.")]
+        float spitFlightTime = 0.75f;
+
+        /// <summary>Вид умеет плеваться.</summary>
+        public bool Spits => spitRange > 0f && spitDamage > 0f;
+
         [SerializeField, Tooltip("С какой секунды забега этот вид вообще " +
                                  "появляется. Ноль — с самого начала. " +
                                  "Крупный приходит в середине второй волны: " +
@@ -103,6 +137,12 @@ namespace WarfareSurvivor
         float nextContactTime;
         float despawnTime;
         bool dying;
+
+        /// <summary>Замах начат: зона показана, плевок ещё не вылетел.</summary>
+        float spitReleaseTime;
+        float nextSpitTime;
+        Vector3 spitAimPoint;
+        AcidZone spitZone;
 
         public bool IsDead => health == null || health.IsDead;
 
@@ -169,6 +209,8 @@ namespace WarfareSurvivor
             dying = false;
             despawnTime = 0f;
             nextContactTime = 0f;
+            CancelSpit();
+            nextSpitTime = Time.time + Random.value * Mathf.Max(0.1f, spitInterval);
             knockbackUntil = 0f;
             knockbackVelocity = Vector3.zero;
             nextRetargetTime = Time.time + Random.value * cfg.retargetInterval;
@@ -268,6 +310,7 @@ namespace WarfareSurvivor
         void OnDied()
         {
             dying = true;
+            CancelSpit();
             // Начатый полёт НЕ сбрасываем: тело должно долететь и упасть там,
             // куда его отбросило, а не замереть в точке смерти.
             // Из реестра убираем сразу, чтобы бойцы не расстреливали труп.
@@ -307,11 +350,32 @@ namespace WarfareSurvivor
             }
 
             UpdateTarget();
-            if (target == null) return;
+
+            // Начатый замах доводится до конца НЕЗАВИСИМО от того, жива ли
+            // цель: зона уже обещала удар в конкретную точку, и плевок должен
+            // туда прилететь.
+            //
+            // Без этого плевун, потерявший цель посреди замаха, застревал
+            // в нём навсегда — выход по «цели нет» стоял раньше. В замере
+            // это выглядело так: шесть плевунов, из них один вечно «в замахе»,
+            // и зона от него давно погасла.
+            if (spitReleaseTime > 0f && Time.time >= spitReleaseTime) Release();
+
+            if (target == null)
+            {
+                CancelSpit();
+                return;
+            }
 
             var to = target.transform.position - transform.position;
             to.y = 0f;
             float distance = to.magnitude;
+
+            if (Spits && UpdateSpit(to, distance))
+            {
+                ResolveOverlap();
+                return;
+            }
 
             if (distance > config.zombieContactRange)
             {
@@ -332,6 +396,90 @@ namespace WarfareSurvivor
             // стоят на месте, и именно они образуют неподвижную стену, в которую
             // спрессовывается всё, что подходит следом.
             ResolveOverlap();
+        }
+
+        // --- кислотный плевок ------------------------------------------------
+
+        /// <summary>
+        /// Ведёт замах и выстрел. Возвращает true, пока плевун занят —
+        /// тогда обычное преследование в этом кадре не выполняется.
+        ///
+        /// Плевун ОСТАНАВЛИВАЕТСЯ на весь замах. Плюющий на бегу читался бы
+        /// как случайность: игрок не понимает, кто именно и когда в него
+        /// выстрелил. Остановка — это и есть предупреждение, а красный круг
+        /// говорит куда.
+        /// </summary>
+        bool UpdateSpit(Vector3 toTarget, float distance)
+        {
+            // Замах идёт — стоим и доводим его до конца. Прицел НЕ обновляем:
+            // круг обещал точку, и плевок должен прилететь именно туда,
+            // иначе уходить из круга бессмысленно.
+            // Замах идёт — стоим и доворачиваемся. Сам выстрел делает Update:
+            // он обязан случиться и тогда, когда цели уже нет.
+            if (spitReleaseTime > 0f)
+            {
+                FaceTowards(toTarget);
+                return true;
+            }
+
+            // Слишком далеко — идём сближаться обычным ходом.
+            if (distance > spitRange) return false;
+
+            // Враг вплотную: кислота своих не разбирает, и плевать себе
+            // под ноги плевун не станет. Отдаём его обычной драке.
+            if (distance <= config.zombieContactRange) return false;
+
+            if (Time.time < nextSpitTime) return false;
+
+            Aim();
+            return true;
+        }
+
+        /// <summary>Останавливается, показывает зону и начинает замах.</summary>
+        void Aim()
+        {
+            spitAimPoint = target.transform.position;
+            spitAimPoint.y = 0f;
+
+            spitReleaseTime = Time.time + Mathf.Max(0.05f, spitWindup);
+
+            // Зона живёт весь замах И весь полёт: она гаснет в момент
+            // попадания, а не раньше.
+            spitZone = AcidZone.Show(spitAimPoint, spitRadius,
+                                     Mathf.Max(0.05f, spitWindup) + Mathf.Max(0.05f, spitFlightTime));
+
+            if (animator != null) animator.SetTrigger(SpitParam);
+        }
+
+        void Release()
+        {
+            spitReleaseTime = 0f;
+            nextSpitTime = Time.time + Mathf.Max(0.2f, spitInterval);
+
+            // Вылетает изо рта, а не из-под ног: иначе плевок начинает полёт
+            // в земле и первую треть пути его не видно.
+            var mouth = transform.position + Vector3.up * (PopupHeight() * 0.72f) + transform.forward * 0.35f;
+
+            AcidDrop.Spit(mouth, spitAimPoint, spitFlightTime, spitRadius, spitDamage, spitZone);
+            spitZone = null;
+        }
+
+        /// <summary>
+        /// Снимает начатый замах. Нужен и пулу, и смерти: зона, оставшаяся
+        /// от убитого плевуна, обещает удар, которого не будет, — а игрок
+        /// по ней уводит отряд.
+        /// </summary>
+        void CancelSpit()
+        {
+            if (spitZone != null) spitZone.Hide();
+            spitZone = null;
+            spitReleaseTime = 0f;
+        }
+
+        void FaceTowards(Vector3 direction)
+        {
+            if (direction.sqrMagnitude < 0.0001f) return;
+            transform.rotation = Quaternion.LookRotation(direction.normalized, Vector3.up);
         }
 
         /// <summary>Шаг полёта от удара. В стену не пускаем и живого, и мёртвого.</summary>

@@ -102,6 +102,16 @@ MonoBehaviour:
   healPlusPerHeal: 4
   healPlusSpread: 0.45
   healPlusStagger: 0.09
+  acidZoneColor: {r: 0.75, g: 0.05, b: 0.05, a: 0.35}
+  acidZoneRimColor: {r: 1, g: 0.25, b: 0.15, a: 0.9}
+  maxAcidZones: 16
+  acidDropColor: {r: 0.45, g: 1, b: 0.2, a: 1}
+  acidDropBoost: 1.7
+  acidSpitSize: 0.95
+  acidArcHeight: 0.32
+  acidSplashCount: 10
+  acidSplashTime: 0.42
+  maxAcidDrops: 64
   tracersEnabled: 1
   tracerLife: 0.11
   tracerDashMeters: 2.5
