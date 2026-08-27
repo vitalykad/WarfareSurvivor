@@ -185,10 +185,10 @@ namespace WarfareSurvivor
         {
             if (material != null) return material;
 
-            var shader = Shader.Find("WarfareSurvivor/AcidDrop");
+            var shader = Shader.Find("WarfareSurvivor/GlowSprite");
             if (shader == null)
             {
-                Debug.LogError("[AcidDrop] Не нашёлся шейдер WarfareSurvivor/AcidDrop — " +
+                Debug.LogError("[AcidDrop] Не нашёлся шейдер WarfareSurvivor/GlowSprite — " +
                                "капли останутся без свечения.");
                 shader = Shader.Find("WarfareSurvivor/AdditiveTracer");
             }

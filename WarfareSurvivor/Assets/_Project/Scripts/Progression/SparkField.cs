@@ -47,6 +47,12 @@ namespace WarfareSurvivor
             /// <summary>Летит к бойцу.</summary>
             public bool Flying;
 
+            /// <summary>Расстояние до бойца в момент начала полёта.</summary>
+            public float FlyRadius;
+
+            /// <summary>В какую сторону закручивается: плюс или минус единица.</summary>
+            public float Spin;
+
             /// <summary>Откуда и куда идёт разлёт, и сколько его осталось.</summary>
             public Vector3 From;
             public Vector3 To;
@@ -60,6 +66,7 @@ namespace WarfareSurvivor
         readonly Stack<Transform> idle = new Stack<Transform>();
         Transform pool;
         Mesh quad;
+        Material trailMaterial;
 
         void Awake()
         {
@@ -103,6 +110,16 @@ namespace WarfareSurvivor
             item.rotation = Facing();
             item.gameObject.SetActive(true);
 
+            // След от прошлого жильца надо стереть ЗДЕСЬ, после того как
+            // объект встал на новое место: иначе он проведёт полосу через
+            // полкарты от точки, где подобрали предыдущую бутылку.
+            var trail = item.GetComponent<TrailRenderer>();
+            if (trail != null)
+            {
+                trail.emitting = false;
+                trail.Clear();
+            }
+
             sparks.Add(new Spark
             {
                 View = item,
@@ -111,7 +128,11 @@ namespace WarfareSurvivor
                 From = position,
                 To = ScatterTarget(position, ground),
                 ScatterLeft = Mathf.Max(0.05f, config.sparkScatterTime),
-                Phase = Random.value * Mathf.PI * 2f
+                Phase = Random.value * Mathf.PI * 2f,
+
+                // Сторона закрутки у каждой своя: одинаковая читается
+                // как заводной механизм, а не как втягивание.
+                Spin = Random.value < 0.5f ? -1f : 1f
             });
         }
 
@@ -150,16 +171,53 @@ namespace WarfareSurvivor
             for (int i = sparks.Count - 1; i >= 0; i--) Recycle(i);
         }
 
-        /// <summary>Засчитывает всё разом — конец волны, поле подбирается само.</summary>
+        /// <summary>
+        /// Конец волны: поле подбирается само.
+        ///
+        /// Добыча ЛЕТИТ к отряду, а не засчитывается разом. Мгновенный
+        /// подсчёт лишал игрока единственного момента, когда видно, сколько
+        /// он за волну насобирал: бутылки просто пропадали, а число
+        /// на полоске прыгало.
+        ///
+        /// Летит только то, что ПРИМЕРНО В КАДРЕ. Бутылка, лежащая за краем
+        /// экрана, влететь ниоткуда не может — она не читается как подобранная,
+        /// она читается как подаренная. Остальные никуда не деваются: лежат
+        /// где лежали, и в следующей волне их можно поднять ногами.
+        /// </summary>
         public void CollectAll()
         {
-            int total = 0;
             for (int i = sparks.Count - 1; i >= 0; i--)
             {
-                total += sparks[i].Value;
-                Recycle(i);
+                var spark = sparks[i];
+
+                // Ещё разлетается после смерти зомби — пусть долетит,
+                // подберётся обычным порядком.
+                if (spark.ScatterLeft > 0f) continue;
+                if (spark.Flying) continue;
+                if (!InView(spark.Position)) continue;
+
+                var collector = Nearest(spark.Position);
+                if (collector == null) continue;
+
+                StartFlight(ref spark, collector.transform.position);
+                sparks[i] = spark;
             }
-            if (total > 0) Collected?.Invoke(total);
+        }
+
+        /// <summary>
+        /// Точка примерно в кадре? Границы с запасом: у самого края экрана
+        /// бутылка видна лишь наполовину, и отсекать её ровно по краю —
+        /// значит терять то, что игрок считает своим.
+        /// </summary>
+        bool InView(Vector3 point)
+        {
+            if (view == null) return true;
+
+            var viewport = view.WorldToViewportPoint(point);
+            const float margin = 0.06f;
+            return viewport.z > 0f
+                && viewport.x > -margin && viewport.x < 1f + margin
+                && viewport.y > -margin && viewport.y < 1f + margin;
         }
 
         /// <summary>
@@ -203,11 +261,11 @@ namespace WarfareSurvivor
                 // Притяжение включается один раз и обратно не выключается:
                 // иначе искра на границе радиуса дёргается туда-сюда, пока
                 // отряд рядом ходит.
-                if (!spark.Flying && sqr <= attract) spark.Flying = true;
+                if (!spark.Flying && sqr <= attract) StartFlight(ref spark, collector.transform.position);
 
                 if (spark.Flying && sqr > 0.0001f)
                 {
-                    spark.Position += delta.normalized * Mathf.Min(step, delta.magnitude);
+                    Spiral(ref spark, collector.transform.position, step);
                     spark.View.position = spark.Position;
                 }
 
@@ -217,6 +275,60 @@ namespace WarfareSurvivor
 
                 if (sqr <= pickup) CollectAt(i);
             }
+        }
+
+        /// <summary>
+        /// Пускает добычу в полёт к бойцу и включает след.
+        ///
+        /// Расстояние запоминается: по нему считается закрутка, чтобы
+        /// спираль выглядела одинаково и при подборе в двух метрах,
+        /// и при сборе поля после волны с двадцати.
+        /// </summary>
+        void StartFlight(ref Spark spark, Vector3 target)
+        {
+            if (spark.Flying) return;
+
+            spark.Flying = true;
+
+            var flat = spark.Position - target;
+            flat.y = 0f;
+            spark.FlyRadius = Mathf.Max(0.01f, flat.magnitude);
+
+            if (spark.View == null) return;
+            var trail = spark.View.GetComponent<TrailRenderer>();
+            if (trail == null) return;
+
+            trail.time = Mathf.Max(0.02f, config.sparkTrailTime);
+            trail.widthMultiplier = Mathf.Max(0.01f, config.sparkTrailWidth);
+            ApplyTrailColor(trail);
+            trail.Clear();
+            trail.emitting = true;
+        }
+
+        /// <summary>
+        /// Шаг полёта ПО СПИРАЛИ: радиус убывает ровно, угол доворачивается.
+        ///
+        /// Радиус убывает с той же скоростью, что и раньше по прямой, —
+        /// значит время полёта и, стало быть, весь баланс подбора не изменились.
+        /// Меняется только путь.
+        /// </summary>
+        void Spiral(ref Spark spark, Vector3 target, float step)
+        {
+            var fromTarget = spark.Position - target;
+            fromTarget.y = 0f;
+
+            float radius = fromTarget.magnitude;
+            if (radius < 0.0001f) return;
+
+            float next = Mathf.Max(0f, radius - step);
+
+            // Доворот за кадр — доля от ПОЛНОГО доворота за весь полёт.
+            float turn = config.sparkSpiralTurn * spark.Spin * (step / spark.FlyRadius);
+            var direction = Quaternion.AngleAxis(turn, Vector3.up) * (fromTarget / radius);
+
+            var moved = target + direction * next;
+            moved.y = spark.Position.y;
+            spark.Position = moved;
         }
 
         /// <summary>
@@ -316,11 +428,18 @@ namespace WarfareSurvivor
 
         void Recycle(int index)
         {
-            var view = sparks[index].View;
-            if (view != null)
+            var item = sparks[index].View;
+            if (item != null)
             {
-                view.gameObject.SetActive(false);
-                idle.Push(view);
+                var trail = item.GetComponent<TrailRenderer>();
+                if (trail != null)
+                {
+                    trail.emitting = false;
+                    trail.Clear();
+                }
+
+                item.gameObject.SetActive(false);
+                idle.Push(item);
             }
             sparks.RemoveAt(index);
         }
@@ -338,7 +457,61 @@ namespace WarfareSurvivor
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             renderer.receiveShadows = false;
 
+            var trail = go.AddComponent<TrailRenderer>();
+            trail.sharedMaterial = TrailMaterial();
+            trail.alignment = LineAlignment.View;
+            trail.numCapVertices = 2;
+            trail.minVertexDistance = 0.06f;
+            trail.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            trail.receiveShadows = false;
+            trail.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+            trail.emitting = false;
+
+            // Сходит на нет к хвосту: полоса ровной ширины читается ниткой,
+            // а не следом.
+            trail.widthCurve = new AnimationCurve(
+                new Keyframe(0f, 1f), new Keyframe(1f, 0f));
+
+            ApplyTrailColor(trail);
+
             return go.transform;
+        }
+
+        /// <summary>
+        /// Цвет следа. Живёт в ГРАДИЕНТЕ ленты, а не в материале: материал
+        /// один на все следы, и красить в нём значило бы красить все разом.
+        /// </summary>
+        void ApplyTrailColor(TrailRenderer trail)
+        {
+            var color = config != null ? config.sparkTrailColor : new Color(0.35f, 0.72f, 1f, 0.9f);
+
+            var gradient = new Gradient();
+            gradient.SetKeys(
+                new[] { new GradientColorKey(color, 0f), new GradientColorKey(color, 1f) },
+                new[] { new GradientAlphaKey(color.a, 0f), new GradientAlphaKey(0f, 1f) });
+
+            trail.colorGradient = gradient;
+        }
+
+        Material TrailMaterial()
+        {
+            if (trailMaterial != null) return trailMaterial;
+
+            // НЕ аддитивный шейдер трасс, а с предумноженной альфой.
+            // Аддитивный поверх песочной земли выбивает все три канала
+            // в единицу, и синий след выходил чисто белым — проверено
+            // съёмкой. Здесь плотная часть ленты держит свой цвет.
+            var shader = Shader.Find("WarfareSurvivor/GlowSprite");
+            if (shader == null)
+            {
+                Debug.LogError("[Искры] Не нашёлся шейдер WarfareSurvivor/GlowSprite — " +
+                               "след за добычей останется без свечения.");
+                return null;
+            }
+
+            trailMaterial = new Material(shader) { name = "SparkTrail" };
+            trailMaterial.SetFloat("_Boost", config != null ? Mathf.Max(0.1f, config.sparkTrailBoost) : 1.5f);
+            return trailMaterial;
         }
 
         /// <summary>

@@ -32,7 +32,7 @@ namespace WarfareSurvivor.EditorTools
             "WarfareSurvivor/Pickup",                      // ресурс тир-апа
             "WarfareSurvivor/MeleeArc",                    // дуга замаха
             "WarfareSurvivor/AcidZone",                    // зона поражения плевка
-            "WarfareSurvivor/AcidDrop",                    // капля кислоты
+            "WarfareSurvivor/GlowSprite",                  // капли кислоты, след за добычей
             "Universal Render Pipeline/Simple Lit"         // для сравнения на стенде
         };
 
