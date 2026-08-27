@@ -39,6 +39,9 @@ namespace WarfareSurvivor
             public Material[] Tier;
             public Material[] Flash;
             public readonly Stack<Zombie> Idle = new Stack<Zombie>();
+
+            /// <summary>Сколько таких сейчас на поле. Держит потолок вида.</summary>
+            public int Live;
         }
 
         readonly List<Variant> variants = new List<Variant>();
@@ -311,6 +314,7 @@ namespace WarfareSurvivor
             zombie.Init(config, tier, variant.Tier[tier - 1], variant.Flash[tier - 1], scale);
 
             alive.Add(zombie);
+            variant.Live++;
         }
 
         const string BakedShaderName = "WarfareSurvivor/VertexAnimationToon";
@@ -359,6 +363,12 @@ namespace WarfareSurvivor
         {
             var prefab = variant.Prefab;
             if (elapsed < prefab.UnlockAfter) return 0f;
+
+            // Вид, которого на поле уже достаточно, в розыгрыше не участвует
+            // вовсе — иначе его доля просто перетекала бы в пустые броски.
+            int cap = prefab.MaxAlive;
+            if (cap > 0 && variant.Live >= cap) return 0f;
+
             return prefab.WeightForWave(waveNumber);
         }
 
@@ -433,7 +443,15 @@ namespace WarfareSurvivor
 
             // В СВОЙ пул: иначе офисник выйдет на месте обычного зомби
             // с чужими материалами и чужой запечённой анимацией.
-            if (origin.TryGetValue(zombie, out var variant)) variant.Idle.Push(zombie);
+            //
+            // Здесь же освобождается место под потолком вида. Считаем
+            // по ВОЗВРАТУ В ПУЛ, а не по смерти: труп ещё пару секунд лежит
+            // на поле, и пускать на его место следующего плевуна рано.
+            if (origin.TryGetValue(zombie, out var variant))
+            {
+                variant.Idle.Push(zombie);
+                variant.Live = Mathf.Max(0, variant.Live - 1);
+            }
         }
     }
 }

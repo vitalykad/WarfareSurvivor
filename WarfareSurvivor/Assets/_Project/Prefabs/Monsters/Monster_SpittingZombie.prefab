@@ -138,3 +138,4 @@ MonoBehaviour:
   - 0
   - 0.15
   - 0.5
+  maxAlive: 1

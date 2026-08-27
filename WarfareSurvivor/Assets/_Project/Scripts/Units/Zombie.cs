@@ -132,6 +132,18 @@ namespace WarfareSurvivor
                                  "вместе с ней.")]
         float[] spawnWeightByWave = new float[0];
 
+        [SerializeField, Tooltip("Сколько таких может быть на поле одновременно. " +
+                                 "Ноль — без ограничения.\n\n" +
+                                 "Не то же самое, что частота: частота решает, " +
+                                 "как часто вид выпадает, а это — сколько его " +
+                                 "терпит поле. Двое плевунов накрывают отряд " +
+                                 "с двух сторон, и уйти становится некуда, " +
+                                 "сколь бы редко они ни выпадали.")]
+        int maxAlive;
+
+        /// <summary>Потолок одновременно живых этого вида. Ноль — без потолка.</summary>
+        public int MaxAlive => Mathf.Max(0, maxAlive);
+
         /// <summary>Как часто этот вид выпадает при спавне.</summary>
         public float SpawnWeight => Mathf.Max(0f, spawnWeight);
 
