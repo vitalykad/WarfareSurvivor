@@ -128,8 +128,13 @@ MonoBehaviour:
   spawnWeight: 0.4
   spitRange: 9
   spitWindup: 1.1
+  spitHold: 1.7
   spitInterval: 4.5
   spitDamage: 12
   spitRadius: 1.8
   spitFlightTime: 0.75
-  unlockAfter: 30
+  unlockAfter: 0
+  spawnWeightByWave:
+  - 0
+  - 0.15
+  - 0.5

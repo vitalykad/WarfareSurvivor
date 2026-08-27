@@ -165,7 +165,19 @@ namespace WarfareSurvivor
         /// <summary>Убит зомби — вот здесь. Забег вешает сюда искры.</summary>
         public event System.Action<Zombie> Killed;
 
-        public void ApplyWave(in WaveEntry entry) => wave = entry;
+        /// <summary>Номер идущей волны, с единицы. Ноль — забег вне волн.</summary>
+        int waveNumber;
+
+        public void ApplyWave(int number, in WaveEntry entry)
+        {
+            waveNumber = number;
+            wave = entry;
+        }
+
+        /// <summary>
+        /// Волна кончилась. Номер НЕ сбрасываем: в перерыве частоты видов
+        /// должны остаться теми же, что были, а не откатиться к нулевой волне.
+        /// </summary>
         public void ClearWave() => wave = null;
         public void SetPaused(bool value) => paused = value;
 
@@ -320,30 +332,34 @@ namespace WarfareSurvivor
             float elapsed = Time.time - startTime;
 
             float total = 0f;
-            for (int i = 0; i < variants.Count; i++)
-            {
-                var prefab = variants[i].Prefab;
-                if (elapsed < prefab.UnlockAfter) continue;
-                total += prefab.SpawnWeight;
-            }
+            for (int i = 0; i < variants.Count; i++) total += WeightOf(variants[i], elapsed);
 
             if (total <= 0f) return variants.Count > 0 ? variants[0] : null;
 
             float roll = Random.value * total;
             for (int i = 0; i < variants.Count; i++)
             {
-                var prefab = variants[i].Prefab;
-                if (elapsed < prefab.UnlockAfter) continue;
-                roll -= prefab.SpawnWeight;
+                roll -= WeightOf(variants[i], elapsed);
                 if (roll <= 0f) return variants[i];
             }
 
             // Досюда доходим только на ошибке округления — берём любой
-            // из уже открытых, но никогда запертый.
+            // из доступных, но никогда запертый.
             for (int i = variants.Count - 1; i >= 0; i--)
-                if (elapsed >= variants[i].Prefab.UnlockAfter) return variants[i];
+                if (WeightOf(variants[i], elapsed) > 0f) return variants[i];
 
             return variants[0];
+        }
+
+        /// <summary>
+        /// Частота вида прямо сейчас: ноль у запертого по времени
+        /// и у того, кого эта волна не приводит вовсе.
+        /// </summary>
+        float WeightOf(Variant variant, float elapsed)
+        {
+            var prefab = variant.Prefab;
+            if (elapsed < prefab.UnlockAfter) return 0f;
+            return prefab.WeightForWave(waveNumber);
         }
 
         /// <summary>Кто из какого вида вышел — чтобы вернуть его в свой пул.</summary>

@@ -129,7 +129,7 @@ namespace WarfareSurvivor
             Current = Phase.Fighting;
             TimeLeft = Mathf.Max(1f, config.runWaves[index].Duration);
 
-            spawner.ApplyWave(config.runWaves[index]);
+            spawner.ApplyWave(index + 1, config.runWaves[index]);
             spawner.SetPaused(false);
         }
 

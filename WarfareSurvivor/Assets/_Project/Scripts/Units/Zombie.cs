@@ -120,8 +120,33 @@ namespace WarfareSurvivor
                                  "с обычными.")]
         float unlockAfter;
 
+        [SerializeField, Tooltip("Частота ПО ВОЛНАМ, если вид должен " +
+                                 "появляться не всегда одинаково часто. " +
+                                 "Первое число — первая волна.\n\n" +
+                                 "Ноль означает, что в этой волне вида нет вовсе. " +
+                                 "Волн больше, чем чисел — берётся последнее. " +
+                                 "Список пуст — во всех волнах работает обычная " +
+                                 "частота выше.\n\n" +
+                                 "В волнах, а не в секундах: длительность волн " +
+                                 "правится, и привязка к секундам поехала бы " +
+                                 "вместе с ней.")]
+        float[] spawnWeightByWave = new float[0];
+
         /// <summary>Как часто этот вид выпадает при спавне.</summary>
         public float SpawnWeight => Mathf.Max(0f, spawnWeight);
+
+        /// <summary>
+        /// Частота в волне с этим номером (первая волна — единица).
+        /// Ноль вне волн забега и там, где список говорит ноль.
+        /// </summary>
+        public float WeightForWave(int wave)
+        {
+            if (spawnWeightByWave == null || spawnWeightByWave.Length == 0) return SpawnWeight;
+            if (wave < 1) return SpawnWeight;
+
+            int index = Mathf.Min(wave, spawnWeightByWave.Length) - 1;
+            return Mathf.Max(0f, spawnWeightByWave[index]);
+        }
 
         /// <summary>Секунда забега, раньше которой вид не спавнится.</summary>
         public float UnlockAfter => Mathf.Max(0f, unlockAfter);
