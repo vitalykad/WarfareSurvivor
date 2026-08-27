@@ -16,11 +16,12 @@ MonoBehaviour:
   cameraYaw: 0
   cameraFieldOfView: 28
   cameraDistance: 50
-  cameraDistancePerMember: 1.6
+  cameraDistancePerMember: 0.7
   cameraDistanceMax: 75
   cameraNearClip: 5
   cameraFarClip: 140
   cameraSmoothTime: 0.18
+  cameraZoomTime: 1.6
   sunColor: {r: 1, g: 0.89, b: 0.72, a: 1}
   sunIntensity: 1.3
   sunPitch: 74.6
