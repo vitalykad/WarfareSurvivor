@@ -132,7 +132,7 @@ MonoBehaviour:
   spitRange: 9
   spitWindup: 1.1
   spitHold: 1.7
-  spitInterval: 4.5
+  spitInterval: 3
   spitDamage: 12
   spitRadius: 1.8
   spitFlightTime: 0.75

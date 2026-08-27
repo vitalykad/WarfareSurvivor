@@ -216,8 +216,17 @@ namespace WarfareSurvivor
         float despawnTime;
         bool dying;
 
-        /// <summary>Свечение материала, каким оно задано художником.</summary>
-        Color baseEmission;
+        /// <summary>
+        /// Свечение материалов, каким его задал художник.
+        ///
+        /// Хранится ПО МАТЕРИАЛУ и запоминается один раз. Держать его
+        /// у зомби нельзя: материал тира общий, и каждый следующий плевун
+        /// брал за основу уже подкрученное пульсом значение. За несколько
+        /// поколений оно множилось само на себя и схлопывалось — свечение
+        /// гасло насовсем, как только умирал первый.
+        /// </summary>
+        static readonly Dictionary<Material, Color> BaseEmission = new Dictionary<Material, Color>();
+
         bool hasEmission;
 
         /// <summary>Замах начат: кого и когда ударит.</summary>
@@ -296,7 +305,8 @@ namespace WarfareSurvivor
             // этого значения, и брать за основу уже подкрученное — значит
             // за несколько кадров увести материал куда угодно.
             hasEmission = emissionPulseSpeed > 0f && tierMat != null && tierMat.HasProperty("_EmissionColor");
-            if (hasEmission) baseEmission = tierMat.GetColor("_EmissionColor");
+            if (hasEmission && !BaseEmission.ContainsKey(tierMat))
+                BaseEmission[tierMat] = tierMat.GetColor("_EmissionColor");
             flashUntil = 0f;
             ApplyMaterial(tierMaterial);
 
@@ -413,9 +423,11 @@ namespace WarfareSurvivor
         {
             if (!hasEmission || flashUntil > 0f || tierMaterial == null) return;
 
+            if (!BaseEmission.TryGetValue(tierMaterial, out var start)) return;
+
             float wave = (Mathf.Sin(Time.time * emissionPulseSpeed) + 1f) * 0.5f;
             float factor = Mathf.Lerp(emissionPulseLow, Mathf.Max(emissionPulseLow, emissionPulseHigh), wave);
-            tierMaterial.SetColor("_EmissionColor", baseEmission * factor);
+            tierMaterial.SetColor("_EmissionColor", start * factor);
         }
 
         void OnDied()
@@ -495,18 +507,14 @@ namespace WarfareSurvivor
                 // сломанным.
                 SetMoving(false);
 
-                // На замахе и доигрывая плевок плевун стоит НАМЕРТВО, без
-                // расталкивания: замер показал, что толпа сзади сносила его
-                // на метр в секунду, и он всё равно ехал за отрядом.
+                // Плевун, вставший на позицию, стоит НАМЕРТВО — и на замахе,
+                // и доигрывая плевок, и всю перезарядку. Расталкивание
+                // не считаем вовсе: замер показал, что толпа сзади сносила
+                // его на метр в секунду, и он всё равно ехал за отрядом.
                 //
-                // Соседям это не мешает: каждый двигает СЕБЯ и на половину
-                // перекрытия, так что они разойдутся сами, просто вдвое
-                // медленнее — а плевок длится считанные секунды.
-                //
-                // А вот в ожидании перезарядки расталкивание нужно: она идёт
-                // несколько секунд, и без него толпа успеет влезть в него.
-                bool spitting = spitReleaseTime > 0f || Time.time < spitHoldUntil;
-                if (!spitting) ResolveOverlap();
+                // Соседям это не мешает: в расталкивании каждый двигает СЕБЯ
+                // и на половину перекрытия, так что они разойдутся с ним
+                // и без его участия — просто вдвое медленнее.
                 return;
             }
 
@@ -631,22 +639,16 @@ namespace WarfareSurvivor
             // Замах идёт — стоим и доводим его до конца. Прицел НЕ обновляем:
             // круг обещал точку, и плевок должен прилететь именно туда,
             // иначе уходить из круга бессмысленно.
-            // Замах идёт — стоим и доворачиваемся. Сам выстрел делает Update:
-            // он обязан случиться и тогда, когда цели уже нет.
-            if (spitReleaseTime > 0f)
-            {
-                FaceTowards(toTarget);
-                return true;
-            }
+            // Замах идёт — стоим НЕПОДВИЖНО, не доворачиваясь. Разворот
+            // взят один раз, в момент прицеливания: плевок летит в точку,
+            // а не в бойца, и водить корпусом за уходящим отрядом — значит
+            // целиться в одно, а смотреть в другое.
+            if (spitReleaseTime > 0f) return true;
 
-            // Капля уже вылетела, но анимация ещё идёт — стоим. Иначе плевун
-            // трогается с места посреди собственного плевка и едет за отрядом,
-            // скользя по земле неподвижными ногами.
-            if (Time.time < spitHoldUntil)
-            {
-                FaceTowards(toTarget);
-                return true;
-            }
+            // Капля уже вылетела, но анимация ещё идёт — тоже стоим. Иначе
+            // плевун трогается с места посреди собственного плевка и едет
+            // за отрядом, скользя по земле неподвижными ногами.
+            if (Time.time < spitHoldUntil) return true;
 
             // Слишком далеко — идём сближаться обычным ходом.
             if (distance > spitRange) return false;
@@ -680,6 +682,12 @@ namespace WarfareSurvivor
             spitAimPoint.y = 0f;
 
             spitReleaseTime = Time.time + Mathf.Max(0.05f, spitWindup);
+
+            // Разворот на точку прицеливания — ОДИН РАЗ, здесь. Дальше
+            // до конца плевка корпус не двигается.
+            var toAim = spitAimPoint - transform.position;
+            toAim.y = 0f;
+            FaceTowards(toAim);
 
             // Зона живёт весь замах И весь полёт: она гаснет в момент
             // попадания, а не раньше.
