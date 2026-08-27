@@ -52,7 +52,7 @@ namespace WarfareSurvivor.EditorTools
         const string BigZombieModel = "Assets/Models/Enemy/BigZombie/BigZombie.fbx";
         public const string BigZombiePrefab = MonstersDir + "/Monster_BigZombie.prefab";
 
-        const string SpitterModel = "Assets/Models/Enemy/SpittingZombie/tripo_convert_e8e86b92-37c9-472f-8cb9-6395a1a3782a.fbx";
+        const string SpitterModel = "Assets/Models/Enemy/SpittingZombie/SpittingZombie.fbx";
         public const string SpitterPrefab = MonstersDir + "/Monster_SpittingZombie.prefab";
 
         // Скорость, ниже которой боец считается стоящим. Относительная величина:

@@ -77,6 +77,24 @@ namespace WarfareSurvivor
                                  "перестают быть событием.")]
         float spawnWeight = 1f;
 
+        [Header("Свечение")]
+
+        [SerializeField, Tooltip("Скорость пульса свечения. Ноль — свечение " +
+                                 "ровное, как задано в материале.\n\n" +
+                                 "Пульс идёт по ОБЩЕМУ материалу тира, а не " +
+                                 "по каждому зомби: иначе каждый выбивался бы " +
+                                 "в свою пачку отрисовки. Все светящиеся одного " +
+                                 "вида поэтому пульсируют в такт — что при " +
+                                 "одном плевуне на поле незаметно.")]
+        float emissionPulseSpeed;
+
+        [SerializeField, Tooltip("Во сколько раз свечение приглушается в нижней " +
+                                 "точке пульса.")]
+        [Range(0f, 1f)] float emissionPulseLow = 0.35f;
+
+        [SerializeField, Tooltip("Во сколько раз разгорается в верхней точке.")]
+        float emissionPulseHigh = 1.6f;
+
         [Header("Кислотный плевок")]
 
         [SerializeField, Tooltip("С какой дистанции плюётся, в метрах. " +
@@ -198,6 +216,10 @@ namespace WarfareSurvivor
         float despawnTime;
         bool dying;
 
+        /// <summary>Свечение материала, каким оно задано художником.</summary>
+        Color baseEmission;
+        bool hasEmission;
+
         /// <summary>Замах начат: кого и когда ударит.</summary>
         Survivor pendingVictim;
         float pendingHitTime;
@@ -269,6 +291,12 @@ namespace WarfareSurvivor
 
             tierMaterial = tierMat;
             flashMaterial = flashMat;
+
+            // Исходное свечение запоминаем один раз: пульс крутит его вокруг
+            // этого значения, и брать за основу уже подкрученное — значит
+            // за несколько кадров увести материал куда угодно.
+            hasEmission = emissionPulseSpeed > 0f && tierMat != null && tierMat.HasProperty("_EmissionColor");
+            if (hasEmission) baseEmission = tierMat.GetColor("_EmissionColor");
             flashUntil = 0f;
             ApplyMaterial(tierMaterial);
 
@@ -376,6 +404,20 @@ namespace WarfareSurvivor
             return renderers[0].bounds.size.y * 0.9f;
         }
 
+        /// <summary>
+        /// Дышит свечением. Только когда вспышка не идёт: та подменяет
+        /// материал целиком, и крутить в это время свечение исходного
+        /// значило бы менять то, чего сейчас не видно.
+        /// </summary>
+        void PulseEmission()
+        {
+            if (!hasEmission || flashUntil > 0f || tierMaterial == null) return;
+
+            float wave = (Mathf.Sin(Time.time * emissionPulseSpeed) + 1f) * 0.5f;
+            float factor = Mathf.Lerp(emissionPulseLow, Mathf.Max(emissionPulseLow, emissionPulseHigh), wave);
+            tierMaterial.SetColor("_EmissionColor", baseEmission * factor);
+        }
+
         void OnDied()
         {
             dying = true;
@@ -402,6 +444,8 @@ namespace WarfareSurvivor
                 flashUntil = 0f;
                 ApplyMaterial(tierMaterial);
             }
+
+            PulseEmission();
 
             if (dying)
             {

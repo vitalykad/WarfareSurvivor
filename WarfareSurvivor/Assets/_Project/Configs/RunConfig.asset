@@ -106,12 +106,24 @@ MonoBehaviour:
   acidZoneRimColor: {r: 1, g: 0.25, b: 0.15, a: 0.9}
   maxAcidZones: 16
   acidDropColor: {r: 0.45, g: 1, b: 0.2, a: 1}
-  acidDropBoost: 1.7
-  acidSpitSize: 0.95
+  acidDropBoost: 2
+  acidSpitSize: 1.2
   acidArcHeight: 0.32
   acidSplashCount: 10
   acidSplashTime: 0.42
+  acidTrailTime: 0.5
+  acidTrailWidth: 1.1
+  acidTrailColor: {r: 0.35, g: 1, b: 0.15, a: 0.85}
+  acidHazeScale: 3.2
+  acidHazeColor: {r: 0.35, g: 0.9, b: 0.2, a: 0.35}
   maxAcidDrops: 64
+  acidCloudPuffs: 8
+  acidCloudTime: 1.8
+  acidCloudSpread: 0.75
+  acidCloudScale: 1.1
+  acidCloudColor: {r: 0.45, g: 0.95, b: 0.25, a: 0.95}
+  maxAcidCloudPuffs: 48
+  survivorFlashColor: {r: 1, g: 0.35, b: 0.3, a: 1}
   tracersEnabled: 1
   tracerLife: 0.11
   tracerDashMeters: 2.5
@@ -189,13 +201,8 @@ MonoBehaviour:
   sparkSwayAngle: 14
   sparkSwaySpeed: 1.5
   sparkSpiralTurn: 300
-  sparkSpiralBulge: 3.2
   sparkFlyTimeMin: 0.55
   sparkFlyTimeMax: 1.4
-  sparkTrailTime: 0.28
-  sparkTrailWidth: 0.24
-  sparkTrailColor: {r: 0.35, g: 0.72, b: 1, a: 0.9}
-  sparkTrailBoost: 1.5
   maxSparks: 150
   rampStep: 25
   rampMax: 400

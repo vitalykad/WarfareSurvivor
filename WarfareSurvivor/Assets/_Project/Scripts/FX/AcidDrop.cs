@@ -26,6 +26,14 @@ namespace WarfareSurvivor
         Mesh mesh;
         readonly Color[] corners = new Color[4];
 
+        /// <summary>Хвост и дымка. Есть только у самого плевка, у брызг нет.</summary>
+        TrailRenderer trail;
+        Transform haze;
+        MeshRenderer hazeView;
+        Mesh hazeMesh;
+        readonly Color[] hazeCorners = new Color[4];
+        bool comet;
+
         Vector3 from;
         Vector3 to;
         float arc;
@@ -55,7 +63,7 @@ namespace WarfareSurvivor
         public static void Spit(Vector3 origin, Vector3 landing, float flightTime,
                                 float radius, float hitDamage, AcidZone marker)
         {
-            var drop = Launch(origin, landing, flightTime, config != null ? config.acidSpitSize : 0.5f);
+            var drop = Launch(origin, landing, flightTime, config != null ? config.acidSpitSize : 0.5f, comet: true);
             if (drop == null)
             {
                 // Пул выбран под завязку — плевок всё равно должен ударить,
@@ -87,12 +95,12 @@ namespace WarfareSurvivor
 
                 var drop = Launch(at + Vector3.up * 0.2f, landing,
                                   config.acidSplashTime * Random.Range(0.7f, 1.3f),
-                                  config.acidSpitSize * Random.Range(0.22f, 0.42f));
+                                  config.acidSpitSize * Random.Range(0.22f, 0.42f), comet: false);
                 if (drop != null) drop.arc *= 0.5f;
             }
         }
 
-        static AcidDrop Launch(Vector3 origin, Vector3 landing, float flightTime, float dropSize)
+        static AcidDrop Launch(Vector3 origin, Vector3 landing, float flightTime, float dropSize, bool comet)
         {
             if (config == null || root == null) return null;
 
@@ -114,7 +122,33 @@ namespace WarfareSurvivor
             drop.arc = Mathf.Max(0.2f, Vector3.Distance(origin, landing) * config.acidArcHeight);
 
             drop.transform.position = origin;
+            drop.comet = comet;
+
+            // Хвост и дымка — только у самого плевка. У брызг они превратили бы
+            // попадание в зелёную кашу: их десяток, и все летят разом.
+            if (drop.trail != null)
+            {
+                drop.trail.emitting = false;
+                drop.trail.Clear();
+
+                if (comet)
+                {
+                    drop.trail.time = Mathf.Max(0.02f, config.acidTrailTime);
+                    drop.trail.widthMultiplier = Mathf.Max(0.01f, config.acidTrailWidth * dropSize);
+                    ApplyTrailColor(drop.trail);
+                    drop.trail.emitting = true;
+                }
+            }
+
+            if (drop.hazeView != null) drop.hazeView.enabled = comet;
+
             drop.gameObject.SetActive(true);
+
+            // Чистить след надо ПОСЛЕ включения объекта: на выключенном
+            // очистка не всегда доходит, и снаряд выходит с полосой
+            // от прошлого полёта через всю карту.
+            if (drop.trail != null) drop.trail.Clear();
+
             return drop;
         }
 
@@ -157,6 +191,37 @@ namespace WarfareSurvivor
             drop.mesh = Quad();
             filter.sharedMesh = drop.mesh;
 
+            var line = go.AddComponent<TrailRenderer>();
+            line.sharedMaterial = Material();
+            line.alignment = LineAlignment.View;
+            line.numCapVertices = 2;
+            line.minVertexDistance = 0.05f;
+            line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            line.receiveShadows = false;
+            line.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+            line.emitting = false;
+            line.widthCurve = new AnimationCurve(new Keyframe(0f, 1f), new Keyframe(1f, 0f));
+            drop.trail = line;
+
+            // Дымка — ОТДЕЛЬНАЯ плоскость, крупнее и мягче ядра. Одной
+            // текстурой это не сделать: у ядра должен быть резкий яркий центр,
+            // у дымки его быть не должно вовсе.
+            var mist = new GameObject("AcidHaze");
+            mist.transform.SetParent(go.transform, false);
+
+            var mistFilter = mist.AddComponent<MeshFilter>();
+            drop.hazeMesh = Quad();
+            mistFilter.sharedMesh = drop.hazeMesh;
+
+            var mistView = mist.AddComponent<MeshRenderer>();
+            mistView.sharedMaterial = HazeMaterial();
+            mistView.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            mistView.receiveShadows = false;
+            mistView.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+
+            drop.haze = mist.transform;
+            drop.hazeView = mistView;
+
             go.SetActive(false);
             return drop;
         }
@@ -197,6 +262,62 @@ namespace WarfareSurvivor
             return material;
         }
 
+        static Material hazeMaterial;
+
+        static Material HazeMaterial()
+        {
+            if (hazeMaterial != null) return hazeMaterial;
+
+            var shader = Shader.Find("WarfareSurvivor/GlowSprite");
+            if (shader == null) return Material();
+
+            hazeMaterial = new Material(shader) { name = "AcidHaze", mainTexture = HazeTexture() };
+            if (hazeMaterial.HasProperty("_Boost")) hazeMaterial.SetFloat("_Boost", 1f);
+            return hazeMaterial;
+        }
+
+        /// <summary>Мягкий ореол без ядра: у дымки середины быть не должно.</summary>
+        static Texture2D HazeTexture()
+        {
+            const int size = 48;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, mipChain: true)
+            {
+                name = "AcidHazeGlow",
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear
+            };
+
+            var pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float u = (x + 0.5f) / size * 2f - 1f;
+                    float v = (y + 0.5f) / size * 2f - 1f;
+                    float r = Mathf.Sqrt(u * u + v * v);
+
+                    float density = r >= 1f ? 0f : 0.5f + 0.5f * Mathf.Cos(r * Mathf.PI);
+                    pixels[y * size + x] = new Color(1f, 1f, 1f, density * density * 0.85f);
+                }
+            }
+
+            texture.SetPixels32(pixels);
+            texture.Apply();
+            return texture;
+        }
+
+        static void ApplyTrailColor(TrailRenderer line)
+        {
+            var color = config.acidTrailColor;
+
+            var gradient = new Gradient();
+            gradient.SetKeys(
+                new[] { new GradientColorKey(color, 0f), new GradientColorKey(color, 1f) },
+                new[] { new GradientAlphaKey(color.a, 0f), new GradientAlphaKey(0f, 1f) });
+
+            line.colorGradient = gradient;
+        }
+
         /// <summary>
         /// Круглая капля со свечением, нарисованная кодом.
         ///
@@ -231,7 +352,10 @@ namespace WarfareSurvivor
                     float halo = Mathf.Exp(-beyond * 4.5f) * 0.5f;
                     float alpha = Mathf.Clamp01(core + halo) * (1f - Smooth(r, 1f));
 
-                    var rgb = Color.Lerp(new Color(0.35f, 1f, 0.15f), Color.white, core * 0.35f);
+                    // Ядро почти добела: на примере, который просили повторить,
+                    // середина снаряда светится белым, и зелёным остаётся
+                    // только то, что вокруг.
+                    var rgb = Color.Lerp(new Color(0.30f, 1f, 0.12f), Color.white, core * 0.8f);
                     pixels[y * size + x] = new Color(rgb.r, rgb.g, rgb.b, alpha);
                 }
             }
@@ -296,6 +420,7 @@ namespace WarfareSurvivor
 
             if (life >= 1f)
             {
+                if (trail != null) trail.emitting = false;
                 gameObject.SetActive(false);
 
                 // Урон и брызги наносит САМА капля в момент касания земли,
@@ -329,6 +454,19 @@ namespace WarfareSurvivor
 
             if (material != null && material.HasProperty("_Boost"))
                 material.SetFloat("_Boost", Mathf.Max(0.1f, config.acidDropBoost));
+
+            if (!comet || haze == null) return;
+
+            // Дымка чуть отстаёт по размеру и заметно бледнее ядра —
+            // и разрастается к концу полёта, будто снаряд разогревается.
+            haze.localScale = Vector3.one * Mathf.Max(1f, config.acidHazeScale) * (1f + life * 0.3f);
+            haze.rotation = transform.rotation;
+
+            var hazeColor = config.acidHazeColor;
+            hazeColor.a *= 1f - life * life * 0.35f;
+
+            for (int i = 0; i < hazeCorners.Length; i++) hazeCorners[i] = hazeColor;
+            hazeMesh.colors = hazeCorners;
         }
     }
 }

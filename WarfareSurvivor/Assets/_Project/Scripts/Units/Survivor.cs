@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace WarfareSurvivor
@@ -43,6 +44,17 @@ namespace WarfareSurvivor
         Animator animator;
         Health health;
         TorsoAim torsoAim;
+
+        /// <summary>
+        /// Материалы вспышки: по одному на каждый исходный материал,
+        /// а не на каждого бойца. Бойцов полтора десятка, а обликов
+        /// три-четыре — незачем плодить копии.
+        /// </summary>
+        static readonly Dictionary<Material, Material> FlashMaterials = new Dictionary<Material, Material>();
+
+        Renderer[] renderers;
+        Material[] baseMaterials;
+        float flashUntil;
 
         Zombie target;
         Zombie pendingVictim;
@@ -135,18 +147,6 @@ namespace WarfareSurvivor
                 }
             }
 
-            // Свечение раненого. Под try по той же причине, что и всё
-            // остальное украшение ниже: сбой в косметике не должен мешать
-            // бойцу появиться — на этом уже обжигались.
-            try
-            {
-                WoundedGlow.Attach(transform, health, config, Camera.main);
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogError($"[{name}] Свечение раненого не собралось: {e.Message}", this);
-            }
-
             var bar = GetComponent<HealthBarView>();
             if (bar != null)
             {
@@ -157,6 +157,13 @@ namespace WarfareSurvivor
                 catch (System.Exception e) { Debug.LogError($"[{name}] Полоска здоровья не собралась: {e.Message}", this); }
             }
 
+            // Вспышка по удару — та же, что у зомби: подмена общего материала.
+            // Косметика, поэтому под try: её поломка не должна мешать бойцу
+            // появиться.
+            try { CacheFlashMaterials(); }
+            catch (System.Exception e) { Debug.LogError($"[{name}] Вспышка не собралась: {e.Message}", this); }
+
+            health.Damaged += OnDamaged;
             health.Died += OnDied;
 
             SlotPosition = transform.position;
@@ -172,7 +179,74 @@ namespace WarfareSurvivor
         void OnDestroy()
         {
             Registry.Survivors.Remove(this);
-            if (health != null) health.Died -= OnDied;
+            if (health != null)
+            {
+                health.Damaged -= OnDamaged;
+                health.Died -= OnDied;
+            }
+        }
+
+        /// <summary>
+        /// Вспышка на получившем удар.
+        ///
+        /// Отвечает на вопрос «кого бьют». Полоска здоровья на него
+        /// не отвечает: она мелкая и в куче из полутора десятков фигур
+        /// читается как мелькание.
+        ///
+        /// Цвет НЕ белый, в отличие от зомби: белым у нас уже помечено
+        /// попадание ПО зомби, и одинаковый цвет для «я попал» и «попали
+        /// по мне» стирал бы разницу ровно там, где она важнее всего.
+        /// </summary>
+        void OnDamaged(float amount, Vector3 point)
+        {
+            if (renderers == null || renderers.Length == 0) return;
+
+            flashUntil = Time.time + Mathf.Max(0.02f, config.hitFlashDuration);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                if (renderers[i] == null) continue;
+                if (FlashMaterials.TryGetValue(baseMaterials[i], out var flash)) renderers[i].sharedMaterial = flash;
+            }
+        }
+
+        void UpdateFlash()
+        {
+            if (flashUntil <= 0f || Time.time < flashUntil) return;
+
+            flashUntil = 0f;
+            for (int i = 0; i < renderers.Length; i++)
+                if (renderers[i] != null) renderers[i].sharedMaterial = baseMaterials[i];
+        }
+
+        void CacheFlashMaterials()
+        {
+            renderers = GetComponentsInChildren<Renderer>(true);
+            baseMaterials = new Material[renderers.Length];
+
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                var source = renderers[i] != null ? renderers[i].sharedMaterial : null;
+                baseMaterials[i] = source;
+                if (source == null || FlashMaterials.ContainsKey(source)) continue;
+
+                var flash = new Material(source) { name = source.name + "_Flash" };
+
+                // Текстуру убираем: вспышка красит фигуру ровно, и по ней
+                // сразу видно силуэт того, кого достали.
+                foreach (var n in new[] { "_BaseMap", "_MainTex", "_BaseColorMap" })
+                    if (flash.HasProperty(n)) flash.SetTexture(n, null);
+
+                foreach (var n in new[] { "_BaseColor", "_Color" })
+                    if (flash.HasProperty(n)) flash.SetColor(n, config.survivorFlashColor);
+
+                if (flash.HasProperty("_EmissionColor"))
+                {
+                    flash.EnableKeyword("_EMISSION");
+                    flash.SetColor("_EmissionColor", config.survivorFlashColor * 0.7f);
+                }
+
+                FlashMaterials[source] = flash;
+            }
         }
 
         void OnDied()
@@ -221,6 +295,8 @@ namespace WarfareSurvivor
 
             if (health.IsDead) return;
             if (!config.simulateSurvivors) return;
+
+            UpdateFlash();
 
             Move();
             Heal();

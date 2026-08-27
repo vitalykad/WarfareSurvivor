@@ -126,6 +126,9 @@ MonoBehaviour:
   scaleMultiplier: 1.85
   knockbackResist: 0
   spawnWeight: 0.4
+  emissionPulseSpeed: 3.2
+  emissionPulseLow: 0.3
+  emissionPulseHigh: 1.9
   spitRange: 9
   spitWindup: 1.1
   spitHold: 1.7
