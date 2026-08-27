@@ -106,15 +106,18 @@ MonoBehaviour:
   acidZoneColor: {r: 0.75, g: 0.05, b: 0.05, a: 0.35}
   acidZoneRimColor: {r: 1, g: 0.25, b: 0.15, a: 0.9}
   maxAcidZones: 16
+  spitterMarkRadius: 1.4
+  spitterMarkColor: {r: 0.85, g: 0.75, b: 0.1, a: 0.3}
+  spitterMarkRimColor: {r: 1, g: 0.9, b: 0.2, a: 0.95}
   acidDropColor: {r: 0.45, g: 1, b: 0.2, a: 1}
-  acidDropBoost: 2
+  acidDropBoost: 3.4
   acidSpitSize: 1.2
   acidArcHeight: 0.32
   acidSplashCount: 10
   acidSplashTime: 0.42
   acidTrailTime: 0.5
   acidTrailWidth: 1.1
-  acidTrailGap: 0.5
+  acidTrailGap: 0.18
   acidTrailColor: {r: 0.35, g: 1, b: 0.15, a: 0.85}
   acidHazeScale: 3.2
   acidHazeColor: {r: 0.35, g: 0.9, b: 0.2, a: 0.35}

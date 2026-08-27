@@ -481,13 +481,26 @@ namespace WarfareSurvivor
         [Tooltip("Потолок одновременных зон на земле.")]
         public int maxAcidZones = 16;
 
+        [Tooltip("Радиус круга ПОД САМИМ плевуном, в метрах. По нему его " +
+                 "находят в толпе: красный круг говорит, куда прилетит, " +
+                 "а этот — откуда летит.")]
+        public float spitterMarkRadius = 1.4f;
+
+        [Tooltip("Цвет заливки метки под плевуном. Не красный: красным " +
+                 "помечена опасность, и метка стрелка не должна читаться " +
+                 "как место, откуда надо уходить.")]
+        public Color spitterMarkColor = new Color(0.85f, 0.75f, 0.1f, 0.3f);
+
+        [Tooltip("Цвет кромки метки под плевуном.")]
+        public Color spitterMarkRimColor = new Color(1f, 0.9f, 0.2f, 0.95f);
+
         [Tooltip("Общая яркость капли. Белый — цвет берётся из самой капли: " +
                  "у неё белое ядро и зелёный ореол. Красить отсюда нельзя, " +
                  "цвет умножается на всю каплю разом и съедает белое ядро.")]
         public Color acidDropColor = Color.white;
 
         [Tooltip("Яркость свечения капли.")]
-        public float acidDropBoost = 2.4f;
+        public float acidDropBoost = 3.4f;
 
         [Tooltip("Размер летящего плевка в метрах.")]
         public float acidSpitSize = 0.55f;
@@ -513,7 +526,7 @@ namespace WarfareSurvivor
         [Tooltip("Просвет между ядром снаряда и началом хвоста, в метрах. " +
                  "Ноль — лента растёт прямо из середины ядра и выглядит " +
                  "торчащей из него палкой.")]
-        public float acidTrailGap = 0.5f;
+        public float acidTrailGap = 0.18f;
 
         [Tooltip("Цвет хвоста.")]
         public Color acidTrailColor = new Color(0.35f, 1f, 0.15f, 0.85f);

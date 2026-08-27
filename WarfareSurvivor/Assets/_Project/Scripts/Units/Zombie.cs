@@ -242,6 +242,9 @@ namespace WarfareSurvivor
         Vector3 spitAimPoint;
         AcidZone spitZone;
 
+        /// <summary>Круг под самим плевуном: по нему его видно в толпе.</summary>
+        AcidZone spitMark;
+
         public bool IsDead => health == null || health.IsDead;
 
         /// <summary>Точка попадания — грудь, а не пятки: туда летит трасса.</summary>
@@ -440,7 +443,17 @@ namespace WarfareSurvivor
             Registry.Zombies.Remove(this);
             Died?.Invoke(this);
             if (baked != null) baked.Play(ClipDying, config.zombieDeathSpeed);
-            else if (animator != null) animator.SetTrigger(DieParam);
+            else if (animator != null)
+            {
+                // Незабранные триггеры ГАСИМ, иначе они переиграют смерть.
+                // Переходы из «любого состояния» разбираются по порядку,
+                // а плевок и удар заведены в контроллере раньше смерти:
+                // зомби, погибший в тот же кадр, в котором замахнулся,
+                // начинал не падать, а плевать.
+                animator.ResetTrigger(SpitParam);
+                animator.ResetTrigger(AttackParam);
+                animator.SetTrigger(DieParam);
+            }
             despawnTime = Time.time + config.zombieCorpseTime;
         }
 
@@ -691,8 +704,16 @@ namespace WarfareSurvivor
 
             // Зона живёт весь замах И весь полёт: она гаснет в момент
             // попадания, а не раньше.
-            spitZone = AcidZone.Show(spitAimPoint, spitRadius,
-                                     Mathf.Max(0.05f, spitWindup) + Mathf.Max(0.05f, spitFlightTime));
+            float shows = Mathf.Max(0.05f, spitWindup) + Mathf.Max(0.05f, spitFlightTime);
+            spitZone = AcidZone.Show(spitAimPoint, spitRadius, shows);
+
+            // Круг под ногами самого плевуна. Красный круг говорит КУДА
+            // прилетит, а этот — ОТКУДА летит: в полусотне зомби разглядеть
+            // стрелка иначе нельзя, и уйти из зоны игрок успевает, а понять,
+            // кого за это бить, — нет.
+            var under = transform.position;
+            under.y = 0f;
+            spitMark = AcidZone.ShowMark(under, config.spitterMarkRadius, shows + Mathf.Max(0f, spitHold));
 
             if (animator != null) animator.SetTrigger(SpitParam);
         }
@@ -720,8 +741,12 @@ namespace WarfareSurvivor
         {
             if (spitZone != null) spitZone.Hide();
             spitZone = null;
+            if (spitMark != null) spitMark.Hide();
+            spitMark = null;
             spitReleaseTime = 0f;
             spitHoldUntil = 0f;
+
+            if (animator != null) animator.ResetTrigger(SpitParam);
         }
 
         void FaceTowards(Vector3 direction)

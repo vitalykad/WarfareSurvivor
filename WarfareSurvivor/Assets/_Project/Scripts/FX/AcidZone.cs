@@ -30,6 +30,13 @@ namespace WarfareSurvivor
         float bornTime;
         float dieTime;
 
+        /// <summary>
+        /// Метка под стрелком, а не зона поражения. Отличается цветом
+        /// и тем, что отсчёт внутри не растёт: под ногами он ничего
+        /// не значит — там ничего не взорвётся.
+        /// </summary>
+        bool mark;
+
         public static void Configure(ArenaConfig cfg)
         {
             config = cfg;
@@ -39,6 +46,14 @@ namespace WarfareSurvivor
                 root = new GameObject("AcidZones").transform;
                 All.Clear();
             }
+        }
+
+        /// <summary>Метка под стрелком: по ней его находят в толпе.</summary>
+        public static AcidZone ShowMark(Vector3 groundPoint, float radius, float duration)
+        {
+            var zone = Show(groundPoint, radius, duration);
+            if (zone != null) zone.mark = true;
+            return zone;
         }
 
         /// <summary>
@@ -59,6 +74,7 @@ namespace WarfareSurvivor
             zone.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
             zone.transform.localScale = Vector3.one * Mathf.Max(0.1f, radius * 2f);
 
+            zone.mark = false;
             zone.bornTime = Time.time;
             zone.dieTime = Time.time + Mathf.Max(0.05f, duration);
             zone.gameObject.SetActive(true);
@@ -163,9 +179,12 @@ namespace WarfareSurvivor
             // Цвет и отсчёт идут блоком свойств: зон на экране может быть
             // с десяток, и у каждой свой отсчёт, а материал один на всех.
             view.GetPropertyBlock(block);
-            block.SetColor("_ZoneColor", config.acidZoneColor);
-            block.SetColor("_RimColor", config.acidZoneRimColor);
-            block.SetFloat("_Fill", life);
+            block.SetColor("_ZoneColor", mark ? config.spitterMarkColor : config.acidZoneColor);
+            block.SetColor("_RimColor", mark ? config.spitterMarkRimColor : config.acidZoneRimColor);
+
+            // Отсчёт растёт только у зоны поражения: он говорит, сколько
+            // осталось до удара. Под ногами стрелка отсчитывать нечего.
+            block.SetFloat("_Fill", mark ? 0f : life);
 
             // Гаснет только в самом конце: зона, тускнеющая всё время,
             // хуже всего видна ровно перед попаданием.
