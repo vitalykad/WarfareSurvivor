@@ -50,6 +50,18 @@ namespace WarfareSurvivor
             /// <summary>Расстояние до бойца в момент начала полёта.</summary>
             public float FlyRadius;
 
+            /// <summary>
+            /// Радиус витка сейчас. Убывает ровно, ВИДИМОЕ же расстояние
+            /// до бойца больше на ширину дуги — по нему подбор считать нельзя.
+            /// </summary>
+            public float FlyRadiusNow;
+
+            /// <summary>Направление от бойца на бутылку. Доворачивается каждый кадр.</summary>
+            public Vector3 FlyDir;
+
+            /// <summary>С какой скоростью убывает радиус, м/с.</summary>
+            public float FlyRate;
+
             /// <summary>В какую сторону закручивается: плюс или минус единица.</summary>
             public float Spin;
 
@@ -236,13 +248,12 @@ namespace WarfareSurvivor
 
             float attract = config.sparkAttractRadius * config.sparkAttractRadius;
             float pickup = config.sparkPickupRadius * config.sparkPickupRadius;
-            float step = config.sparkFlySpeed * Time.deltaTime;
 
             for (int i = sparks.Count - 1; i >= 0; i--)
             {
                 var spark = sparks[i];
 
-                // Пока летит — не подбирается ни при каких условиях.
+                // Пока летит разлёт — не подбирается ни при каких условиях.
                 // Иначе отряд, идущий следом за добычей, ловил бы её
                 // в воздухе, и разлёт не значил бы ничего.
                 if (spark.ScatterLeft > 0f)
@@ -254,6 +265,21 @@ namespace WarfareSurvivor
                 var collector = Nearest(spark.Position);
                 if (collector == null) continue;
 
+                if (spark.Flying)
+                {
+                    Spiral(ref spark, collector.transform.position);
+                    spark.View.position = spark.Position;
+                    sparks[i] = spark;
+                    Bob(spark);
+
+                    // Подбор по РАДИУСУ ВИТКА, а не по видимому расстоянию:
+                    // на широкой дуге бутылка уходит от бойца дальше, чем
+                    // была вначале, и по настоящему расстоянию подбор
+                    // не случился бы никогда.
+                    if (spark.FlyRadiusNow <= config.sparkPickupRadius) CollectAt(i);
+                    continue;
+                }
+
                 var delta = collector.transform.position - spark.Position;
                 delta.y = 0f;
                 float sqr = delta.sqrMagnitude;
@@ -261,16 +287,15 @@ namespace WarfareSurvivor
                 // Притяжение включается один раз и обратно не выключается:
                 // иначе искра на границе радиуса дёргается туда-сюда, пока
                 // отряд рядом ходит.
-                if (!spark.Flying && sqr <= attract) StartFlight(ref spark, collector.transform.position);
-
-                if (spark.Flying && sqr > 0.0001f)
+                if (sqr <= attract)
                 {
-                    Spiral(ref spark, collector.transform.position, step);
-                    spark.View.position = spark.Position;
+                    StartFlight(ref spark, collector.transform.position);
+                    sparks[i] = spark;
+                    Bob(spark);
+                    continue;
                 }
 
                 sparks[i] = spark;
-
                 Bob(spark);
 
                 if (sqr <= pickup) CollectAt(i);
@@ -292,7 +317,21 @@ namespace WarfareSurvivor
 
             var flat = spark.Position - target;
             flat.y = 0f;
+            if (flat.sqrMagnitude < 0.0001f) flat = Vector3.forward;
+
             spark.FlyRadius = Mathf.Max(0.01f, flat.magnitude);
+            spark.FlyRadiusNow = spark.FlyRadius;
+            spark.FlyDir = flat.normalized;
+
+            // Время полёта зажато с обеих сторон. Снизу — чтобы виток успел
+            // прочитаться: подбор идёт с двух с половиной метров, и на
+            // постоянной скорости это две десятых секунды, за которые
+            // широкой дуги не разглядеть. Сверху — чтобы добыча с дальнего
+            // края поля не тянулась через весь экран.
+            float duration = Mathf.Clamp(spark.FlyRadius / Mathf.Max(0.1f, config.sparkFlySpeed),
+                                         Mathf.Max(0.05f, config.sparkFlyTimeMin),
+                                         Mathf.Max(0.06f, config.sparkFlyTimeMax));
+            spark.FlyRate = spark.FlyRadius / duration;
 
             if (spark.View == null) return;
             var trail = spark.View.GetComponent<TrailRenderer>();
@@ -312,21 +351,24 @@ namespace WarfareSurvivor
         /// значит время полёта и, стало быть, весь баланс подбора не изменились.
         /// Меняется только путь.
         /// </summary>
-        void Spiral(ref Spark spark, Vector3 target, float step)
+        void Spiral(ref Spark spark, Vector3 target)
         {
-            var fromTarget = spark.Position - target;
-            fromTarget.y = 0f;
+            spark.FlyRadiusNow = Mathf.Max(0f, spark.FlyRadiusNow - spark.FlyRate * Time.deltaTime);
 
-            float radius = fromTarget.magnitude;
-            if (radius < 0.0001f) return;
+            // Пройденная доля пути считается по радиусу витка, а не по времени:
+            // так и доворот, и ширина дуги привязаны к одному и тому же,
+            // и виток выходит одинаковой формы при любой дальности.
+            float done = 1f - spark.FlyRadiusNow / spark.FlyRadius;
 
-            float next = Mathf.Max(0f, radius - step);
+            float turn = config.sparkSpiralTurn * spark.Spin * (spark.FlyRate * Time.deltaTime / spark.FlyRadius);
+            spark.FlyDir = Quaternion.AngleAxis(turn, Vector3.up) * spark.FlyDir;
 
-            // Доворот за кадр — доля от ПОЛНОГО доворота за весь полёт.
-            float turn = config.sparkSpiralTurn * spark.Spin * (step / spark.FlyRadius);
-            var direction = Quaternion.AngleAxis(turn, Vector3.up) * (fromTarget / radius);
+            // Дуга наружу: к середине полёта бутылка отходит от бойца,
+            // а не сходится сразу. Без этого при подборе под ногами
+            // от спирали остаётся завиток в два метра.
+            float bulge = Mathf.Max(0f, config.sparkSpiralBulge) * Mathf.Sin(done * Mathf.PI);
 
-            var moved = target + direction * next;
+            var moved = target + spark.FlyDir * (spark.FlyRadiusNow + bulge);
             moved.y = spark.Position.y;
             spark.Position = moved;
         }

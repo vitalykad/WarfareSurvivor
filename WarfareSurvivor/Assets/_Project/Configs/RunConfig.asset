@@ -188,6 +188,14 @@ MonoBehaviour:
   sparkBobSpeed: 2.2
   sparkSwayAngle: 14
   sparkSwaySpeed: 1.5
+  sparkSpiralTurn: 300
+  sparkSpiralBulge: 3.2
+  sparkFlyTimeMin: 0.55
+  sparkFlyTimeMax: 1.4
+  sparkTrailTime: 0.28
+  sparkTrailWidth: 0.24
+  sparkTrailColor: {r: 0.35, g: 0.72, b: 1, a: 0.9}
+  sparkTrailBoost: 1.5
   maxSparks: 150
   rampStep: 25
   rampMax: 400
