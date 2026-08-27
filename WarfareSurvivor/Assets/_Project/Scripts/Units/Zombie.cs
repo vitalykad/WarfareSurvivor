@@ -81,7 +81,20 @@ namespace WarfareSurvivor
                                  "игрок успевает, а увести отряд уже нет.")]
         float spitWindup = 1.1f;
 
-        [SerializeField, Tooltip("Секунд между плевками.")]
+        [SerializeField, Tooltip("Сколько плевун стоит ПОСЛЕ вылета капли, " +
+                                 "секунд.\n\n" +
+                                 "Держит его до конца анимации плевка. Без этого " +
+                                 "он трогался с места сразу после вылета и ехал " +
+                                 "за отрядом, доигрывая замах: ноги стоят, " +
+                                 "а тело скользит по земле.\n\n" +
+                                 "Складывать с замахом надо так, чтобы вышла " +
+                                 "длина клипа: \"Zombie Scream\" идёт 2.8 с, " +
+                                 "замах 1.1 — значит здесь 1.7.")]
+        float spitHold = 1.7f;
+
+        [SerializeField, Tooltip("Секунд между плевками. Отсчитывается " +
+                                 "от вылета капли и включает в себя стойку " +
+                                 "после неё.")]
         float spitInterval = 3.5f;
 
         [SerializeField, Tooltip("Урон в момент попадания. Достаётся всем, " +
@@ -140,6 +153,9 @@ namespace WarfareSurvivor
 
         /// <summary>Замах начат: зона показана, плевок ещё не вылетел.</summary>
         float spitReleaseTime;
+
+        /// <summary>До этого времени плевун стоит, доигрывая анимацию.</summary>
+        float spitHoldUntil;
         float nextSpitTime;
         Vector3 spitAimPoint;
         AcidZone spitZone;
@@ -373,7 +389,14 @@ namespace WarfareSurvivor
 
             if (Spits && UpdateSpit(to, distance))
             {
-                ResolveOverlap();
+                // Расталкивание пропускаем НАМЕРЕННО. Плевун на замахе должен
+                // стоять как вкопанный: замер показал, что толпа сзади
+                // сносила его на метр в секунду, и он всё равно ехал
+                // за отрядом, доигрывая плевок.
+                //
+                // Соседям это не мешает: каждый двигает СЕБЯ и на половину
+                // перекрытия, так что они разойдутся сами, просто вдвое
+                // медленнее — а плевун стоит считанные секунды.
                 return;
             }
 
@@ -422,6 +445,15 @@ namespace WarfareSurvivor
                 return true;
             }
 
+            // Капля уже вылетела, но анимация ещё идёт — стоим. Иначе плевун
+            // трогается с места посреди собственного плевка и едет за отрядом,
+            // скользя по земле неподвижными ногами.
+            if (Time.time < spitHoldUntil)
+            {
+                FaceTowards(toTarget);
+                return true;
+            }
+
             // Слишком далеко — идём сближаться обычным ходом.
             if (distance > spitRange) return false;
 
@@ -454,6 +486,7 @@ namespace WarfareSurvivor
         void Release()
         {
             spitReleaseTime = 0f;
+            spitHoldUntil = Time.time + Mathf.Max(0f, spitHold);
             nextSpitTime = Time.time + Mathf.Max(0.2f, spitInterval);
 
             // Вылетает изо рта, а не из-под ног: иначе плевок начинает полёт
@@ -474,6 +507,7 @@ namespace WarfareSurvivor
             if (spitZone != null) spitZone.Hide();
             spitZone = null;
             spitReleaseTime = 0f;
+            spitHoldUntil = 0f;
         }
 
         void FaceTowards(Vector3 direction)
