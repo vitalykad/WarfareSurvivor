@@ -486,7 +486,7 @@ namespace WarfareSurvivor
         [Tooltip("Высота горки в долях дальности полёта. Ноль — плевок летит " +
                  "по прямой, и на виде почти сверху выглядит скользящим " +
                  "по земле, а не летящим.")]
-        public float acidArcHeight = 0.32f;
+        public float acidArcHeight = 0.55f;
 
         [Tooltip("Сколько брызг разлетается от упавшего плевка.")]
         public int acidSplashCount = 10;
@@ -496,6 +496,45 @@ namespace WarfareSurvivor
 
         [Tooltip("Потолок одновременных капель — и плевков, и брызг.")]
         public int maxAcidDrops = 64;
+
+        [Tooltip("Из скольких клубов собирается ядовитое облако. Один клуб, " +
+                 "как его ни рисуй, читается наклейкой на земле.")]
+        public int acidCloudPuffs = 8;
+
+        [Tooltip("Сколько живёт облако, секунд.")]
+        public float acidCloudTime = 1.8f;
+
+        [Tooltip("Как широко расходятся клубы, долей от радиуса поражения.")]
+        public float acidCloudSpread = 0.75f;
+
+        [Tooltip("Размер клуба, долей от радиуса поражения.")]
+        public float acidCloudScale = 1.1f;
+
+        [Tooltip("Цвет облака.")]
+        public Color acidCloudColor = new Color(0.45f, 0.95f, 0.25f, 0.95f);
+
+        [Tooltip("Потолок одновременных клубов на все облака сразу.")]
+        public int maxAcidCloudPuffs = 48;
+
+        [Header("Свечение раненого")]
+
+        [Tooltip("Цвет свечения вокруг раненого бойца.")]
+        public Color woundedGlowColor = Color.white;
+
+        [Tooltip("Размер пятна в метрах.")]
+        public float woundedGlowSize = 1.9f;
+
+        [Tooltip("На какой высоте держится, в метрах. Под ногами читается " +
+                 "лужей, вокруг головы — нимбом.")]
+        public float woundedGlowHeight = 1.15f;
+
+        [Tooltip("Насколько ярко горит полумёртвый. Яркость идёт от " +
+                 "НЕДОСТАЮЩЕГО здоровья: поцарапанный чуть светится.")]
+        public float woundedGlowStrength = 0.85f;
+
+        [Tooltip("Скорость пульса. Ровное свечение глаз перестаёт замечать " +
+                 "через полминуты, пульсирующее — нет.")]
+        public float woundedGlowPulse = 3.2f;
 
         [Header("Трассеры")]
         [Tooltip("Общий выключатель эффекта. Отдельный от компонента: гасит " +

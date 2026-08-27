@@ -114,6 +114,7 @@ namespace WarfareSurvivor.EditorTools
             AttachWeapons();
             EnsureReverseRun(PoliceController);
             EnsureReverseRun(FarmerController);
+            EnsureZombieMoves(ZombieController, clips);
             EnsureSpit(ZombieController, clips);
             EnsureDeath(PoliceController, clips);
             EnsureDeath(MedicController, clips);
@@ -553,6 +554,91 @@ namespace WarfareSurvivor.EditorTools
 
             EditorUtility.SetDirty(controller);
             Debug.Log("[CharacterSetup] В " + controllerPath + " добавлен плевок");
+        }
+
+        /// <summary>
+        /// Заводит зомби покой и удар.
+        ///
+        /// ПОКОЙ нужен не для красоты: у зомби до сих пор было единственное
+        /// состояние движения — бег, и всякий, кто останавливался, продолжал
+        /// перебирать ногами на месте. У плевуна, который стоит весь замах
+        /// и всю перезарядку, это видно особенно ясно.
+        ///
+        /// УДАР даёт урону от касания видимую причину. До него зомби просто
+        /// подходил, и здоровье бойца убывало само собой — понять, кто и когда
+        /// ударил, было нельзя.
+        /// </summary>
+        static void EnsureZombieMoves(string controllerPath, Dictionary<string, AnimationClip> clips)
+        {
+            var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(controllerPath);
+            if (controller == null) return;
+
+            var sm = controller.layers[0].stateMachine;
+
+            var run = sm.states.FirstOrDefault(c => c.state.name == "Run").state;
+            if (run == null) return;
+
+            if (!sm.states.Any(c => c.state.name == "Idle"))
+            {
+                // Покой берётся ПОЛНЫМ именем файла: короткое "Idle" есть
+                // и у Spearman, и по нему достался бы случайный из двух.
+                var idle = Find(clips, "X Bot@Idle");
+                if (idle != null)
+                {
+                    if (!controller.parameters.Any(p => p.name == "Moving"))
+                        controller.AddParameter("Moving", AnimatorControllerParameterType.Bool);
+
+                    var idleState = sm.AddState("Idle");
+                    idleState.motion = idle;
+
+                    var toIdle = run.AddTransition(idleState);
+                    toIdle.AddCondition(AnimatorConditionMode.IfNot, 0f, "Moving");
+                    toIdle.duration = 0.15f;
+                    toIdle.hasExitTime = false;
+
+                    var toRun = idleState.AddTransition(run);
+                    toRun.AddCondition(AnimatorConditionMode.If, 0f, "Moving");
+                    toRun.duration = 0.15f;
+                    toRun.hasExitTime = false;
+
+                    Debug.Log("[CharacterSetup] В " + controllerPath + " добавлен покой");
+                }
+            }
+
+            if (!sm.states.Any(c => c.state.name == "Attack"))
+            {
+                var attack = Find(clips, "Zombie Attack");
+                if (attack != null)
+                {
+                    if (!controller.parameters.Any(p => p.name == "Attack"))
+                        controller.AddParameter("Attack", AnimatorControllerParameterType.Trigger);
+                    if (!controller.parameters.Any(p => p.name == "AttackSpeed"))
+                        controller.AddParameter("AttackSpeed", AnimatorControllerParameterType.Float);
+
+                    var state = sm.AddState("Attack");
+                    state.motion = attack;
+
+                    // Скорость клипа задаёт код: темп ударов живёт в конфиге,
+                    // а клип длиной под три секунды в него сам не уложится.
+                    state.speedParameterActive = true;
+                    state.speedParameter = "AttackSpeed";
+
+                    var toAttack = sm.AddAnyStateTransition(state);
+                    toAttack.AddCondition(AnimatorConditionMode.If, 0f, "Attack");
+                    toAttack.duration = 0.08f;
+                    toAttack.hasExitTime = false;
+                    toAttack.canTransitionToSelf = false;
+
+                    var back = state.AddTransition(run);
+                    back.hasExitTime = true;
+                    back.exitTime = 0.9f;
+                    back.duration = 0.12f;
+
+                    Debug.Log("[CharacterSetup] В " + controllerPath + " добавлен удар");
+                }
+            }
+
+            EditorUtility.SetDirty(controller);
         }
 
         static void EnsureDeath(string controllerPath, Dictionary<string, AnimationClip> clips)

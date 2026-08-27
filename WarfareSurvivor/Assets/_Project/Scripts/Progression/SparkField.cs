@@ -59,8 +59,9 @@ namespace WarfareSurvivor
             /// <summary>Направление от бойца на бутылку. Доворачивается каждый кадр.</summary>
             public Vector3 FlyDir;
 
-            /// <summary>С какой скоростью убывает радиус, м/с.</summary>
-            public float FlyRate;
+            /// <summary>Сколько уже длится полёт и сколько он должен длиться.</summary>
+            public float FlyElapsed;
+            public float FlyDuration;
 
             /// <summary>В какую сторону закручивается: плюс или минус единица.</summary>
             public float Spin;
@@ -208,10 +209,10 @@ namespace WarfareSurvivor
                 if (spark.Flying) continue;
                 if (!InView(spark.Position)) continue;
 
-                var collector = Nearest(spark.Position);
-                if (collector == null) continue;
+                // Некому подбирать — некуда и лететь.
+                if (Nearest(spark.Position) == null) continue;
 
-                StartFlight(ref spark, collector.transform.position);
+                StartFlight(ref spark, CrowdCenter());
                 sparks[i] = spark;
             }
         }
@@ -267,16 +268,18 @@ namespace WarfareSurvivor
 
                 if (spark.Flying)
                 {
-                    Spiral(ref spark, collector.transform.position);
+                    // Летит В ЦЕНТР ОТРЯДА, а не к ближайшему бойцу.
+                    // Ближайший пересчитывался каждый кадр, и пока бутылка
+                    // шла по дуге, им становился то один, то другой —
+                    // центр витка прыгал, и траектория выходила ломаной.
+                    Spiral(ref spark, CrowdCenter());
                     spark.View.position = spark.Position;
                     sparks[i] = spark;
                     Bob(spark);
 
-                    // Подбор по РАДИУСУ ВИТКА, а не по видимому расстоянию:
-                    // на широкой дуге бутылка уходит от бойца дальше, чем
-                    // была вначале, и по настоящему расстоянию подбор
-                    // не случился бы никогда.
-                    if (spark.FlyRadiusNow <= config.sparkPickupRadius) CollectAt(i);
+                    // Долетела — засчитана. По времени, а не по расстоянию:
+                    // на дуге бутылка бывает дальше от цели, чем была вначале.
+                    if (spark.FlyElapsed >= spark.FlyDuration) CollectAt(i);
                     continue;
                 }
 
@@ -289,7 +292,11 @@ namespace WarfareSurvivor
                 // отряд рядом ходит.
                 if (sqr <= attract)
                 {
-                    StartFlight(ref spark, collector.transform.position);
+                    // Замечает бутылку БЛИЖАЙШИЙ боец — за ней игрок и шёл, —
+                    // а летит она в ЦЕНТР строя. Считать начальный радиус
+                    // от бойца, а лететь к центру нельзя: на старте вышел бы
+                    // рывок на разницу между ними.
+                    StartFlight(ref spark, CrowdCenter());
                     sparks[i] = spark;
                     Bob(spark);
                     continue;
@@ -322,16 +329,14 @@ namespace WarfareSurvivor
             spark.FlyRadius = Mathf.Max(0.01f, flat.magnitude);
             spark.FlyRadiusNow = spark.FlyRadius;
             spark.FlyDir = flat.normalized;
+            spark.FlyElapsed = 0f;
 
             // Время полёта зажато с обеих сторон. Снизу — чтобы виток успел
-            // прочитаться: подбор идёт с двух с половиной метров, и на
-            // постоянной скорости это две десятых секунды, за которые
-            // широкой дуги не разглядеть. Сверху — чтобы добыча с дальнего
-            // края поля не тянулась через весь экран.
-            float duration = Mathf.Clamp(spark.FlyRadius / Mathf.Max(0.1f, config.sparkFlySpeed),
-                                         Mathf.Max(0.05f, config.sparkFlyTimeMin),
-                                         Mathf.Max(0.06f, config.sparkFlyTimeMax));
-            spark.FlyRate = spark.FlyRadius / duration;
+            // прочитаться, сверху — чтобы добыча с дальнего края поля
+            // не тянулась через весь экран.
+            spark.FlyDuration = Mathf.Clamp(spark.FlyRadius / Mathf.Max(0.1f, config.sparkFlySpeed),
+                                            Mathf.Max(0.05f, config.sparkFlyTimeMin),
+                                            Mathf.Max(0.06f, config.sparkFlyTimeMax));
 
             if (spark.View == null) return;
             var trail = spark.View.GetComponent<TrailRenderer>();
@@ -353,22 +358,25 @@ namespace WarfareSurvivor
         /// </summary>
         void Spiral(ref Spark spark, Vector3 target)
         {
-            spark.FlyRadiusNow = Mathf.Max(0f, spark.FlyRadiusNow - spark.FlyRate * Time.deltaTime);
+            spark.FlyElapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(spark.FlyElapsed / Mathf.Max(0.01f, spark.FlyDuration));
 
-            // Пройденная доля пути считается по радиусу витка, а не по времени:
-            // так и доворот, и ширина дуги привязаны к одному и тому же,
-            // и виток выходит одинаковой формы при любой дальности.
-            float done = 1f - spark.FlyRadiusNow / spark.FlyRadius;
+            // РАЗГОН. Радиус убывает по квадрату времени: в начале бутылка
+            // почти висит, к концу срывается в отряд. Ровная скорость
+            // читалась как поездка по рельсам, а не как притяжение.
+            spark.FlyRadiusNow = spark.FlyRadius * (1f - t * t);
 
-            float turn = config.sparkSpiralTurn * spark.Spin * (spark.FlyRate * Time.deltaTime / spark.FlyRadius);
-            spark.FlyDir = Quaternion.AngleAxis(turn, Vector3.up) * spark.FlyDir;
+            // Угол доворачивается от НАЧАЛЬНОГО направления на полный угол
+            // за весь полёт, а не подкручивается каждый кадр от прошлого:
+            // накапливать поворот значит копить и ошибку.
+            float turn = config.sparkSpiralTurn * spark.Spin * t;
+            var direction = Quaternion.AngleAxis(turn, Vector3.up) * spark.FlyDir;
 
-            // Дуга наружу: к середине полёта бутылка отходит от бойца,
-            // а не сходится сразу. Без этого при подборе под ногами
-            // от спирали остаётся завиток в два метра.
-            float bulge = Mathf.Max(0f, config.sparkSpiralBulge) * Mathf.Sin(done * Mathf.PI);
+            // Дуга наружу: к середине полёта бутылка отходит от цели
+            // и только потом сходится.
+            float bulge = Mathf.Max(0f, config.sparkSpiralBulge) * Mathf.Sin(t * Mathf.PI);
 
-            var moved = target + spark.FlyDir * (spark.FlyRadiusNow + bulge);
+            var moved = target + direction * (spark.FlyRadiusNow + bulge);
             moved.y = spark.Position.y;
             spark.Position = moved;
         }

@@ -135,6 +135,18 @@ namespace WarfareSurvivor
                 }
             }
 
+            // Свечение раненого. Под try по той же причине, что и всё
+            // остальное украшение ниже: сбой в косметике не должен мешать
+            // бойцу появиться — на этом уже обжигались.
+            try
+            {
+                WoundedGlow.Attach(transform, health, config, Camera.main);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[{name}] Свечение раненого не собралось: {e.Message}", this);
+            }
+
             var bar = GetComponent<HealthBarView>();
             if (bar != null)
             {

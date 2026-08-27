@@ -12,6 +12,16 @@ namespace WarfareSurvivor
     {
         static readonly int DieParam = Animator.StringToHash("Die");
         static readonly int SpitParam = Animator.StringToHash("Spit");
+        static readonly int AttackParam = Animator.StringToHash("Attack");
+        static readonly int AttackSpeedParam = Animator.StringToHash("AttackSpeed");
+        static readonly int MovingParam = Animator.StringToHash("Moving");
+
+        /// <summary>
+        /// Длина клипа удара. Одна на всех: контроллер у видов общий,
+        /// и читать её у каждого зомби значило бы шестьдесят раз искать
+        /// одно и то же.
+        /// </summary>
+        static float attackClipLength = -1f;
 
         // Имена клипов те же, что в контроллере: печь берёт их оттуда,
         // и расхождение сразу оставило бы зомби без анимации.
@@ -188,6 +198,10 @@ namespace WarfareSurvivor
         float despawnTime;
         bool dying;
 
+        /// <summary>Замах начат: кого и когда ударит.</summary>
+        Survivor pendingVictim;
+        float pendingHitTime;
+
         /// <summary>Замах начат: зона показана, плевок ещё не вылетел.</summary>
         float spitReleaseTime;
 
@@ -262,6 +276,8 @@ namespace WarfareSurvivor
             dying = false;
             despawnTime = 0f;
             nextContactTime = 0f;
+            pendingVictim = null;
+            pendingHitTime = 0f;
             CancelSpit();
             nextSpitTime = Time.time + Random.value * Mathf.Max(0.1f, spitInterval);
             knockbackUntil = 0f;
@@ -424,8 +440,17 @@ namespace WarfareSurvivor
             to.y = 0f;
             float distance = to.magnitude;
 
+            // Идёт ли он в этом кадре. Ниже ветки её сбрасывают, и в самом
+            // конце по ней переключается покой.
+            bool moving = true;
+
             if (Spits && UpdateSpit(to, distance))
             {
+                // Плевун стоит: и на замахе, и доигрывая плевок, и всю
+                // перезарядку. Бег на месте с доворотом к отряду выглядит
+                // сломанным.
+                SetMoving(false);
+
                 // На замахе и доигрывая плевок плевун стоит НАМЕРТВО, без
                 // расталкивания: замер показал, что толпа сзади сносила его
                 // на метр в секунду, и он всё равно ехал за отрядом.
@@ -450,16 +475,100 @@ namespace WarfareSurvivor
                 transform.position = next;
                 transform.rotation = Quaternion.LookRotation(direction, Vector3.up);
             }
-            else if (Time.time >= nextContactTime)
+            else
             {
-                nextContactTime = Time.time + config.zombieContactInterval;
-                target.ApplyDamage(config.zombieContactDamage, target.transform.position);
+                // Дошёл — стоит и бьёт. Бег на месте у стоящего вплотную
+                // читается как заедание анимации.
+                moving = false;
+                FaceTowards(to);
+
+                if (Time.time >= nextContactTime) Strike();
             }
+
+            SetMoving(moving);
+            ResolvePendingHit();
 
             // Расцепление идёт ВСЕГДА, а не только на ходу. Дошедшие до отряда
             // стоят на месте, и именно они образуют неподвижную стену, в которую
             // спрессовывается всё, что подходит следом.
             ResolveOverlap();
+        }
+
+        // --- удар вблизи -----------------------------------------------------
+
+        /// <summary>
+        /// Замах. Урон наносится НЕ СЕЙЧАС, а на середине клипа.
+        ///
+        /// Иначе здоровье бойца убывает раньше, чем рука дошла, и удар
+        /// читается как несвязанный с попаданием — а именно по нему игрок
+        /// и должен понимать, кто именно его ест.
+        /// </summary>
+        void Strike()
+        {
+            nextContactTime = Time.time + config.zombieContactInterval;
+
+            float clip = AttackClipLength();
+
+            // Клип втрое длиннее темпа ударов, поэтому его ускоряем ровно
+            // настолько, чтобы замах уложился в интервал. Замедлять не нужно:
+            // при редких ударах он играет в своей скорости, а разница
+            // уходит в паузу.
+            float playback = Mathf.Max(1f, clip / Mathf.Max(config.zombieContactInterval, 0.05f));
+
+            if (animator != null)
+            {
+                animator.SetFloat(AttackSpeedParam, playback);
+                animator.SetTrigger(AttackParam);
+            }
+
+            pendingVictim = target;
+            pendingHitTime = Time.time + clip * 0.45f / playback;
+        }
+
+        void ResolvePendingHit()
+        {
+            if (pendingVictim == null || Time.time < pendingHitTime) return;
+
+            var victim = pendingVictim;
+            pendingVictim = null;
+
+            if (victim == null || !victim.isActiveAndEnabled || victim.Health.IsDead) return;
+
+            // Дистанцию перепроверяем: за время замаха отряд мог уйти,
+            // и удар в пустоту засчитывать нечестно.
+            var away = victim.transform.position - transform.position;
+            away.y = 0f;
+            if (away.magnitude > config.zombieContactRange * 1.4f) return;
+
+            victim.ApplyDamage(config.zombieContactDamage, victim.transform.position);
+        }
+
+        /// <summary>
+        /// Длина клипа удара, взятая у самого контроллера.
+        ///
+        /// Не числом в коде: клип заменят, и захардкоженная длина молча
+        /// разъедется с картинкой — удар начнёт попадать не в тот момент.
+        /// </summary>
+        float AttackClipLength()
+        {
+            if (attackClipLength > 0f) return attackClipLength;
+
+            attackClipLength = 2.8f;
+            if (animator == null || animator.runtimeAnimatorController == null) return attackClipLength;
+
+            foreach (var clip in animator.runtimeAnimatorController.animationClips)
+            {
+                if (clip == null || clip.name != "Zombie Attack") continue;
+                attackClipLength = Mathf.Max(0.1f, clip.length);
+                break;
+            }
+
+            return attackClipLength;
+        }
+
+        void SetMoving(bool moving)
+        {
+            if (animator != null) animator.SetBool(MovingParam, moving);
         }
 
         // --- кислотный плевок ------------------------------------------------

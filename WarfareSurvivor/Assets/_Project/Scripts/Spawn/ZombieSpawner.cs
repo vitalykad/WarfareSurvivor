@@ -70,6 +70,7 @@ namespace WarfareSurvivor
             HealPlus.Configure(config, Camera.main);
             AcidZone.Configure(config);
             AcidDrop.Configure(config, Camera.main);
+            AcidCloud.Configure(config, Camera.main);
         }
 
         /// <summary>

@@ -277,6 +277,11 @@ namespace WarfareSurvivor
             }
 
             Splash(at, Mathf.Max(0.4f, radius * 0.55f));
+
+            // Облако поднимается на месте попадания. Радиусом ровно в зону:
+            // круг обещал именно эту площадь, и облако не должно её ни
+            // приукрашивать, ни занижать.
+            if (radius > 0f) AcidCloud.Bloom(at, radius);
         }
 
         void LateUpdate()
