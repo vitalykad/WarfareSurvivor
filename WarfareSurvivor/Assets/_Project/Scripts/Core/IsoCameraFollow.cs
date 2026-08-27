@@ -26,6 +26,18 @@ namespace WarfareSurvivor
         Vector3 velocity;
 
         /// <summary>
+        /// Дистанция, на которой камера стоит СЕЙЧАС, и скорость её изменения.
+        ///
+        /// Отъезд сглаживается ОТДЕЛЬНО от слежения. Общее сглаживание тут
+        /// не годится: следовать за отрядом камера должна цепко, иначе кадр
+        /// плывёт при каждом движении джойстика, — а отъезжать на пополнение
+        /// плавно, потому что резкий скачок кадра в награду за нового бойца
+        /// читается как сбой, а не как награда.
+        /// </summary>
+        float shownDistance;
+        float distanceVelocity;
+
+        /// <summary>
         /// Сколько бойцов было на старте. От этого числа и считается отъезд:
         /// стартовая дистанция должна означать «отряд, с которым вышли»,
         /// а он в забеге и на стенде замеров разный.
@@ -47,6 +59,9 @@ namespace WarfareSurvivor
             }
 
             ApplyFraming();
+            // На старте встаём сразу на нужную дистанцию, без наплыва:
+            // плавный отъезд нужен по ходу забега, а не в первом кадре.
+            shownDistance = CurrentDistance();
             if (target != null) transform.position = DesiredPosition();
         }
 
@@ -57,6 +72,9 @@ namespace WarfareSurvivor
             // Стартовый состав запоминаем в первом кадре, где он вообще есть:
             // в Awake отряд ещё не создан, и запомнился бы ноль.
             if (startCount == 0) startCount = Registry.Survivors.Count;
+
+            shownDistance = Mathf.SmoothDamp(shownDistance, CurrentDistance(),
+                                             ref distanceVelocity, Mathf.Max(0f, config.cameraZoomTime));
 
             ApplyFraming();
             transform.position = Vector3.SmoothDamp(
@@ -101,12 +119,12 @@ namespace WarfareSurvivor
 
             // Ближняя плоскость не должна дорасти до дальней и не должна
             // подрезать сам отряд — оставляем запас до него.
-            float near = Mathf.Clamp(config.cameraNearClip, 0.05f, Mathf.Max(1f, CurrentDistance() * 0.5f));
+            float near = Mathf.Clamp(config.cameraNearClip, 0.05f, Mathf.Max(1f, shownDistance * 0.5f));
             view.nearClipPlane = near;
             view.farClipPlane = Mathf.Max(near + 1f, config.cameraFarClip);
         }
 
         Vector3 DesiredPosition()
-            => target.position - transform.rotation * Vector3.forward * CurrentDistance();
+            => target.position - transform.rotation * Vector3.forward * shownDistance;
     }
 }
