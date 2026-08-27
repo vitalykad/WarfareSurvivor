@@ -47,25 +47,6 @@ namespace WarfareSurvivor
             /// <summary>Летит к бойцу.</summary>
             public bool Flying;
 
-            /// <summary>Расстояние до бойца в момент начала полёта.</summary>
-            public float FlyRadius;
-
-            /// <summary>
-            /// Радиус витка сейчас. Убывает ровно, ВИДИМОЕ же расстояние
-            /// до бойца больше на ширину дуги — по нему подбор считать нельзя.
-            /// </summary>
-            public float FlyRadiusNow;
-
-            /// <summary>Направление от бойца на бутылку. Доворачивается каждый кадр.</summary>
-            public Vector3 FlyDir;
-
-            /// <summary>Сколько уже длится полёт и сколько он должен длиться.</summary>
-            public float FlyElapsed;
-            public float FlyDuration;
-
-            /// <summary>В какую сторону закручивается: плюс или минус единица.</summary>
-            public float Spin;
-
             /// <summary>Откуда и куда идёт разлёт, и сколько его осталось.</summary>
             public Vector3 From;
             public Vector3 To;
@@ -130,11 +111,7 @@ namespace WarfareSurvivor
                 From = position,
                 To = ScatterTarget(position, ground),
                 ScatterLeft = Mathf.Max(0.05f, config.sparkScatterTime),
-                Phase = Random.value * Mathf.PI * 2f,
-
-                // Сторона закрутки у каждой своя: одинаковая читается
-                // как заводной механизм, а не как втягивание.
-                Spin = Random.value < 0.5f ? -1f : 1f
+                Phase = Random.value * Mathf.PI * 2f
             });
         }
 
@@ -201,7 +178,7 @@ namespace WarfareSurvivor
                 // Некому подбирать — некуда и лететь.
                 if (Nearest(spark.Position) == null) continue;
 
-                StartFlight(ref spark, CrowdCenter());
+                spark.Flying = true;
                 sparks[i] = spark;
             }
         }
@@ -238,6 +215,7 @@ namespace WarfareSurvivor
 
             float attract = config.sparkAttractRadius * config.sparkAttractRadius;
             float pickup = config.sparkPickupRadius * config.sparkPickupRadius;
+            float step = config.sparkFlySpeed * Time.deltaTime;
 
             for (int i = sparks.Count - 1; i >= 0; i--)
             {
@@ -255,23 +233,6 @@ namespace WarfareSurvivor
                 var collector = Nearest(spark.Position);
                 if (collector == null) continue;
 
-                if (spark.Flying)
-                {
-                    // Летит В ЦЕНТР ОТРЯДА, а не к ближайшему бойцу.
-                    // Ближайший пересчитывался каждый кадр, и пока бутылка
-                    // шла по дуге, им становился то один, то другой —
-                    // центр витка прыгал, и траектория выходила ломаной.
-                    Spiral(ref spark, CrowdCenter());
-                    spark.View.position = spark.Position;
-                    sparks[i] = spark;
-                    Bob(spark);
-
-                    // Долетела — засчитана. По времени, а не по расстоянию:
-                    // на дуге бутылка бывает дальше от цели, чем была вначале.
-                    if (spark.FlyElapsed >= spark.FlyDuration) CollectAt(i);
-                    continue;
-                }
-
                 var delta = collector.transform.position - spark.Position;
                 delta.y = 0f;
                 float sqr = delta.sqrMagnitude;
@@ -279,81 +240,20 @@ namespace WarfareSurvivor
                 // Притяжение включается один раз и обратно не выключается:
                 // иначе искра на границе радиуса дёргается туда-сюда, пока
                 // отряд рядом ходит.
-                if (sqr <= attract)
+                if (!spark.Flying && sqr <= attract) spark.Flying = true;
+
+                if (spark.Flying && sqr > 0.0001f)
                 {
-                    // Замечает бутылку БЛИЖАЙШИЙ боец — за ней игрок и шёл, —
-                    // а летит она в ЦЕНТР строя. Считать начальный радиус
-                    // от бойца, а лететь к центру нельзя: на старте вышел бы
-                    // рывок на разницу между ними.
-                    StartFlight(ref spark, CrowdCenter());
-                    sparks[i] = spark;
-                    Bob(spark);
-                    continue;
+                    spark.Position += delta.normalized * Mathf.Min(step, delta.magnitude);
+                    spark.View.position = spark.Position;
                 }
 
                 sparks[i] = spark;
+
                 Bob(spark);
 
                 if (sqr <= pickup) CollectAt(i);
             }
-        }
-
-        /// <summary>
-        /// Пускает добычу в полёт к бойцу и включает след.
-        ///
-        /// Расстояние запоминается: по нему считается закрутка, чтобы
-        /// спираль выглядела одинаково и при подборе в двух метрах,
-        /// и при сборе поля после волны с двадцати.
-        /// </summary>
-        void StartFlight(ref Spark spark, Vector3 target)
-        {
-            if (spark.Flying) return;
-
-            spark.Flying = true;
-
-            var flat = spark.Position - target;
-            flat.y = 0f;
-            if (flat.sqrMagnitude < 0.0001f) flat = Vector3.forward;
-
-            spark.FlyRadius = Mathf.Max(0.01f, flat.magnitude);
-            spark.FlyRadiusNow = spark.FlyRadius;
-            spark.FlyDir = flat.normalized;
-            spark.FlyElapsed = 0f;
-
-            // Время полёта зажато с обеих сторон. Снизу — чтобы виток успел
-            // прочитаться, сверху — чтобы добыча с дальнего края поля
-            // не тянулась через весь экран.
-            spark.FlyDuration = Mathf.Clamp(spark.FlyRadius / Mathf.Max(0.1f, config.sparkFlySpeed),
-                                            Mathf.Max(0.05f, config.sparkFlyTimeMin),
-                                            Mathf.Max(0.06f, config.sparkFlyTimeMax));
-        }
-
-        /// <summary>
-        /// Шаг полёта ПО СПИРАЛИ: радиус убывает ровно, угол доворачивается.
-        ///
-        /// Радиус убывает с той же скоростью, что и раньше по прямой, —
-        /// значит время полёта и, стало быть, весь баланс подбора не изменились.
-        /// Меняется только путь.
-        /// </summary>
-        void Spiral(ref Spark spark, Vector3 target)
-        {
-            spark.FlyElapsed += Time.deltaTime;
-            float t = Mathf.Clamp01(spark.FlyElapsed / Mathf.Max(0.01f, spark.FlyDuration));
-
-            // РАЗГОН. Радиус убывает по квадрату времени: в начале бутылка
-            // почти висит, к концу срывается в отряд. Ровная скорость
-            // читалась как поездка по рельсам, а не как притяжение.
-            spark.FlyRadiusNow = spark.FlyRadius * (1f - t * t);
-
-            // Угол доворачивается от НАЧАЛЬНОГО направления на полный угол
-            // за весь полёт, а не подкручивается каждый кадр от прошлого:
-            // накапливать поворот значит копить и ошибку.
-            float turn = config.sparkSpiralTurn * spark.Spin * t;
-            var direction = Quaternion.AngleAxis(turn, Vector3.up) * spark.FlyDir;
-
-            var moved = target + direction * spark.FlyRadiusNow;
-            moved.y = spark.Position.y;
-            spark.Position = moved;
         }
 
         /// <summary>

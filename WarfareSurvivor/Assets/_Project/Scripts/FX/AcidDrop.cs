@@ -28,6 +28,8 @@ namespace WarfareSurvivor
 
         /// <summary>Хвост и дымка. Есть только у самого плевка, у брызг нет.</summary>
         TrailRenderer trail;
+        Transform tail;
+        Vector3 lastPosition;
         Transform haze;
         MeshRenderer hazeView;
         Mesh hazeMesh;
@@ -122,6 +124,8 @@ namespace WarfareSurvivor
             drop.arc = Mathf.Max(0.2f, Vector3.Distance(origin, landing) * config.acidArcHeight);
 
             drop.transform.position = origin;
+            drop.lastPosition = origin;
+            if (drop.tail != null) drop.tail.position = origin;
             drop.comet = comet;
 
             // Хвост и дымка — только у самого плевка. У брызг они превратили бы
@@ -191,7 +195,14 @@ namespace WarfareSurvivor
             drop.mesh = Quad();
             filter.sharedMesh = drop.mesh;
 
-            var line = go.AddComponent<TrailRenderer>();
+            // Хвост живёт на СВОЁМ узле, а не на самом снаряде: узел висит
+            // позади ядра, и лента начинается не из его середины, а из-за него.
+            // Из середины она выглядела торчащей из снаряда палкой.
+            var tailNode = new GameObject("AcidTail");
+            tailNode.transform.SetParent(go.transform, false);
+            drop.tail = tailNode.transform;
+
+            var line = tailNode.AddComponent<TrailRenderer>();
             line.sharedMaterial = Material();
             line.alignment = LineAlignment.View;
             line.numCapVertices = 2;
@@ -201,6 +212,7 @@ namespace WarfareSurvivor
             line.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
             line.emitting = false;
             line.widthCurve = new AnimationCurve(new Keyframe(0f, 1f), new Keyframe(1f, 0f));
+            line.autodestruct = false;
             drop.trail = line;
 
             // Дымка — ОТДЕЛЬНАЯ плоскость, крупнее и мягче ядра. Одной
@@ -352,10 +364,15 @@ namespace WarfareSurvivor
                     float halo = Mathf.Exp(-beyond * 4.5f) * 0.5f;
                     float alpha = Mathf.Clamp01(core + halo) * (1f - Smooth(r, 1f));
 
-                    // Ядро почти добела: на примере, который просили повторить,
-                    // середина снаряда светится белым, и зелёным остаётся
-                    // только то, что вокруг.
-                    var rgb = Color.Lerp(new Color(0.30f, 1f, 0.12f), Color.white, core * 0.8f);
+                    // Ядро ЧИСТО БЕЛОЕ, зелень только вокруг него.
+                    //
+                    // Цвет живёт в ТЕКСТУРЕ, а не в цвете вершины: вершинный
+                    // цвет умножается на всю каплю разом, и зелёный в нём
+                    // красил заодно и ядро — белого не оставалось нигде.
+                    // Поэтому цвет капли в конфиге теперь белый и работает
+                    // как общая яркость.
+                    float white = 1f - Smooth(Mathf.Max(0f, r - 0.16f), 0.26f);
+                    var rgb = Color.Lerp(new Color(0.30f, 1f, 0.12f), Color.white, white);
                     pixels[y * size + x] = new Color(rgb.r, rgb.g, rgb.b, alpha);
                 }
             }
@@ -454,6 +471,16 @@ namespace WarfareSurvivor
 
             if (material != null && material.HasProperty("_Boost"))
                 material.SetFloat("_Boost", Mathf.Max(0.1f, config.acidDropBoost));
+
+            // Узел хвоста отстаёт от ядра по ходу движения — отсюда
+            // и просвет между ними.
+            if (comet && tail != null)
+            {
+                var travel = transform.position - lastPosition;
+                if (travel.sqrMagnitude > 0.000001f)
+                    tail.position = transform.position - travel.normalized * Mathf.Max(0f, config.acidTrailGap);
+            }
+            lastPosition = transform.position;
 
             if (!comet || haze == null) return;
 

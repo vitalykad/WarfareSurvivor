@@ -113,6 +113,7 @@ MonoBehaviour:
   acidSplashTime: 0.42
   acidTrailTime: 0.5
   acidTrailWidth: 1.1
+  acidTrailGap: 0.5
   acidTrailColor: {r: 0.35, g: 1, b: 0.15, a: 0.85}
   acidHazeScale: 3.2
   acidHazeColor: {r: 0.35, g: 0.9, b: 0.2, a: 0.35}
@@ -175,11 +176,11 @@ MonoBehaviour:
   - Name: "\u0422\u0440\u0435\u0442\u044C\u044F"
     Duration: 120
     SpawnInterval: 0.7
-    GroupMin: 4
-    GroupMax: 6
+    GroupMin: 3
+    GroupMax: 5
     MinTier: 2
     MaxTier: 3
-    MaxAlive: 60
+    MaxAlive: 40
   waveBreak: 4
   squadSlotCap: 20
   sparkPerKill: 1
@@ -200,9 +201,6 @@ MonoBehaviour:
   sparkBobSpeed: 2.2
   sparkSwayAngle: 14
   sparkSwaySpeed: 1.5
-  sparkSpiralTurn: 300
-  sparkFlyTimeMin: 0.55
-  sparkFlyTimeMax: 1.4
   maxSparks: 150
   rampStep: 25
   rampMax: 400
