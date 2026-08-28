@@ -515,6 +515,18 @@ namespace WarfareSurvivor
             if (torsoAim != null) torsoAim.Target = target != null ? target.transform : null;
         }
 
+        /// <summary>
+        /// Куда боец ЦЕЛИТСЯ — в отличие от того, куда развёрнута фигура.
+        ///
+        /// У стрелка они расходятся на поправку стойки: фигура стоит
+        /// вполоборота, потому что так снят клип, а целится он прямо.
+        /// Проверять наведение по развороту фигуры нельзя — на этом
+        /// уже обожглись: поправка в 35 градусов при пороге в 5 означала,
+        /// что стоя коп не мог выстрелить вовсе.
+        /// </summary>
+        Vector3 AimForward =>
+            transform.rotation * Quaternion.Euler(0f, -klass.aimYawOffset, 0f) * Vector3.forward;
+
         void FaceTowards(Vector3 direction)
         {
             if (direction.sqrMagnitude < 0.0001f) return;
@@ -615,7 +627,7 @@ namespace WarfareSurvivor
 
             var to = target.transform.position - transform.position;
             to.y = 0f;
-            float angle = Vector3.Angle(transform.forward, to);
+            float angle = Vector3.Angle(AimForward, to);
 
             // В движении бьём в пределах доворота груди — тело уже стоит так,
             // как надо. Стоя и на отходе спиной боец разворачивается целиком,
