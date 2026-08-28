@@ -105,8 +105,15 @@ namespace WarfareSurvivor
 
             puff.transform.position = at;
 
-            puff.startSize = Mathf.Max(0.05f, size);
-            puff.endSize = puff.startSize * Random.Range(1.6f, 2.3f);
+            // Клуб шлейфа РАСТЁТ, а не рождается в полный размер.
+            //
+            // Это решает вилку, в которой я застрял: рождённый сразу большим,
+            // он хоронил ядро снаряда под собой, а отодвинутый назад отрывался
+            // от него с заметным просветом. Растущий же у самого шара мелкий
+            // и не мешает, а позади разрастается в плотный шлейф — как и ведёт
+            // себя настоящий дым.
+            puff.startSize = Mathf.Max(0.02f, size * 0.22f);
+            puff.endSize = Mathf.Max(0.05f, size * Random.Range(0.9f, 1.25f));
             puff.spin = Random.Range(-1f, 1f);
 
             // Оседает и слегка расходится вбок: дым за снарядом должен

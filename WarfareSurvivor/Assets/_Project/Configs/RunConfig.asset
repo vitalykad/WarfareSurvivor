@@ -116,8 +116,8 @@ MonoBehaviour:
   acidSplashCount: 10
   acidSplashTime: 0.42
   acidSmokeInterval: 0.012
-  acidSmokeOffset: 1.1
-  acidSmokeSize: 1
+  acidSmokeOffset: 0.3
+  acidSmokeSize: 1.25
   acidSmokeTime: 0.75
   acidSpitStretch: 1
   acidSpitWobble: 0.16
