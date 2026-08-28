@@ -200,7 +200,7 @@ namespace WarfareSurvivor
             // хвост всё равно отставал — потому что узел двигался отдельно
             // от шара и лента записывалась по его следу, а не по следу шара.
             var line = go.AddComponent<TrailRenderer>();
-            line.sharedMaterial = Material();
+            line.sharedMaterial = TrailMaterial();
             line.alignment = LineAlignment.View;
             line.numCapVertices = 2;
             line.minVertexDistance = 0.05f;
@@ -275,6 +275,33 @@ namespace WarfareSurvivor
 
             material = new Material(shader) { name = "AcidDrop", mainTexture = Texture() };
             return material;
+        }
+
+        static Material trailMaterial;
+
+        /// <summary>
+        /// Материал ленты. СВОЙ, с ровной белой текстурой.
+        ///
+        /// Раньше лента брала материал самого шара — а у него текстура
+        /// круглой капли с прозрачными краями. Лента растягивает текстуру
+        /// вдоль себя, поэтому её начало и конец приходились на прозрачную
+        /// часть: у шара лента была невидима, и между ними зиял просвет.
+        /// Ровная лента без сужения показала это прямо — она нарисовалась
+        /// не полосой, а отдельными комками.
+        ///
+        /// Форму ленте задают кривая ширины и градиент прозрачности,
+        /// а текстура должна быть ровной и ничего не съедать.
+        /// </summary>
+        static Material TrailMaterial()
+        {
+            if (trailMaterial != null) return trailMaterial;
+
+            var shader = Shader.Find("WarfareSurvivor/GlowSprite");
+            if (shader == null) return Material();
+
+            trailMaterial = new Material(shader) { name = "AcidTrail", mainTexture = Texture2D.whiteTexture };
+            if (trailMaterial.HasProperty("_Boost")) trailMaterial.SetFloat("_Boost", 1.1f);
+            return trailMaterial;
         }
 
         static Material hazeMaterial;
@@ -376,10 +403,20 @@ namespace WarfareSurvivor
                     // Ядро — СПЛОШНОЙ диск с мягким краем, а не спад от центра.
                     // Спадом капля вышла размером с пиксель: ярким оставался
                     // только самый центр, а по меркам квада это доли метра.
-                    float beyond = Mathf.Max(0f, r - 0.42f);
-                    float core = 1f - Smooth(beyond, 0.16f);
-                    float halo = Mathf.Exp(-beyond * 4.5f) * 0.5f;
-                    float alpha = Mathf.Clamp01(core + halo) * (1f - Smooth(r, 1f));
+                    float beyond = Mathf.Max(0f, r - 0.30f);
+                    float core = 1f - Smooth(beyond, 0.10f);
+
+                    // Ореола в самой капле БОЛЬШЕ НЕТ, и это главное.
+                    //
+                    // Смешение у неё с предумноженной альфой: где альфа
+                    // заметна, капля ЗАМЕЩАЕТ собой всё, что под ней, —
+                    // и стирала хвост на всей площади своего ореола.
+                    // Просвет между шаром и лентой был ровно в радиус шара,
+                    // это и выдало причину.
+                    //
+                    // Свечение вокруг ядра даёт дымка: она аддитивная
+                    // и ничего не стирает.
+                    float alpha = core;
 
                     // Ядро ЧИСТО БЕЛОЕ, зелень только вокруг него.
                     //
