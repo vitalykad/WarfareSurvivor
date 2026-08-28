@@ -111,13 +111,18 @@ MonoBehaviour:
   spitterMarkRimColor: {r: 1, g: 0.9, b: 0.2, a: 0.95}
   acidDropColor: {r: 0.45, g: 1, b: 0.2, a: 1}
   acidDropBoost: 3.4
-  acidSpitSize: 1.2
+  acidSpitSize: 1.35
   acidArcHeight: 0.32
   acidSplashCount: 10
   acidSplashTime: 0.42
   acidSmokeInterval: 0.012
   acidSmokeSize: 1
   acidSmokeTime: 0.75
+  acidSpitStretch: 1.7
+  acidSpitWobble: 0.16
+  acidSpitWobbleSpeed: 20
+  acidSparkInterval: 0.05
+  acidSparkTime: 0.3
   acidFlashTime: 0.16
   acidFlashScale: 1.3
   acidFlashColor: {r: 0.8, g: 1, b: 0.55, a: 1}
@@ -125,8 +130,8 @@ MonoBehaviour:
   acidRingScale: 2
   acidRingColor: {r: 0.6, g: 1, b: 0.35, a: 0.9}
   maxAcidBlasts: 16
-  acidHazeScale: 2.4
-  acidHazeColor: {r: 0.35, g: 0.9, b: 0.2, a: 0.35}
+  acidHazeScale: 1.7
+  acidHazeColor: {r: 0.35, g: 0.9, b: 0.2, a: 0.22}
   maxAcidDrops: 64
   acidCloudPuffs: 8
   acidCloudTime: 1.8

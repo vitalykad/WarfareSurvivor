@@ -521,11 +521,35 @@ namespace WarfareSurvivor
                  "Чаще — плотный шлейф, реже — редкие клочья.")]
         public float acidSmokeInterval = 0.02f;
 
+        [Tooltip("На сколько позади шара рождается клуб, долей от его размера. " +
+                 "Ноль — прямо в шаре, и густой дым хоронит ядро под собой.")]
+        public float acidSmokeOffset = 1.1f;
+
         [Tooltip("Размер клуба от снаряда, долей от размера шара.")]
         public float acidSmokeSize = 0.85f;
 
         [Tooltip("Сколько живёт клуб от летящего снаряда, секунд.")]
         public float acidSmokeTime = 0.6f;
+
+        [Tooltip("Во сколько раз снаряд вытянут вдоль полёта. Единица — " +
+                 "круглый. Вытянутый говорит направление сам, одной формой, " +
+                 "а круглый заставляет угадывать его по дыму позади.")]
+        public float acidSpitStretch = 1.7f;
+
+        [Tooltip("Насколько сильно снаряд покачивается на лету, долей размера. " +
+                 "Покачивание с сохранением объёма: вытянулся вдоль — сжался " +
+                 "поперёк, как упругая капля.")]
+        public float acidSpitWobble = 0.16f;
+
+        [Tooltip("Скорость покачивания.")]
+        public float acidSpitWobbleSpeed = 20f;
+
+        [Tooltip("Как часто летящий снаряд роняет искру, секунд. Ноль — " +
+                 "искр в полёте нет. Искра — та же брызга, что и при взрыве.")]
+        public float acidSparkInterval = 0.05f;
+
+        [Tooltip("Сколько летит искра от снаряда, секунд.")]
+        public float acidSparkTime = 0.3f;
 
         [Header("Взрыв плевка")]
 
@@ -560,7 +584,7 @@ namespace WarfareSurvivor
         public Color acidHazeColor = new Color(0.35f, 0.9f, 0.2f, 0.35f);
 
         [Tooltip("Потолок одновременных капель — и плевков, и брызг.")]
-        public int maxAcidDrops = 64;
+        public int maxAcidDrops = 96;
 
         [Tooltip("Из скольких клубов собирается ядовитое облако. Один клуб, " +
                  "как его ни рисуй, читается наклейкой на земле.")]

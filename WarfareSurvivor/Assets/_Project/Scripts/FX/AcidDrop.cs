@@ -26,8 +26,9 @@ namespace WarfareSurvivor
         Mesh mesh;
         readonly Color[] corners = new Color[4];
 
-        /// <summary>Когда снаряд обронит следующий клуб дыма.</summary>
+        /// <summary>Когда снаряд обронит следующий клуб дыма и следующую искру.</summary>
         float nextPuff;
+        float nextSpark;
 
         /// <summary>Дымка вокруг шара. Есть только у самого плевка, у брызг нет.</summary>
         Transform haze;
@@ -126,6 +127,7 @@ namespace WarfareSurvivor
             drop.transform.position = origin;
             drop.comet = comet;
             drop.nextPuff = Time.time;
+            drop.nextSpark = Time.time;
 
             // Дымка и шлейф — только у самого плевка. У брызг они превратили бы
             // попадание в зелёную кашу: их десяток, и все летят разом.
@@ -363,6 +365,43 @@ namespace WarfareSurvivor
             return t * t * (3f - 2f * t);
         }
 
+        /// <summary>
+        /// Вытягивает шар вдоль полёта и покачивает его, как пузырь.
+        ///
+        /// Круглый снаряд не говорит, куда летит, — направление приходится
+        /// угадывать по дыму позади. Вытянутый вдоль скорости говорит это
+        /// сам, одной своей формой.
+        ///
+        /// Покачивание идёт С СОХРАНЕНИЕМ объёма: вытянулся вдоль — сжался
+        /// поперёк. Иначе шар просто пульсирует размером, а это читается
+        /// как мигание, а не как упругая капля.
+        /// </summary>
+        void Shape(Vector3 velocity, float life)
+        {
+            if (view == null) return;
+
+            // Разворачиваем к камере, а потом доворачиваем вокруг взгляда так,
+            // чтобы длинная ось легла по направлению полёта НА ЭКРАНЕ.
+            float onRight = Vector3.Dot(velocity, view.transform.right);
+            float onUp = Vector3.Dot(velocity, view.transform.up);
+            float angle = Mathf.Atan2(onUp, onRight) * Mathf.Rad2Deg;
+            transform.rotation = view.transform.rotation * Quaternion.Euler(0f, 0f, angle);
+
+            float wobble = 1f + Mathf.Sin((Time.time + spin) * config.acidSpitWobbleSpeed) * config.acidSpitWobble;
+            float grown = size * (1f + life * 0.25f);
+
+            float along = grown * Mathf.Max(0.2f, config.acidSpitStretch) * wobble;
+            float across = grown / (Mathf.Max(0.2f, config.acidSpitStretch) * wobble);
+
+            transform.localScale = new Vector3(along, across, grown);
+
+            // Дымка — ребёнок, и растяжение родителя её бы перекосило.
+            // Гасим его обратной величиной, чтобы она осталась круглой.
+            if (haze == null) return;
+            float wanted = Mathf.Max(1f, config.acidHazeScale) * (1f + life * 0.3f);
+            haze.localScale = new Vector3(wanted * grown / along, wanted * grown / across, wanted);
+        }
+
         /// <summary>Попадание: урон по кругу и брызги.</summary>
         static void Land(Vector3 at, float radius, float damage, AcidZone zone)
         {
@@ -430,12 +469,54 @@ namespace WarfareSurvivor
             flat.y += arc * 4f * life * (1f - life);
             transform.position = flat;
 
-            if (view != null) transform.rotation = view.transform.rotation;
+            // Мгновенная скорость: прямая часть плюс производная параболы.
+            // Считаем её, а не разницу с прошлым кадром, — так направление
+            // точное и не дрожит на медленном ходу.
+            var velocity = to - from;
+            velocity.y += arc * 4f * (1f - 2f * life);
 
-            // Лёгкое вращение и разбухание к концу полёта: капля читается
-            // живой жидкостью, а не летящим значком.
-            transform.Rotate(Vector3.forward, spin * 180f * Time.deltaTime, Space.Self);
-            transform.localScale = Vector3.one * size * (1f + life * 0.25f);
+            // Снаряд сеет за собой клубы дыма — те же, из которых собрано
+            // облако взрыва. Так дым от полёта и дым от попадания читаются
+            // одним веществом, а не двумя разными эффектами.
+            if (comet && Time.time >= nextPuff)
+            {
+                nextPuff = Time.time + Mathf.Max(0.005f, config.acidSmokeInterval);
+
+                // Клуб рождается ПОЗАДИ шара, а не в нём. Густой шлейф,
+                // начинающийся в самой точке снаряда, хоронит его под собой:
+                // свежие клубы садятся ровно на ядро, и от кометы остаётся
+                // одно зелёное пятно.
+                var behind = transform.position - velocity.normalized * (size * config.acidSmokeOffset);
+
+                AcidCloud.Puff(behind,
+                               size * Mathf.Max(0.05f, config.acidSmokeSize),
+                               Mathf.Max(0.1f, config.acidSmokeTime));
+            }
+
+            if (comet) Shape(velocity, life);
+            else if (view != null)
+            {
+                transform.rotation = view.transform.rotation;
+                transform.Rotate(Vector3.forward, spin * 180f * Time.deltaTime, Space.Self);
+                transform.localScale = Vector3.one * size * (1f + life * 0.25f);
+            }
+
+            // Искры из летящего шара — те же брызги, что и при взрыве.
+            // Разлетаются назад и вбок: искра, обгоняющая снаряд, читается
+            // как второй снаряд.
+            if (comet && Time.time >= nextSpark && config.acidSparkInterval > 0f)
+            {
+                nextSpark = Time.time + config.acidSparkInterval;
+
+                var back = -velocity.normalized;
+                float reach = size * Random.Range(0.8f, 1.8f);
+                var away = (back + Random.insideUnitSphere * 0.8f).normalized * reach;
+
+                var spark = Launch(transform.position, transform.position + away,
+                                   config.acidSparkTime * Random.Range(0.7f, 1.3f),
+                                   size * Random.Range(0.14f, 0.28f), comet: false);
+                if (spark != null) spark.arc *= 0.3f;
+            }
 
             var color = config.acidDropColor;
             color.a *= 1f - life * life * 0.35f;
@@ -446,23 +527,11 @@ namespace WarfareSurvivor
             if (material != null && material.HasProperty("_Boost"))
                 material.SetFloat("_Boost", Mathf.Max(0.1f, config.acidDropBoost));
 
-            // Снаряд сеет за собой клубы дыма — те же, из которых собрано
-            // облако взрыва. Так дым от полёта и дым от попадания читаются
-            // одним веществом, а не двумя разными эффектами.
-            if (comet && Time.time >= nextPuff)
-            {
-                nextPuff = Time.time + Mathf.Max(0.02f, config.acidSmokeInterval);
-                AcidCloud.Puff(transform.position,
-                               size * Mathf.Max(0.05f, config.acidSmokeSize),
-                               Mathf.Max(0.1f, config.acidSmokeTime));
-            }
-
             if (!comet || haze == null) return;
 
-            // Дымка чуть отстаёт по размеру и заметно бледнее ядра —
-            // и разрастается к концу полёта, будто снаряд разогревается.
-            haze.localScale = Vector3.one * Mathf.Max(1f, config.acidHazeScale) * (1f + life * 0.3f);
-            haze.rotation = transform.rotation;
+            // Размер дымке задаёт Shape вместе с формой шара: она ребёнок,
+            // и растяжение родителя надо гасить обратной величиной.
+            haze.rotation = view != null ? view.transform.rotation : transform.rotation;
 
             var hazeColor = config.acidHazeColor;
             hazeColor.a *= 1f - life * life * 0.35f;
