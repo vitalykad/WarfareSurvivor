@@ -117,7 +117,7 @@ MonoBehaviour:
   acidSplashTime: 0.42
   acidTrailTime: 0.22
   acidTrailWidth: 1.7
-  acidTrailGap: 0.18
+  acidTrailGap: 0
   acidTrailColor: {r: 0.35, g: 1, b: 0.15, a: 0.85}
   acidHazeScale: 2.4
   acidHazeColor: {r: 0.35, g: 0.9, b: 0.2, a: 0.35}

@@ -280,11 +280,25 @@ namespace WarfareSurvivor
         {
             if (hazeMaterial != null) return hazeMaterial;
 
-            var shader = Shader.Find("WarfareSurvivor/GlowSprite");
+            // Дымка АДДИТИВНАЯ, в отличие от самого шара.
+            //
+            // У шара смешение с предумноженной альфой: ему надо держать
+            // белое ядро, а для этого — замещать собой фон. Но замещает оно
+            // и хвост: пятно дымки в три метра поверх ленты выедало её первые
+            // полтора метра, и хвост будто начинался поодаль от шара.
+            // Замер это и показал — лента начиналась в 0.18 м от центра шара,
+            // то есть внутри него, а видно её было только за краем дымки.
+            //
+            // Аддитивная дымка ничего не гасит, только прибавляет свет,
+            // и лента сквозь неё проходит целиком.
+            var shader = Shader.Find("WarfareSurvivor/AdditiveTracer");
             if (shader == null) return Material();
 
             hazeMaterial = new Material(shader) { name = "AcidHaze", mainTexture = HazeTexture() };
-            if (hazeMaterial.HasProperty("_Boost")) hazeMaterial.SetFloat("_Boost", 1f);
+            if (hazeMaterial.HasProperty("_Boost")) hazeMaterial.SetFloat("_Boost", 1.2f);
+
+            // Мягкая кривая: без неё зелёный ореол поверх песка уходит в белый.
+            if (hazeMaterial.HasProperty("_Rolloff")) hazeMaterial.SetFloat("_Rolloff", 1f);
             return hazeMaterial;
         }
 
