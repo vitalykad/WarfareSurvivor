@@ -34,8 +34,11 @@ namespace WarfareSurvivor
         [SerializeField, Tooltip("С какой секунды начинать выстрел.")]
         float pistolStart;
 
-        [SerializeField, Tooltip("Сколько эффектов может звучать одновременно.")]
-        int voices = 8;
+        [SerializeField, Tooltip("Сколько эффектов может звучать одновременно. " +
+                                 "Голос занят на всю длину клипа, а выстрелов " +
+                                 "и ударов в гуще боя два десятка в секунду: " +
+                                 "на восьми голосах они обрывали друг друга.")]
+        int voices = 24;
 
         AudioSource musicSource;
         AudioSource[] sfx;
@@ -159,8 +162,29 @@ namespace WarfareSurvivor
         {
             if (clip == null || sfx == null || sfx.Length == 0) return;
 
-            var source = sfx[nextVoice];
-            nextVoice = (nextVoice + 1) % sfx.Length;
+            // Ищем СВОБОДНЫЙ голос, а не берём следующий по кругу.
+            //
+            // По кругу выходило так: каждый новый звук обрывал тот, что играл
+            // на этом источнике, и при частой стрельбе восьми голосов
+            // не хватало — звуки резались в щелчки и переставали слышаться
+            // ровно тогда, когда их больше всего.
+            AudioSource source = null;
+            for (int i = 0; i < sfx.Length; i++)
+            {
+                int at = (nextVoice + i) % sfx.Length;
+                if (sfx[at].isPlaying) continue;
+                source = sfx[at];
+                nextVoice = (at + 1) % sfx.Length;
+                break;
+            }
+
+            // Все заняты — только тогда забираем по кругу. Это уже перебор
+            // голосов, и обрыв самого старого лучше пропуска нового.
+            if (source == null)
+            {
+                source = sfx[nextVoice];
+                nextVoice = (nextVoice + 1) % sfx.Length;
+            }
 
             source.clip = clip;
 

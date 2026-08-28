@@ -551,6 +551,22 @@ namespace WarfareSurvivor
         [Tooltip("Сколько летит искра от снаряда, секунд.")]
         public float acidSparkTime = 0.3f;
 
+        [Header("Красная виньетка")]
+
+        [Tooltip("Цвет виньетки по краю экрана при уроне по отряду.")]
+        public Color damageVignetteColor = new Color(0.8f, 0.05f, 0.05f, 1f);
+
+        [Tooltip("Насколько ярко вспыхивает виньетка от одного удара. " +
+                 "Удары складываются: чем гуще едят отряд, тем краснее край.")]
+        public float damageVignettePerHit = 0.22f;
+
+        [Tooltip("Насколько густой виньетка может стать. Единица закрасила бы " +
+                 "поле боя целиком.")]
+        [Range(0f, 1f)] public float damageVignetteMax = 0.65f;
+
+        [Tooltip("За сколько секунд виньетка гаснет с полной густоты.")]
+        public float damageVignetteFade = 0.8f;
+
         [Header("Взрыв плевка")]
 
         [Tooltip("Сколько длится вспышка, секунд. Очень коротко: взрыв — " +
@@ -605,6 +621,12 @@ namespace WarfareSurvivor
         [Tooltip("Потолок одновременных клубов на все облака сразу.")]
         public int maxAcidCloudPuffs = 48;
 
+        [Tooltip("Сколько держится вспышка на бойце, секунд. Отдельно " +
+                 "от зомбиной: по зомби попадают постоянно и вспышка должна " +
+                 "быть мгновенной, а удар по своему — событие, которое надо " +
+                 "успеть заметить.")]
+        public float survivorFlashDuration = 0.22f;
+
         [Tooltip("Цвет вспышки на бойце, которого ударили. НЕ белый: белым " +
                  "помечено попадание ПО зомби, и одинаковый цвет стирал бы " +
                  "разницу между «я попал» и «попали по мне».")]
@@ -628,6 +650,20 @@ namespace WarfareSurvivor
                  "Она же главная статья расхода — платят за площадь " +
                  "перерисовки, а не за число трасс.")]
         public float tracerWidth = 0.35f;
+
+        [Tooltip("Длина ЯРКОЙ ПУЛИ на голове трассы, в метрах. Короткий " +
+                 "отрезок читается летящей пулей, длинный — полосой света.")]
+        public float tracerBulletMeters = 0.6f;
+
+        [Tooltip("Во сколько раз пуля толще самой трассы.")]
+        public float tracerBulletWidth = 1.6f;
+
+        [Tooltip("Во сколько раз хвост тусклее пули. Единица — хвост той же " +
+                 "яркости, и пуля в нём теряется.")]
+        [Range(0f, 1f)] public float tracerTailDim = 0.35f;
+
+        [Tooltip("Во сколько раз хвост тоньше пули.")]
+        public float tracerTailWidth = 0.7f;
 
         public Color tracerColor = new Color(1f, 0.86f, 0.45f);
 

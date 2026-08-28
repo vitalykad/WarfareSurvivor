@@ -168,13 +168,15 @@ namespace WarfareSurvivor.EditorTools
         /// Клип берётся ПОЛНЫМ именем "X Bot@Idle": короткое имя "Idle" есть
         /// ещё и у Spearman, и по нему достался бы случайный из двух.
         ///
-        /// Бег пока общий, стрелковый: обычного бега без оружия среди клипов
-        /// нет. Появится — менять здесь одну строку.
+        /// Бег — свой, "X Bot@Fast Run".
         /// </summary>
         static void BuildMedic(Dictionary<string, AnimationClip> clips, bool force)
         {
             var idle = Find(clips, "X Bot@Idle");
-            var run = Find(clips, "Pistol Run");
+
+            // Свой бег, а не стрелковый: медик оружия не носит, и бег
+            // с пистолетом наготове выглядел так, будто его у неё отобрали.
+            var run = Find(clips, "X Bot@Fast Run") ?? Find(clips, "Pistol Run");
             if (idle == null || run == null) return;
 
             if (force || AssetDatabase.LoadAssetAtPath<AnimatorController>(MedicController) == null)

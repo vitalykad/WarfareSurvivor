@@ -1333,6 +1333,12 @@ namespace WarfareSurvivor.EditorTools
             Wire(director, "music", music);
             Wire(director, "shovelHit", shovel);
             Wire(director, "pistolShot", pistol);
+            // Голоса задаём ЯВНО. Умолчание в коде на уже собранную сцену
+            // не действует: компонент сохранён со своим значением, и правка
+            // умолчания молча ничего не меняет — на этом уже обожглись,
+            // подняв голоса в коде и увидев в игре прежние восемь.
+            Wire(director, "voices", 24);
+
             Wire(director, "shovelStart", SoundStart(shovel));
             Wire(director, "pistolStart", SoundStart(pistol));
 

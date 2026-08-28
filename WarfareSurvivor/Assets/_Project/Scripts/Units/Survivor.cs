@@ -199,9 +199,11 @@ namespace WarfareSurvivor
         /// </summary>
         void OnDamaged(float amount, Vector3 point)
         {
+            DamageVignette.Hit();
+
             if (renderers == null || renderers.Length == 0) return;
 
-            flashUntil = Time.time + Mathf.Max(0.02f, config.hitFlashDuration);
+            flashUntil = Time.time + Mathf.Max(0.02f, config.survivorFlashDuration);
             for (int i = 0; i < renderers.Length; i++)
             {
                 if (renderers[i] == null) continue;

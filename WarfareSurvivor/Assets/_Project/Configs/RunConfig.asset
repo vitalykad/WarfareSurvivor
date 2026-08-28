@@ -46,7 +46,7 @@ MonoBehaviour:
   bodyTurnSpeed: 720
   torsoAimMaxAngle: 75
   torsoAimSpeed: 480
-  aimedAngleThreshold: 20
+  aimedAngleThreshold: 5
   backwardSwitchAngle: 90
   stanceHysteresis: 15
   stanceMinHoldTime: 0.7
@@ -124,6 +124,10 @@ MonoBehaviour:
   acidSpitWobbleSpeed: 20
   acidSparkInterval: 0.05
   acidSparkTime: 0.3
+  damageVignetteColor: {r: 0.8, g: 0.05, b: 0.05, a: 1}
+  damageVignettePerHit: 0.22
+  damageVignetteMax: 0.65
+  damageVignetteFade: 0.8
   acidFlashTime: 0.16
   acidFlashScale: 1.3
   acidFlashColor: {r: 0.8, g: 1, b: 0.55, a: 1}
@@ -140,6 +144,7 @@ MonoBehaviour:
   acidCloudScale: 1.1
   acidCloudColor: {r: 0.45, g: 0.95, b: 0.25, a: 0.95}
   maxAcidCloudPuffs: 110
+  survivorFlashDuration: 0.22
   survivorFlashColor: {r: 1, g: 0.35, b: 0.3, a: 1}
   tracersEnabled: 1
   tracerLife: 0.11

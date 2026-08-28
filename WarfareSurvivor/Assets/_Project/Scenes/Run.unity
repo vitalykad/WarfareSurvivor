@@ -934,7 +934,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 42
     m_Alignment: 1
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -3242,7 +3242,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 56
     m_Alignment: 1
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -3327,7 +3327,7 @@ MonoBehaviour:
   pistolShot: {fileID: 8300000, guid: 2d6153af6cc774b7a82ca9ebd459c205, type: 3}
   shovelStart: 3.459375
   pistolStart: 1.3465
-  voices: 8
+  voices: 24
 --- !u!4 &1286970098
 Transform:
   m_ObjectHideFlags: 0
@@ -4380,7 +4380,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 72
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1

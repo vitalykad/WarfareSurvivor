@@ -203,7 +203,24 @@ namespace WarfareSurvivor
                     cfg.muzzleFlashLife, cfg.muzzleFlashLength,
                     cfg.tracerWidth * cfg.muzzleFlashWidth, cfg.tracerColor);
 
-            instance.Add(from, to, cfg.tracerLife, cfg.tracerDashMeters, cfg.tracerWidth, cfg.tracerColor);
+            // Трасса из ДВУХ отрезков: тусклый длинный хвост и яркая
+            // короткая пуля на его голове.
+            //
+            // Оба идут по одному лучу с одной скоростью, отличаются только
+            // длиной, шириной и яркостью — отрезок рисуется назад от головы,
+            // поэтому короткий и оказывается самой пулей. Отдельного объекта
+            // под пулю не нужно: это те же данные в том же меше.
+            //
+            // Хвост добавляем ПЕРВЫМ, чтобы яркая пуля легла поверх него.
+            var tail = cfg.tracerColor * Mathf.Clamp01(cfg.tracerTailDim);
+            tail.a = cfg.tracerColor.a;
+
+            instance.Add(from, to, cfg.tracerLife, cfg.tracerDashMeters,
+                cfg.tracerWidth * Mathf.Max(0.05f, cfg.tracerTailWidth), tail);
+
+            instance.Add(from, to, cfg.tracerLife, Mathf.Max(0.05f, cfg.tracerBulletMeters),
+                cfg.tracerWidth * Mathf.Max(0.05f, cfg.tracerBulletWidth), cfg.tracerColor);
+
             instance.Sparks(to, direction);
         }
 
