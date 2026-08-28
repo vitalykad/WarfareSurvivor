@@ -29,8 +29,7 @@ namespace WarfareSurvivor
         /// <summary>Когда снаряд обронит следующий клуб дыма.</summary>
         float nextPuff;
 
-        /// <summary>Хвост и дымка. Есть только у самого плевка, у брызг нет.</summary>
-        TrailRenderer trail;
+        /// <summary>Дымка вокруг шара. Есть только у самого плевка, у брызг нет.</summary>
         Transform haze;
         MeshRenderer hazeView;
         Mesh hazeMesh;
@@ -128,31 +127,11 @@ namespace WarfareSurvivor
             drop.comet = comet;
             drop.nextPuff = Time.time;
 
-            // Хвост и дымка — только у самого плевка. У брызг они превратили бы
+            // Дымка и шлейф — только у самого плевка. У брызг они превратили бы
             // попадание в зелёную кашу: их десяток, и все летят разом.
-            if (drop.trail != null)
-            {
-                drop.trail.emitting = false;
-                drop.trail.Clear();
-
-                if (comet)
-                {
-                    drop.trail.time = Mathf.Max(0.02f, config.acidTrailTime);
-                    drop.trail.widthMultiplier = Mathf.Max(0.01f, config.acidTrailWidth * dropSize);
-                    ApplyTrailColor(drop.trail);
-                    drop.trail.emitting = true;
-                }
-            }
-
             if (drop.hazeView != null) drop.hazeView.enabled = comet;
 
             drop.gameObject.SetActive(true);
-
-            // Чистить след надо ПОСЛЕ включения объекта: на выключенном
-            // очистка не всегда доходит, и снаряд выходит с полосой
-            // от прошлого полёта через всю карту.
-            if (drop.trail != null) drop.trail.Clear();
-
             return drop;
         }
 
@@ -194,33 +173,6 @@ namespace WarfareSurvivor
             // живут в вершинах, и общий меш гасил бы все капли разом.
             drop.mesh = Quad();
             filter.sharedMesh = drop.mesh;
-
-            // Лента живёт НА САМОМ шаре, а не на отдельном узле позади него.
-            //
-            // Узел позади казался хорошей мыслью — дать хвосту начаться
-            // за краем ядра, а не из его середины. На деле он давал ровно то,
-            // на что жаловались: просвет между шаром и лентой. Замер путал:
-            // ближняя записанная точка ленты была в нуле от шара, а на глаз
-            // хвост всё равно отставал — потому что узел двигался отдельно
-            // от шара и лента записывалась по его следу, а не по следу шара.
-            var line = go.AddComponent<TrailRenderer>();
-            line.sharedMaterial = TrailMaterial();
-            line.alignment = LineAlignment.View;
-            line.numCapVertices = 2;
-            line.minVertexDistance = 0.05f;
-            line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            line.receiveShadows = false;
-            line.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
-            line.emitting = false;
-            // Время 0 — ГОЛОВА ленты, у самого снаряда; единица — её конец.
-            // Значит широкая у шара и сходит на нет позади.
-            //
-            // Разрыв, за которым я гонялся, давал не этот порядок, а узел
-            // ленты, висевший позади шара: лента писалась по следу узла,
-            // а не по следу снаряда. Узел убран, порядок остался прежним.
-            line.widthCurve = new AnimationCurve(new Keyframe(0f, 1f), new Keyframe(1f, 0f));
-            line.autodestruct = false;
-            drop.trail = line;
 
             // Дымка — ОТДЕЛЬНАЯ плоскость, крупнее и мягче ядра. Одной
             // текстурой это не сделать: у ядра должен быть резкий яркий центр,
@@ -281,33 +233,6 @@ namespace WarfareSurvivor
             return material;
         }
 
-        static Material trailMaterial;
-
-        /// <summary>
-        /// Материал ленты. СВОЙ, с ровной белой текстурой.
-        ///
-        /// Раньше лента брала материал самого шара — а у него текстура
-        /// круглой капли с прозрачными краями. Лента растягивает текстуру
-        /// вдоль себя, поэтому её начало и конец приходились на прозрачную
-        /// часть: у шара лента была невидима, и между ними зиял просвет.
-        /// Ровная лента без сужения показала это прямо — она нарисовалась
-        /// не полосой, а отдельными комками.
-        ///
-        /// Форму ленте задают кривая ширины и градиент прозрачности,
-        /// а текстура должна быть ровной и ничего не съедать.
-        /// </summary>
-        static Material TrailMaterial()
-        {
-            if (trailMaterial != null) return trailMaterial;
-
-            var shader = Shader.Find("WarfareSurvivor/GlowSprite");
-            if (shader == null) return Material();
-
-            trailMaterial = new Material(shader) { name = "AcidTrail", mainTexture = Texture2D.whiteTexture };
-            if (trailMaterial.HasProperty("_Boost")) trailMaterial.SetFloat("_Boost", 1.1f);
-            return trailMaterial;
-        }
-
         static Material hazeMaterial;
 
         static Material HazeMaterial()
@@ -364,18 +289,6 @@ namespace WarfareSurvivor
             texture.SetPixels32(pixels);
             texture.Apply();
             return texture;
-        }
-
-        static void ApplyTrailColor(TrailRenderer line)
-        {
-            var color = config.acidTrailColor;
-
-            var gradient = new Gradient();
-            gradient.SetKeys(
-                new[] { new GradientColorKey(color, 0f), new GradientColorKey(color, 1f) },
-                new[] { new GradientAlphaKey(color.a, 0f), new GradientAlphaKey(0f, 1f) });
-
-            line.colorGradient = gradient;
         }
 
         /// <summary>
@@ -455,6 +368,10 @@ namespace WarfareSurvivor
         {
             if (zone != null) zone.Hide();
 
+            // Вспышка и волна — В САМОМ НАЧАЛЕ, до урона и дыма: удар должен
+            // быть виден в тот же кадр, в который он случился.
+            if (radius > 0f) AcidBlast.Burst(at, radius);
+
             if (radius > 0f && damage > 0f)
             {
                 float radiusSqr = radius * radius;
@@ -495,7 +412,6 @@ namespace WarfareSurvivor
 
             if (life >= 1f)
             {
-                if (trail != null) trail.emitting = false;
                 gameObject.SetActive(false);
 
                 // Урон и брызги наносит САМА капля в момент касания земли,

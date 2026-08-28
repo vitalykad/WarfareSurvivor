@@ -71,6 +71,7 @@ namespace WarfareSurvivor
             AcidZone.Configure(config);
             AcidDrop.Configure(config, Camera.main);
             AcidCloud.Configure(config, Camera.main);
+            AcidBlast.Configure(config, Camera.main);
         }
 
         /// <summary>

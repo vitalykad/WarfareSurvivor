@@ -34,6 +34,9 @@ namespace WarfareSurvivor
                  "так лента видна целиком и не уходит вверх за край.")]
         public float arc;
 
+        [Tooltip("Радиус взрыва в конце полёта. Ноль — снаряд просто гаснет.")]
+        public float blastRadius = 1.8f;
+
         float nextLaunch;
 
         void Start()
@@ -48,6 +51,7 @@ namespace WarfareSurvivor
             AcidDrop.Configure(config, Camera.main);
             AcidCloud.Configure(config, Camera.main);
             AcidZone.Configure(config);
+            AcidBlast.Configure(config, Camera.main);
         }
 
         void Update()
@@ -57,14 +61,17 @@ namespace WarfareSurvivor
             nextLaunch = Time.time + Mathf.Max(0.1f, flightTime + pause);
 
             float half = Mathf.Max(0.5f, distance) * 0.5f;
-            var from = new Vector3(-half, 1.2f, 0f);
-            var to = new Vector3(half, 1.2f, 0f);
+            // Прилетает НА ЗЕМЛЮ, как в бою. Горизонтальный полёт на высоте
+            // разводил вспышку и кольцо по экрану: кольцо ложится на землю,
+            // и стенд врал бы про то, как взрыв выглядит на самом деле.
+            var from = new Vector3(-half, 1.6f, 0f);
+            var to = new Vector3(half, 0.05f, 0f);
 
             // Горку стенд по умолчанию не делает: она уводит снаряд вверх
             // за край кадра, а разглядывать надо ленту, а не траекторию.
             float keep = config.acidArcHeight;
             config.acidArcHeight = arc;
-            AcidDrop.Spit(from, to, flightTime, 0f, 0f, null);
+            AcidDrop.Spit(from, to, flightTime, blastRadius, 0f, null);
             config.acidArcHeight = keep;
         }
     }

@@ -517,39 +517,42 @@ namespace WarfareSurvivor
         [Tooltip("Сколько летят брызги, секунд.")]
         public float acidSplashTime = 0.42f;
 
-        [Tooltip("Сколько секунд тянется хвост за летящим плевком.\n\n" +
-                 "Считай его в МЕТРАХ: снаряд идёт девять метров за три " +
-                 "четверти секунды, то есть двенадцать метров в секунду. " +
-                 "Полсекунды хвоста — это шесть метров, почти весь путь; " +
-                 "именно так он и тянулся от самой пасти.")]
-        public float acidTrailTime = 0.12f;
-
-        [Tooltip("Ширина хвоста у самого снаряда, долей от его размера. " +
-                 "К концу сходит на нет.")]
-        public float acidTrailWidth = 0.75f;
-
-        [Tooltip("Просвет между ядром снаряда и началом хвоста, в метрах. " +
-                 "Ноль — лента растёт прямо из середины ядра и выглядит " +
-                 "торчащей из него палкой.")]
-        public float acidTrailGap = 0.18f;
-
         [Tooltip("Как часто летящий снаряд роняет клуб дыма, секунд. " +
                  "Чаще — плотный шлейф, реже — редкие клочья.")]
-        public float acidSmokeInterval = 0.045f;
+        public float acidSmokeInterval = 0.02f;
 
         [Tooltip("Размер клуба от снаряда, долей от размера шара.")]
-        public float acidSmokeSize = 0.7f;
+        public float acidSmokeSize = 0.85f;
 
-        [Tooltip("Сколько живёт клуб от летящего снаряда, секунд. Короче, " +
-                 "чем у облака взрыва: шлейф должен таять за спиной, " +
-                 "а не висеть над всей траекторией.")]
-        public float acidSmokeTime = 0.5f;
+        [Tooltip("Сколько живёт клуб от летящего снаряда, секунд.")]
+        public float acidSmokeTime = 0.6f;
 
-        [Tooltip("Цвет хвоста.")]
-        public Color acidTrailColor = new Color(0.35f, 1f, 0.15f, 0.85f);
+        [Header("Взрыв плевка")]
 
-        [Tooltip("Размер дымки вокруг снаряда, долей от его размера. " +
-                 "Единица — дымки не видно вовсе.")]
+        [Tooltip("Сколько длится вспышка, секунд. Очень коротко: взрыв — " +
+                 "событие на два-три кадра, всё остальное делают дым и волна.")]
+        public float acidFlashTime = 0.16f;
+
+        [Tooltip("До скольких радиусов поражения разрастается вспышка.")]
+        public float acidFlashScale = 1.3f;
+
+        [Tooltip("Цвет вспышки. Аддитивная — выбивает в белое всё под собой, " +
+                 "в этом и состоит удар.")]
+        public Color acidFlashColor = new Color(0.8f, 1f, 0.55f, 1f);
+
+        [Tooltip("Сколько живёт ударная волна, секунд.")]
+        public float acidRingTime = 0.42f;
+
+        [Tooltip("До скольких радиусов поражения расходится волна.")]
+        public float acidRingScale = 2f;
+
+        [Tooltip("Цвет волны.")]
+        public Color acidRingColor = new Color(0.6f, 1f, 0.35f, 0.9f);
+
+        [Tooltip("Потолок одновременных вспышек и волн.")]
+        public int maxAcidBlasts = 16;
+
+        [Tooltip("Размер дымки вокруг снаряда, долей от его размера.")]
         public float acidHazeScale = 2.8f;
 
         [Tooltip("Цвет дымки. Прозрачность низкая: это ореол вокруг ядра, " +
