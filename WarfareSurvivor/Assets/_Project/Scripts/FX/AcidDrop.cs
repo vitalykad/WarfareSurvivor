@@ -28,8 +28,6 @@ namespace WarfareSurvivor
 
         /// <summary>Хвост и дымка. Есть только у самого плевка, у брызг нет.</summary>
         TrailRenderer trail;
-        Transform tail;
-        Vector3 lastPosition;
         Transform haze;
         MeshRenderer hazeView;
         Mesh hazeMesh;
@@ -124,8 +122,6 @@ namespace WarfareSurvivor
             drop.arc = Mathf.Max(0.2f, Vector3.Distance(origin, landing) * config.acidArcHeight);
 
             drop.transform.position = origin;
-            drop.lastPosition = origin;
-            if (drop.tail != null) drop.tail.position = origin;
             drop.comet = comet;
 
             // Хвост и дымка — только у самого плевка. У брызг они превратили бы
@@ -195,14 +191,15 @@ namespace WarfareSurvivor
             drop.mesh = Quad();
             filter.sharedMesh = drop.mesh;
 
-            // Хвост живёт на СВОЁМ узле, а не на самом снаряде: узел висит
-            // позади ядра, и лента начинается не из его середины, а из-за него.
-            // Из середины она выглядела торчащей из снаряда палкой.
-            var tailNode = new GameObject("AcidTail");
-            tailNode.transform.SetParent(go.transform, false);
-            drop.tail = tailNode.transform;
-
-            var line = tailNode.AddComponent<TrailRenderer>();
+            // Лента живёт НА САМОМ шаре, а не на отдельном узле позади него.
+            //
+            // Узел позади казался хорошей мыслью — дать хвосту начаться
+            // за краем ядра, а не из его середины. На деле он давал ровно то,
+            // на что жаловались: просвет между шаром и лентой. Замер путал:
+            // ближняя записанная точка ленты была в нуле от шара, а на глаз
+            // хвост всё равно отставал — потому что узел двигался отдельно
+            // от шара и лента записывалась по его следу, а не по следу шара.
+            var line = go.AddComponent<TrailRenderer>();
             line.sharedMaterial = Material();
             line.alignment = LineAlignment.View;
             line.numCapVertices = 2;
@@ -211,7 +208,14 @@ namespace WarfareSurvivor
             line.receiveShadows = false;
             line.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
             line.emitting = false;
-            line.widthCurve = new AnimationCurve(new Keyframe(0f, 1f), new Keyframe(1f, 0f));
+            // Ноль на времени 0, единица на времени 1 — НЕ наоборот.
+            //
+            // У ленты время 0 это её КОНЕЦ, самый старый кусок, а единица —
+            // голова у самого объекта. Я держал в голове обратное, и потому
+            // лента выходила широкой и яркой у дальнего конца, а у шара
+            // сходила на нет: между ними получался просвет, который читался
+            // как отставший хвост. Гонялся за ним три захода.
+            line.widthCurve = new AnimationCurve(new Keyframe(0f, 0f), new Keyframe(1f, 1f));
             line.autodestruct = false;
             drop.trail = line;
 
@@ -339,7 +343,7 @@ namespace WarfareSurvivor
             var gradient = new Gradient();
             gradient.SetKeys(
                 new[] { new GradientColorKey(color, 0f), new GradientColorKey(color, 1f) },
-                new[] { new GradientAlphaKey(color.a, 0f), new GradientAlphaKey(0f, 1f) });
+                new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(color.a, 1f) });
 
             line.colorGradient = gradient;
         }
@@ -485,16 +489,6 @@ namespace WarfareSurvivor
 
             if (material != null && material.HasProperty("_Boost"))
                 material.SetFloat("_Boost", Mathf.Max(0.1f, config.acidDropBoost));
-
-            // Узел хвоста отстаёт от ядра по ходу движения — отсюда
-            // и просвет между ними.
-            if (comet && tail != null)
-            {
-                var travel = transform.position - lastPosition;
-                if (travel.sqrMagnitude > 0.000001f)
-                    tail.position = transform.position - travel.normalized * Mathf.Max(0f, config.acidTrailGap);
-            }
-            lastPosition = transform.position;
 
             if (!comet || haze == null) return;
 
