@@ -115,13 +115,16 @@ MonoBehaviour:
   acidArcHeight: 0.32
   acidSplashCount: 10
   acidSplashTime: 0.42
-  acidTrailTime: 0.16
-  acidTrailWidth: 0.42
-  acidTrailGap: 0
-  acidSmokeInterval: 0.045
-  acidSmokeSize: 0.7
-  acidSmokeTime: 0.5
-  acidTrailColor: {r: 0.4, g: 1, b: 0.15, a: 0.9}
+  acidSmokeInterval: 0.012
+  acidSmokeSize: 1
+  acidSmokeTime: 0.75
+  acidFlashTime: 0.16
+  acidFlashScale: 1.3
+  acidFlashColor: {r: 0.8, g: 1, b: 0.55, a: 1}
+  acidRingTime: 0.42
+  acidRingScale: 2
+  acidRingColor: {r: 0.6, g: 1, b: 0.35, a: 0.9}
+  maxAcidBlasts: 16
   acidHazeScale: 2.4
   acidHazeColor: {r: 0.35, g: 0.9, b: 0.2, a: 0.35}
   maxAcidDrops: 64
@@ -130,7 +133,7 @@ MonoBehaviour:
   acidCloudSpread: 0.75
   acidCloudScale: 1.1
   acidCloudColor: {r: 0.45, g: 0.95, b: 0.25, a: 0.95}
-  maxAcidCloudPuffs: 48
+  maxAcidCloudPuffs: 110
   survivorFlashColor: {r: 1, g: 0.35, b: 0.3, a: 1}
   tracersEnabled: 1
   tracerLife: 0.11
