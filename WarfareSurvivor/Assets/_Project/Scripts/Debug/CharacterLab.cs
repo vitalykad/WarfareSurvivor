@@ -3,29 +3,55 @@ using UnityEngine;
 namespace WarfareSurvivor
 {
     /// <summary>
-    /// Ставит одного бойца перед камерой и гоняет его анимацию на месте.
+    /// Стенд для разглядывания персонажа: один боец, крупно, без боя.
     ///
-    /// Боец создаётся из ПРЕФАБА, а не кладётся в сцену готовым: чинить
-    /// придётся риг и аватар, а они живут в модели — сцена со слепком
-    /// показывала бы вчерашнее состояние и врала бы после каждой правки.
+    /// Нужен ровно для таких случаев, как подламывающаяся ступня: в бою
+    /// боец занимает полсотни пикселей среди толпы, и понять, что именно
+    /// не так с ногой, нельзя.
+    ///
+    /// Всё, что нужно для разбора, крутится ОТСЮДА, без пересборки сцены:
+    /// ракурс, дальность, кадр анимации. Пересобирать сцену на каждый угол
+    /// значит терять полминуты на каждый взгляд.
     /// </summary>
     public class CharacterLab : MonoBehaviour
     {
         [Tooltip("Кого разглядываем.")]
         public GameObject who;
 
+        [Header("Анимация")]
+
         [Tooltip("Скорость для аниматора: единица — бег, ноль — покой.")]
         [Range(0f, 1f)] public float speed = 1f;
 
-        [Tooltip("Крутить бойца вокруг себя, чтобы осмотреть со всех сторон. " +
-                 "Градусов в секунду; ноль — стоит спиной.")]
-        public float turn = 25f;
+        [Tooltip("Остановить анимацию и держать кадр из поля ниже. " +
+                 "Разбирать позу на ходу нельзя: между двумя снимками " +
+                 "она успевает уйти, и сравнивать нечего.")]
+        public bool freeze;
+
+        [Tooltip("Какой кадр цикла держать, доля 0..1.")]
+        [Range(0f, 1f)] public float frame;
+
+        [Header("Обзор")]
+
+        [Tooltip("Наклон камеры. 58 — как в игре, 0 — вид сбоку.")]
+        public float viewPitch = 58f;
+
+        [Tooltip("Поворот камеры вокруг бойца. 180 — вид со спины.")]
+        public float viewYaw = 180f;
+
+        [Tooltip("Дальность камеры, метров.")]
+        public float viewDistance = 3.2f;
+
+        [Tooltip("Куда смотрит камера по высоте, метров от земли. " +
+                 "Ноль — на ступни.")]
+        public float viewHeight = 0.5f;
 
         static readonly int SpeedParam = Animator.StringToHash("Speed");
         static readonly int MoveDirParam = Animator.StringToHash("MoveDir");
 
         Animator animator;
         Transform body;
+        Camera view;
 
         void Start()
         {
@@ -47,20 +73,39 @@ namespace WarfareSurvivor
 
             animator = instance.GetComponentInChildren<Animator>();
 
-            // Без этого Animator не считает позу, когда объект за кадром,
-            // а разглядывать мы будем именно позу.
+            // Без этого Animator не считает позу за кадром, а разглядывать
+            // мы будем именно позу.
             if (animator != null) animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+
+            view = Camera.main;
         }
 
         void Update()
         {
-            if (animator == null) return;
+            if (animator != null)
+            {
+                animator.SetFloat(SpeedParam, speed);
+                animator.SetFloat(MoveDirParam, 1f);
 
-            animator.SetFloat(SpeedParam, speed);
-            animator.SetFloat(MoveDirParam, 1f);
+                // Останов через сам Animator, а не через timeScale: время
+                // нужно живым, иначе нельзя крутить обзор и снимать.
+                animator.speed = freeze ? 0f : 1f;
 
-            if (turn != 0f && body != null)
-                body.Rotate(Vector3.up, turn * Time.deltaTime, Space.World);
+                if (freeze)
+                {
+                    var state = animator.GetCurrentAnimatorStateInfo(0);
+                    animator.Play(state.fullPathHash, 0, Mathf.Clamp01(frame));
+                    animator.Update(0f);
+                }
+            }
+
+            if (view == null || body == null) return;
+
+            var focus = body.position + Vector3.up * viewHeight;
+            var rotation = Quaternion.Euler(viewPitch, viewYaw, 0f);
+
+            view.transform.rotation = rotation;
+            view.transform.position = focus - rotation * Vector3.forward * Mathf.Max(0.5f, viewDistance);
         }
     }
 }

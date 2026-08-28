@@ -353,7 +353,7 @@ ModelImporter:
     - name: R_Foot
       parentName: R_Calf
       position: {x: -0.000022883818, y: 0.5444119, z: 0.00007777965}
-      rotation: {x: 0.73558915, y: -0.11864887, z: 0.07983276, w: 0.66216147}
+      rotation: {x: 0.7354767, y: -0.118155, z: 0.07954911, w: 0.6624087}
       scale: {x: 1.0000004, y: 0.9999999, z: 0.99999976}
     - name: R_ToeBase
       parentName: R_Foot
