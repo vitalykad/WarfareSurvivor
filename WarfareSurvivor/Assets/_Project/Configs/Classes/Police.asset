@@ -15,6 +15,7 @@ MonoBehaviour:
   displayName: "\u041F\u043E\u043B\u0438\u0446\u0435\u0439\u0441\u043A\u0438\u0439"
   prefab: {fileID: 4004322837743000134, guid: eb2f07e81b79c413196e2dceb3f27334, type: 3}
   role: 1
+  aimYawOffset: 35
   maxHealth: 100
   attackRange: 9
   attackInterval: 0.5

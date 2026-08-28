@@ -487,10 +487,22 @@ namespace WarfareSurvivor
         {
             if (stance == Stance.Standing)
             {
-                // Отряд стоит — оси движения нет, ноги ничего не отыгрывают,
-                // и тело можно развернуть на врага целиком.
-                if (torsoAim != null) torsoAim.Target = null;
-                if (target == null) return;
+                if (target == null)
+                {
+                    if (torsoAim != null) torsoAim.Target = null;
+                    return;
+                }
+
+                // Грудь доворачивается к цели ДАЖЕ СТОЯ, если у класса есть
+                // поправка на стойку.
+                //
+                // Поправка разворачивает фигуру целиком, чтобы ноги смотрели
+                // на врага, — но вместе с ногами уезжает и грудь. Замер это
+                // и показал: таз встал на цель, а грудь ушла на 37 градусов.
+                // Доворот груди возвращает её обратно, и выходит то, что нужно:
+                // ноги в стойке, оружие на цели.
+                if (torsoAim != null)
+                    torsoAim.Target = Mathf.Abs(klass.aimYawOffset) > 0.5f ? target.transform : null;
 
                 var toTarget = target.transform.position - transform.position;
                 toTarget.y = 0f;
@@ -507,10 +519,13 @@ namespace WarfareSurvivor
         {
             if (direction.sqrMagnitude < 0.0001f) return;
 
+            // Поправка на стойку из анимации: у стрелка клип снят боком,
+            // и без неё объект наведён точно, а фигура стоит вполоборота.
+            var wanted = Quaternion.LookRotation(direction, Vector3.up)
+                         * Quaternion.Euler(0f, klass.aimYawOffset, 0f);
+
             transform.rotation = Quaternion.RotateTowards(
-                transform.rotation,
-                Quaternion.LookRotation(direction, Vector3.up),
-                config.bodyTurnSpeed * Time.deltaTime);
+                transform.rotation, wanted, config.bodyTurnSpeed * Time.deltaTime);
         }
 
         // --- лечение ---------------------------------------------------------
