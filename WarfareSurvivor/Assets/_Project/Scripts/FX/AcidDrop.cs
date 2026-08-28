@@ -208,14 +208,13 @@ namespace WarfareSurvivor
             line.receiveShadows = false;
             line.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
             line.emitting = false;
-            // Ноль на времени 0, единица на времени 1 — НЕ наоборот.
+            // Время 0 — ГОЛОВА ленты, у самого снаряда; единица — её конец.
+            // Значит широкая у шара и сходит на нет позади.
             //
-            // У ленты время 0 это её КОНЕЦ, самый старый кусок, а единица —
-            // голова у самого объекта. Я держал в голове обратное, и потому
-            // лента выходила широкой и яркой у дальнего конца, а у шара
-            // сходила на нет: между ними получался просвет, который читался
-            // как отставший хвост. Гонялся за ним три захода.
-            line.widthCurve = new AnimationCurve(new Keyframe(0f, 0f), new Keyframe(1f, 1f));
+            // Разрыв, за которым я гонялся, давал не этот порядок, а узел
+            // ленты, висевший позади шара: лента писалась по следу узла,
+            // а не по следу снаряда. Узел убран, порядок остался прежним.
+            line.widthCurve = new AnimationCurve(new Keyframe(0f, 1f), new Keyframe(1f, 0f));
             line.autodestruct = false;
             drop.trail = line;
 
@@ -343,7 +342,7 @@ namespace WarfareSurvivor
             var gradient = new Gradient();
             gradient.SetKeys(
                 new[] { new GradientColorKey(color, 0f), new GradientColorKey(color, 1f) },
-                new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(color.a, 1f) });
+                new[] { new GradientAlphaKey(color.a, 0f), new GradientAlphaKey(0f, 1f) });
 
             line.colorGradient = gradient;
         }
