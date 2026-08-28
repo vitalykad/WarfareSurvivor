@@ -150,6 +150,10 @@ MonoBehaviour:
   tracerLife: 0.11
   tracerDashMeters: 2.5
   tracerWidth: 0.35
+  tracerBulletMeters: 0.32
+  tracerBulletWidth: 0.9
+  tracerTailDim: 0.35
+  tracerTailWidth: 0.7
   tracerColor: {r: 1, g: 0.86, b: 0.45, a: 1}
   tracerBoost: 4
   maxTracers: 96

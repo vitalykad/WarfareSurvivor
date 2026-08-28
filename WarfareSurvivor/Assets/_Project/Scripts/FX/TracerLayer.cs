@@ -118,13 +118,16 @@ namespace WarfareSurvivor
                 triangles[t + 4] = v + 2;
                 triangles[t + 5] = v + 3;
 
-                // Развёртка ПОПЕРЁК ленты: u идёт по ширине, v фиксировано
-                // в середине. Растянешь текстуру вдоль — на стыках звеньев
-                // получишь резкие обрубки.
-                uv[v + 0] = new Vector2(0f, 0.5f);
-                uv[v + 1] = new Vector2(1f, 0.5f);
-                uv[v + 2] = new Vector2(1f, 0.5f);
-                uv[v + 3] = new Vector2(0f, 0.5f);
+                // Развёртка по ОБЕИМ осям: u поперёк ленты, v вдоль неё.
+                //
+                // Раньше v было заперто в середине, и отрезок обрывался
+                // резко — короткая пуля выходила квадратной. Мягкость нужна
+                // и вдоль: тогда короткий отрезок читается круглой пулей,
+                // а длинный — лентой со скруглёнными концами.
+                uv[v + 0] = new Vector2(0f, 0f);
+                uv[v + 1] = new Vector2(1f, 0f);
+                uv[v + 2] = new Vector2(1f, 1f);
+                uv[v + 3] = new Vector2(0f, 1f);
             }
 
             mesh = new Mesh { name = "TracerLayer" };
@@ -166,24 +169,47 @@ namespace WarfareSurvivor
         /// Тугое ядро плюс широкий мягкий ореол в ОДНОЙ текстуре. Один общий
         /// мягкий спад читается размазанным пятном, а не светом.
         /// </summary>
+        /// <summary>
+        /// Профиль отрезка: мягкий и поперёк, и вдоль.
+        ///
+        /// Поперёк — плотное ядро и ореол, как было. Вдоль добавлены
+        /// скруглённые концы: без них короткий отрезок рисовался квадратом,
+        /// и пуля выглядела кирпичом.
+        ///
+        /// Одна текстура служит обоим: короткий отрезок вытягивает её мало
+        /// и выходит круглым, длинный растягивает — и концы у ленты остаются
+        /// скруглёнными.
+        /// </summary>
         static Texture2D BuildRibbonTexture()
         {
-            const int width = 64;
-            var texture = new Texture2D(width, 1, TextureFormat.RGBA32, false)
+            const int size = 64;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
             {
                 name = "TracerRibbon",
                 wrapMode = TextureWrapMode.Clamp,
                 filterMode = FilterMode.Bilinear
             };
 
-            for (int x = 0; x < width; x++)
+            var pixels = new Color32[size * size];
+
+            for (int y = 0; y < size; y++)
             {
-                float a = Mathf.Abs((x + 0.5f) / width - 0.5f) * 2f;
-                float core = Mathf.Pow(Mathf.Clamp01(1f - a / 0.22f), 1.6f);
-                float halo = Mathf.Pow(Mathf.Clamp01(1f - a), 3.5f) * 0.42f;
-                texture.SetPixel(x, 0, new Color(1f, 1f, 1f, Mathf.Max(core, halo)));
+                // Вдоль отрезка: полная сила в середине, спад к обоим концам.
+                float alongEdge = Mathf.Abs((y + 0.5f) / size - 0.5f) * 2f;
+                float along = Mathf.Pow(Mathf.Clamp01(1f - Mathf.Max(0f, alongEdge - 0.45f) / 0.55f), 1.4f);
+
+                for (int x = 0; x < size; x++)
+                {
+                    float acrossEdge = Mathf.Abs((x + 0.5f) / size - 0.5f) * 2f;
+                    float core = Mathf.Pow(Mathf.Clamp01(1f - acrossEdge / 0.22f), 1.6f);
+                    float halo = Mathf.Pow(Mathf.Clamp01(1f - acrossEdge), 3.5f) * 0.42f;
+
+                    float a = Mathf.Max(core, halo) * along;
+                    pixels[y * size + x] = new Color(1f, 1f, 1f, a);
+                }
             }
 
+            texture.SetPixels32(pixels);
             texture.Apply();
             return texture;
         }
