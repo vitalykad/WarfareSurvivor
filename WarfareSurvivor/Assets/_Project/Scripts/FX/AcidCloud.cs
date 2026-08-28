@@ -35,6 +35,14 @@ namespace WarfareSurvivor
         float spin;
         Vector3 drift;
 
+        /// <summary>
+        /// Проявляться ли плавно. Верно для облака взрыва — оно вспухает.
+        /// Ложно для шлейфа: за те доли секунды, пока клуб проявляется,
+        /// снаряд улетает на полтора метра, и дым начинается поодаль от него.
+        /// Именно это и читалось как оторванный хвост.
+        /// </summary>
+        bool bloomIn;
+
         public static void Configure(ArenaConfig cfg, Camera camera)
         {
             config = cfg;
@@ -81,6 +89,7 @@ namespace WarfareSurvivor
                 if (away.sqrMagnitude < 0.0001f) away = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
                 puff.drift = away.normalized * (radius * 0.35f) + Vector3.up * (radius * 0.25f);
 
+                puff.bloomIn = true;
                 puff.bornTime = Time.time;
                 puff.dieTime = Time.time + Mathf.Max(0.15f, config.acidCloudTime) * Random.Range(0.75f, 1.15f);
 
@@ -120,6 +129,7 @@ namespace WarfareSurvivor
             // отставать, а не лететь вместе с ним.
             puff.drift = new Vector3(Random.Range(-0.4f, 0.4f), Random.Range(-0.5f, -0.1f), Random.Range(-0.4f, 0.4f));
 
+            puff.bloomIn = false;
             puff.bornTime = Time.time;
             puff.dieTime = Time.time + Mathf.Max(0.1f, life) * Random.Range(0.8f, 1.2f);
 
@@ -270,11 +280,13 @@ namespace WarfareSurvivor
             if (view != null) transform.rotation = view.transform.rotation;
             transform.Rotate(Vector3.forward, spin * 25f * Time.deltaTime, Space.Self);
 
-            // Проявляется быстро, тает долго: облако должно возникнуть
-            // разом на попадании и потом медленно расходиться.
-            float alpha = life < 0.15f
+            // Облако взрыва проявляется быстро и тает долго. Клуб ШЛЕЙФА
+            // проявляться не должен вовсе: он рождается за летящим снарядом,
+            // и пока он набирает видимость, снаряд уходит на полтора метра —
+            // дым начинается поодаль, и это читается оторванным хвостом.
+            float alpha = bloomIn && life < 0.15f
                 ? Mathf.InverseLerp(0f, 0.15f, life)
-                : 1f - Mathf.InverseLerp(0.15f, 1f, life);
+                : 1f - Mathf.InverseLerp(bloomIn ? 0.15f : 0f, 1f, life);
 
             var color = config.acidCloudColor;
             color.a *= alpha;

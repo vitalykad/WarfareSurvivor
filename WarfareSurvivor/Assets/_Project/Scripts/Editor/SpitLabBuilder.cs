@@ -52,11 +52,15 @@ namespace WarfareSurvivor.EditorTools
             view.fieldOfView = config.cameraFieldOfView;
             cameraGo.tag = "MainCamera";
 
-            // Тот же наклон, что в игре, но ВПЛОТНУЮ: снаряд должен занимать
-            // половину кадра, иначе стенд не отличается от боевой сцены.
+            // Камера стоит на ИГРОВОЙ дистанции, а не вплотную.
+            //
+            // Вплотную было ошибкой: на четырнадцати метрах снаряд занимал
+            // полкадра, и я подгонял пропорции, которые на игровых пятидесяти
+            // не держатся вовсе — там шар в двадцать пикселей тонет в дыму.
+            // Разглядывать надо увеличением снимка, а не приближением камеры.
             cameraGo.transform.rotation = Quaternion.Euler(config.cameraPitch, config.cameraYaw, 0f);
-            cameraGo.transform.position = new Vector3(0f, 1.2f, 0f)
-                                          - cameraGo.transform.forward * 14f;
+            cameraGo.transform.position = new Vector3(0f, 0f, 0f)
+                                          - cameraGo.transform.forward * config.cameraDistance;
 
             var labGo = new GameObject("Стенд плевка");
             var lab = labGo.AddComponent<SpitLab>();
@@ -70,7 +74,8 @@ namespace WarfareSurvivor.EditorTools
             EditorSceneManager.SaveScene(scene, ScenePath);
 
             Debug.Log("[SpitLab] Сцена собрана: " + ScenePath +
-                      ". Снаряд летит поперёк кадра, камера в четырнадцати метрах.");
+                      ". Камера на игровой дистанции " + config.cameraDistance + " м — " +
+                      "снаряд занимает столько же пикселей, сколько в бою.");
         }
 
         static void EnsureFolder(string path)
