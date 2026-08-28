@@ -711,9 +711,15 @@ namespace WarfareSurvivor
             // прилетит, а этот — ОТКУДА летит: в полусотне зомби разглядеть
             // стрелка иначе нельзя, и уйти из зоны игрок успевает, а понять,
             // кого за это бить, — нет.
-            var under = transform.position;
-            under.y = 0f;
-            spitMark = AcidZone.ShowMark(under, config.spitterMarkRadius, shows + Mathf.Max(0f, spitHold));
+            // Ноль радиуса выключает метку. Сейчас она выключена: жёлтое
+            // кольцо на песочной земле не читается, а другого цвета,
+            // который не спорил бы с красной зоной, пока не подобрано.
+            if (config.spitterMarkRadius > 0f)
+            {
+                var under = transform.position;
+                under.y = 0f;
+                spitMark = AcidZone.ShowMark(under, config.spitterMarkRadius, shows + Mathf.Max(0f, spitHold));
+            }
 
             if (animator != null) animator.SetTrigger(SpitParam);
         }
