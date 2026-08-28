@@ -26,6 +26,9 @@ namespace WarfareSurvivor
         Mesh mesh;
         readonly Color[] corners = new Color[4];
 
+        /// <summary>Когда снаряд обронит следующий клуб дыма.</summary>
+        float nextPuff;
+
         /// <summary>Хвост и дымка. Есть только у самого плевка, у брызг нет.</summary>
         TrailRenderer trail;
         Transform haze;
@@ -123,6 +126,7 @@ namespace WarfareSurvivor
 
             drop.transform.position = origin;
             drop.comet = comet;
+            drop.nextPuff = Time.time;
 
             // Хвост и дымка — только у самого плевка. У брызг они превратили бы
             // попадание в зелёную кашу: их десяток, и все летят разом.
@@ -525,6 +529,17 @@ namespace WarfareSurvivor
 
             if (material != null && material.HasProperty("_Boost"))
                 material.SetFloat("_Boost", Mathf.Max(0.1f, config.acidDropBoost));
+
+            // Снаряд сеет за собой клубы дыма — те же, из которых собрано
+            // облако взрыва. Так дым от полёта и дым от попадания читаются
+            // одним веществом, а не двумя разными эффектами.
+            if (comet && Time.time >= nextPuff)
+            {
+                nextPuff = Time.time + Mathf.Max(0.02f, config.acidSmokeInterval);
+                AcidCloud.Puff(transform.position,
+                               size * Mathf.Max(0.05f, config.acidSmokeSize),
+                               Mathf.Max(0.1f, config.acidSmokeTime));
+            }
 
             if (!comet || haze == null) return;
 

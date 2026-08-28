@@ -89,6 +89,37 @@ namespace WarfareSurvivor
             }
         }
 
+        /// <summary>
+        /// Один клуб — тот же, из которых собрано облако взрыва.
+        ///
+        /// Нужен летящему снаряду: он сеет за собой такие же клубы, и дым
+        /// от полёта и дым от попадания оказываются одной породы. Разный
+        /// дым читался бы как два разных вещества.
+        /// </summary>
+        public static void Puff(Vector3 at, float size, float life)
+        {
+            if (config == null || root == null) return;
+
+            var puff = Rent();
+            if (puff == null) return;
+
+            puff.transform.position = at;
+
+            puff.startSize = Mathf.Max(0.05f, size);
+            puff.endSize = puff.startSize * Random.Range(1.6f, 2.3f);
+            puff.spin = Random.Range(-1f, 1f);
+
+            // Оседает и слегка расходится вбок: дым за снарядом должен
+            // отставать, а не лететь вместе с ним.
+            puff.drift = new Vector3(Random.Range(-0.4f, 0.4f), Random.Range(-0.5f, -0.1f), Random.Range(-0.4f, 0.4f));
+
+            puff.bornTime = Time.time;
+            puff.dieTime = Time.time + Mathf.Max(0.1f, life) * Random.Range(0.8f, 1.2f);
+
+            puff.transform.localScale = Vector3.one * puff.startSize;
+            puff.gameObject.SetActive(true);
+        }
+
         static AcidCloud Rent()
         {
             for (int i = 0; i < All.Count; i++)

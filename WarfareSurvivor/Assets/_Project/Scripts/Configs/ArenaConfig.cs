@@ -533,6 +533,18 @@ namespace WarfareSurvivor
                  "торчащей из него палкой.")]
         public float acidTrailGap = 0.18f;
 
+        [Tooltip("Как часто летящий снаряд роняет клуб дыма, секунд. " +
+                 "Чаще — плотный шлейф, реже — редкие клочья.")]
+        public float acidSmokeInterval = 0.045f;
+
+        [Tooltip("Размер клуба от снаряда, долей от размера шара.")]
+        public float acidSmokeSize = 0.7f;
+
+        [Tooltip("Сколько живёт клуб от летящего снаряда, секунд. Короче, " +
+                 "чем у облака взрыва: шлейф должен таять за спиной, " +
+                 "а не висеть над всей траекторией.")]
+        public float acidSmokeTime = 0.5f;
+
         [Tooltip("Цвет хвоста.")]
         public Color acidTrailColor = new Color(0.35f, 1f, 0.15f, 0.85f);
 

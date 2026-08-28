@@ -118,7 +118,10 @@ MonoBehaviour:
   acidTrailTime: 0.16
   acidTrailWidth: 0.42
   acidTrailGap: 0
-  acidTrailColor: {r: 0.4, g: 1, b: 0.15, a: 0.55}
+  acidSmokeInterval: 0.045
+  acidSmokeSize: 0.7
+  acidSmokeTime: 0.5
+  acidTrailColor: {r: 0.4, g: 1, b: 0.15, a: 0.9}
   acidHazeScale: 2.4
   acidHazeColor: {r: 0.35, g: 0.9, b: 0.2, a: 0.35}
   maxAcidDrops: 64
