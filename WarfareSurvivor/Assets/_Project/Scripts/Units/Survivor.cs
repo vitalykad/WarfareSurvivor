@@ -60,6 +60,10 @@ namespace WarfareSurvivor
         Zombie pendingVictim;
         Stance stance;
         Transform muzzle;
+
+        /// <summary>У бойца настоящая метка дула, а не запасная кисть.</summary>
+        bool hasBarrel;
+
         int attackLayer = -1;
         bool hasAttackSpeed;
 
@@ -122,7 +126,11 @@ namespace WarfareSurvivor
             CacheAttackAnimation();
 
             torsoAim = GetComponent<TorsoAim>();
-            if (torsoAim != null) torsoAim.Configure(config.torsoAimMaxAngle, config.torsoAimSpeed);
+            if (torsoAim != null)
+            {
+                torsoAim.Configure(config.torsoAimMaxAngle, config.torsoAimSpeed);
+                torsoAim.Barrel = hasBarrel ? muzzle : null;
+            }
 
             // Дугу включает САМ КЛАСС: размах привязан к дальности его
             // оружия, и решать за все классы одной галочкой в общем конфиге
@@ -418,14 +426,26 @@ namespace WarfareSurvivor
                 float distSqr = to.sqrMagnitude;
                 if (distSqr > rangeSqr || distSqr >= bestSqr) continue;
 
-                if (requireReachable && Vector3.Angle(transform.forward, to) > config.torsoAimMaxAngle)
-                    continue;
+                if (requireReachable && !CanReach(to)) continue;
 
                 best = zombie;
                 bestSqr = distSqr;
             }
 
             return best;
+        }
+
+        /// <summary>
+        /// Дотянется ли боец до цели, не разворачивая ног.
+        ///
+        /// У стрелка спрашиваем доворот груди: он один знает, на сколько
+        /// ствол развалило позой клипа. У ближнего боя ствола нет, и мера
+        /// прежняя — угол от корня.
+        /// </summary>
+        bool CanReach(Vector3 to)
+        {
+            if (hasBarrel && torsoAim != null) return torsoAim.CanReach(to);
+            return Vector3.Angle(transform.forward, to) <= config.torsoAimMaxAngle;
         }
 
         bool IsValidTarget(Zombie zombie)
@@ -493,25 +513,30 @@ namespace WarfareSurvivor
                     return;
                 }
 
-                // Грудь доворачивается к цели ДАЖЕ СТОЯ, если у класса есть
-                // поправка на стойку.
+                // Грудь доворачивается ДАЖЕ СТОЯ — она добирает остаток.
                 //
-                // Поправка разворачивает фигуру целиком, чтобы ноги смотрели
-                // на врага, — но вместе с ногами уезжает и грудь. Замер это
-                // и показал: таз встал на цель, а грудь ушла на 37 градусов.
-                // Доворот груди возвращает её обратно, и выходит то, что нужно:
-                // ноги в стойке, оружие на цели.
+                // Поправка стойки — величина приблизительная: она снята с
+                // одного клипа, а поза меняется. Доворот груди считает
+                // промах ствола по факту, каждый кадр, и потому не зависит
+                // ни от того, насколько точно выставлена поправка, ни от
+                // того, какой клип сейчас играет. Стоя ему обычно нечего
+                // добирать — тем лучше, значит поправка верна.
                 if (torsoAim != null)
-                    torsoAim.Target = Mathf.Abs(klass.aimYawOffset) > 0.5f ? target.transform : null;
+                    torsoAim.Target = hasBarrel ? target.transform : null;
 
                 var toTarget = target.transform.position - transform.position;
                 toTarget.y = 0f;
-                FaceTowards(toTarget);
+                FaceTowards(toTarget, klass.aimYawOffset);
                 return;
             }
 
             // В движении тело строго вдоль оси движения, к врагу тянется грудь.
-            FaceTowards(stance == Stance.Backward ? -squad.MoveDirection : squad.MoveDirection);
+            //
+            // Поправку стойки здесь НЕ применяем. Она про то, как боец стоит
+            // на месте у цели; на бегу же ноги обязаны смотреть туда, куда
+            // боец бежит, иначе он едет боком. Раньше поправка шла и сюда —
+            // и коп бежал вполоборота к собственному движению.
+            FaceTowards(stance == Stance.Backward ? -squad.MoveDirection : squad.MoveDirection, 0f);
             if (torsoAim != null) torsoAim.Target = target != null ? target.transform : null;
         }
 
@@ -524,17 +549,31 @@ namespace WarfareSurvivor
         /// уже обожглись: поправка в 35 градусов при пороге в 5 означала,
         /// что стоя коп не мог выстрелить вовсе.
         /// </summary>
-        Vector3 AimForward =>
-            transform.rotation * Quaternion.Euler(0f, -klass.aimYawOffset, 0f) * Vector3.forward;
+        Vector3 AimForward
+        {
+            get
+            {
+                // Настоящий ствол честнее любой поправки: игрок видит именно
+                // его, и стрелять боец должен тогда, когда оружие правда
+                // наведено, а не когда развёрнут корень.
+                if (hasBarrel && muzzle != null)
+                {
+                    var barrel = muzzle.forward;
+                    barrel.y = 0f;
+                    if (barrel.sqrMagnitude > 0.0001f) return barrel.normalized;
+                }
 
-        void FaceTowards(Vector3 direction)
+                return AimMath.AimForward(transform.rotation, klass.aimYawOffset);
+            }
+        }
+
+        void FaceTowards(Vector3 direction, float yawOffset)
         {
             if (direction.sqrMagnitude < 0.0001f) return;
 
             // Поправка на стойку из анимации: у стрелка клип снят боком,
             // и без неё объект наведён точно, а фигура стоит вполоборота.
-            var wanted = Quaternion.LookRotation(direction, Vector3.up)
-                         * Quaternion.Euler(0f, klass.aimYawOffset, 0f);
+            var wanted = AimMath.BodyRotation(direction, yawOffset);
 
             transform.rotation = Quaternion.RotateTowards(
                 transform.rotation, wanted, config.bodyTurnSpeed * Time.deltaTime);
@@ -629,10 +668,12 @@ namespace WarfareSurvivor
             to.y = 0f;
             float angle = Vector3.Angle(AimForward, to);
 
-            // В движении бьём в пределах доворота груди — тело уже стоит так,
-            // как надо. Стоя и на отходе спиной боец разворачивается целиком,
-            // поэтому там ждём, пока он действительно довернётся.
-            float allowed = stance == Stance.Standing
+            // Со стволом порог один на обе стойки: ствол либо наведён, либо
+            // нет, и бежит боец при этом или стоит — дело десятое. Послабление
+            // на бегу было костылём под доворот, считавшийся от корня: тогда
+            // угол мерился не по оружию, и приходилось прощать промах в 75
+            // градусов. Теперь мерить есть по чему.
+            float allowed = hasBarrel || stance == Stance.Standing
                 ? config.aimedAngleThreshold
                 : config.torsoAimMaxAngle;
             if (angle > allowed) return;
@@ -782,9 +823,15 @@ namespace WarfareSurvivor
         {
             foreach (var t in GetComponentsInChildren<Transform>(true))
                 if (t.name == MuzzleName)
+                {
+                    hasBarrel = true;
                     return t;
+                }
 
             // Оружия нет или метки на нём нет — стреляем от кисти, как раньше.
+            // Наводить по кисти нельзя: у неё своя ось, к направлению
+            // выстрела отношения не имеющая, — потому и флаг.
+            hasBarrel = false;
             return animator != null && animator.isHuman
                 ? animator.GetBoneTransform(HumanBodyBones.RightHand)
                 : null;
