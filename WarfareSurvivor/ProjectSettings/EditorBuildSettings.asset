@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/_Project/Scenes/Run.unity
+    guid: 4744a58de7b054ffa92ce0d20d733b78
+  - enabled: 0
     path: Assets/_Project/Scenes/Sandbox/TestArena.unity
     guid: 3d387f5f7a83d4f81a056b37aeeee52e
   m_configObjects:
