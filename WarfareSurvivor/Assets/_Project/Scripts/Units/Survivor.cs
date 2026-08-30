@@ -75,6 +75,9 @@ namespace WarfareSurvivor
         float hideTime;
         float attackLayerWeight;
         float attackClipLength = 0.5f;
+
+        /// <summary>Длина падения, секунд. Снимается с клипа, а не задаётся числом.</summary>
+        float deathClipLength;
         float pendingHitTime;
         float nextRetargetTime;
         float nextAttackTime;
@@ -268,12 +271,21 @@ namespace WarfareSurvivor
             Lost?.Invoke(this);
 
             dying = true;
-            hideTime = Time.time + Mathf.Max(0.1f, config.survivorCorpseTime);
+
+            // Тело держим НЕ МЕНЬШЕ, чем идёт само падение.
+            //
+            // Число из конфига задаёт, сколько труп ещё лежит после падения,
+            // но не может его обрезать: обрыв на середине читается как
+            // пропавший боец, а не как погибший. Длину берём с клипа —
+            // поменяют анимацию, и время подстроится само.
+            float speed = Mathf.Max(0.05f, config.zombieDeathSpeed);
+            float fall = deathClipLength / speed;
+            hideTime = Time.time + Mathf.Max(Mathf.Max(0.1f, config.survivorCorpseTime), fall);
 
             if (animator != null)
             {
                 animator.SetTrigger(DieParam);
-                animator.speed = Mathf.Max(0.05f, config.zombieDeathSpeed);
+                animator.speed = speed;
             }
 
             // Оружие в руке падающего выглядит приклеенным, но убирать его
@@ -787,13 +799,20 @@ namespace WarfareSurvivor
 
             foreach (var clip in animator.runtimeAnimatorController.animationClips)
             {
-                if (clip == null || clip.name.IndexOf("Attack", System.StringComparison.OrdinalIgnoreCase) < 0)
-                    continue;
+                if (clip == null) continue;
 
                 // Длину берём из клипа, а не из конфига: поменяют анимацию —
                 // момент удара переедет сам, без правки чисел.
-                attackClipLength = clip.length;
-                break;
+                if (attackClipLength <= 0.5f &&
+                    clip.name.IndexOf("Attack", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    attackClipLength = clip.length;
+
+                // То же и для падения. Раньше тело убиралось по числу из
+                // конфига, и падение обрывалось на середине: клип идёт 1.52
+                // секунды на скорости смерти, а тело жило 1.4.
+                if (deathClipLength <= 0f &&
+                    clip.name.IndexOf("Dying", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    deathClipLength = clip.length;
             }
 
             // Параметр есть только у контроллеров с ударом. Ставить его
