@@ -15,6 +15,8 @@ Survivors-like про **группу выживших**, а не про одно
   [VISUAL_OPTIMIZATION.md](SwarmSurvivorExpirience/VISUAL_OPTIMIZATION.md)
 - Замеры этого проекта на устройстве: [PERFORMANCE.md](PERFORMANCE.md)
 - Что собрано и работает прямо сейчас: [GAMEPLAY.md](GAMEPLAY.md)
+- Петля и план под тест VOODOO: [PROTOTYPE.md](PROTOTYPE.md)
+- Ростер ролей и правила набора толпы (ветка `roles`): [ROLES.md](ROLES.md)
 
 ---
 

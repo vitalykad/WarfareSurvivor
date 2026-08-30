@@ -216,6 +216,9 @@ namespace WarfareSurvivor
         float despawnTime;
         bool dying;
 
+        /// <summary>Длина падения, секунд. Снимается с клипа или с запечённого набора.</summary>
+        float deathClipLength;
+
         /// <summary>
         /// Свечение материалов, каким его задал художник.
         ///
@@ -443,6 +446,7 @@ namespace WarfareSurvivor
             Registry.Zombies.Remove(this);
             Died?.Invoke(this);
             if (baked != null) baked.Play(ClipDying, config.zombieDeathSpeed);
+            // ниже — см. despawnTime: тело не убираем раньше конца падения
             else if (animator != null)
             {
                 // Незабранные триггеры ГАСИМ, иначе они переиграют смерть.
@@ -454,7 +458,40 @@ namespace WarfareSurvivor
                 animator.ResetTrigger(AttackParam);
                 animator.SetTrigger(DieParam);
             }
-            despawnTime = Time.time + config.zombieCorpseTime;
+            // Труп лежит НЕ МЕНЬШЕ, чем идёт само падение. Число из конфига
+            // добавляет время сверху, но обрезать падение не может: зомби,
+            // исчезающий на середине falling, читается как пропавший, а не
+            // как убитый — а обратная связь по убийству здесь важнее всего.
+            float speed = Mathf.Max(0.05f, config.zombieDeathSpeed);
+            despawnTime = Time.time + Mathf.Max(config.zombieCorpseTime, DeathLength() / speed);
+        }
+
+        /// <summary>
+        /// Сколько длится падение. Ищется один раз и запоминается: у
+        /// запечённого зомби длина лежит в наборе, у обычного — в клипе.
+        /// </summary>
+        float DeathLength()
+        {
+            if (deathClipLength > 0f) return deathClipLength;
+
+            if (bakedSet != null)
+            {
+                foreach (var clip in bakedSet.clips)
+                    if (clip.name.IndexOf("Dying", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                        deathClipLength = clip.Length;
+            }
+
+            if (deathClipLength <= 0f && animator != null && animator.runtimeAnimatorController != null)
+            {
+                foreach (var clip in animator.runtimeAnimatorController.animationClips)
+                    if (clip != null && clip.name.IndexOf("Dying", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        deathClipLength = clip.length;
+                        break;
+                    }
+            }
+
+            return deathClipLength;
         }
 
         void Update()
