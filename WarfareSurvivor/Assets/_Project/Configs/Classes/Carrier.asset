@@ -1,0 +1,76 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 047e0fb614137482896a8550eead25b4, type: 3}
+  m_Name: Carrier
+  m_EditorClassIdentifier: Assembly-CSharp::WarfareSurvivor.SurvivorClassSO
+  displayName: "\u041C\u0443\u0436\u0438\u043A \u0441 \u0442\u0435\u043B\u0435\u0436\u043A\u043E\u0439"
+  prefab: {fileID: 1195767931321094266, guid: f1b390f7743d4493987f85ffdacc369d, type: 3}
+  role: 0
+  aimYawOffset: 0
+  synergies: []
+  maxHealth: 110
+  attackRange: 0
+  attackInterval: 0.9
+  damage: 0
+  attackAnimationSpeed: 1
+  shockShape: 0
+  shockAngle: 120
+  shockImpact: 0
+  stunChance: 0.25
+  stunDuration: 1.2
+  splashRadius: 0
+  blastRadius: 0
+  burstCount: 0
+  burstInterval: 0.09
+  shotScale: 1
+  boltPierce: 0
+  boltRange: 0
+  shieldEveryNth: 0
+  shieldDamageScale: 1
+  shieldPush: 5
+  shieldPushDuration: 0.3
+  shieldArc: 110
+  shieldRange: 0
+  shieldMaxTargets: 0
+  coneAngle: 0
+  coneRange: 0
+  coneTipDamage: 0.35
+  burnDuration: 0
+  burnDamagePerSecond: 0
+  chainTargets: 0
+  chainJumpRange: 3
+  chainFalloff: 0.25
+  chainColor: {r: 0.68, g: 0.35, b: 1, a: 0.95}
+  pierceWidth: 0
+  pierceLength: 0
+  pierceMaxTargets: 0
+  knockbackDistance: 0
+  attackHitTime: 0.5
+  knockbackDuration: 0.25
+  squadSpeedPerUnit: 0.06
+  sparkRadiusPerUnit: 0
+  squadDamagePerUnit: 0
+  squadAttackSpeedPerUnit: 0
+  sparkValuePerUnit: 0
+  icon: {fileID: 21300000, guid: 260daa4e24f44438e916414a6566994b, type: 3}
+  healPerTick: 0
+  healInterval: 2.5
+  offerInTierUp: 0
+  cardAddUnit: {fileID: 0}
+  cardDamage: {fileID: 0}
+  cardHealth: {fileID: 0}
+  showAttackArc: 0
+  arcDegrees: 140
+  arcInner: 0.74
+  arcStretch: 1.2
+  arcHeight: 1.05
+  arcTilt: 14
