@@ -72,6 +72,9 @@ namespace WarfareSurvivor
             AcidDrop.Configure(config, Camera.main);
             AcidCloud.Configure(config, Camera.main);
             AcidBlast.Configure(config, Camera.main);
+            ShockWave.Configure(config);
+            FlameJet.Configure(config, Camera.main);
+            StunStars.Configure(config, Camera.main);
             DamageVignette.Configure(config);
         }
 

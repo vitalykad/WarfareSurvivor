@@ -206,6 +206,20 @@ namespace WarfareSurvivor
 
         Material tierMaterial;
         Material flashMaterial;
+
+        /// <summary>
+        /// Материалы горения: по одному на каждый исходный, а не на зомби.
+        /// Зомби бывает две сотни, обликов — единицы.
+        /// </summary>
+        static readonly Dictionary<Material, Material> BurnMaterials = new Dictionary<Material, Material>();
+
+        float burnUntil;
+        float burnDps;
+        float nextBurnTick;
+        float nextWispTime;
+        bool burning;
+
+        float stunUntil;
         float flashUntil;
 
         Survivor target;
@@ -314,6 +328,10 @@ namespace WarfareSurvivor
             if (hasEmission && !BaseEmission.ContainsKey(tierMat))
                 BaseEmission[tierMat] = tierMat.GetColor("_EmissionColor");
             flashUntil = 0f;
+            burning = false;
+            burnUntil = 0f;
+            burnDps = 0f;
+            stunUntil = 0f;
             ApplyMaterial(tierMaterial);
 
             target = null;
@@ -350,6 +368,101 @@ namespace WarfareSurvivor
         {
             if (dying) return;
             health.TakeDamage(damage, transform.position);
+        }
+
+        /// <summary>
+        /// Поджигает. Повторное попадание ПРОДЛЕВАЕТ горение, а не складывает
+        /// два костра: иначе восемь огнемётчиков сжигали бы толпу мгновенно,
+        /// и поджиг перестал бы быть довеском к струе.
+        /// </summary>
+        public void Ignite(float seconds, float damagePerSecond)
+        {
+            if (dying || seconds <= 0f || damagePerSecond <= 0f) return;
+
+            burnUntil = Mathf.Max(burnUntil, Time.time + seconds);
+            burnDps = Mathf.Max(burnDps, damagePerSecond);
+
+            if (!burning)
+            {
+                burning = true;
+                nextBurnTick = Time.time + Mathf.Max(0.05f, config.burnTickInterval);
+                nextWispTime = Time.time;
+                ApplyMaterial(BurnTwin());
+            }
+        }
+
+        /// <summary>Горит ли сейчас. Читается интерфейсом и отладкой.</summary>
+        public bool Burning => burning;
+
+        /// <summary>
+        /// Оглушает: враг стоит и не бьёт, пока не очнётся.
+        ///
+        /// Продлевает, а не складывает — как и поджиг. Иначе восемь
+        /// молотобойцев с оглушением держали бы толпу в постоянном ступоре,
+        /// и выбор между отбросом и оглушением перестал бы быть выбором.
+        ///
+        /// Отброс при этом НЕ отменяется: оглушённого можно и отшвырнуть,
+        /// это разные вещи. Просто у молота включено что-то одно.
+        /// </summary>
+        public void Stun(float seconds)
+        {
+            if (dying || seconds <= 0f) return;
+            stunUntil = Mathf.Max(stunUntil, Time.time + seconds);
+        }
+
+        /// <summary>Оглушён ли сейчас.</summary>
+        public bool Stunned => Time.time < stunUntil;
+
+        void UpdateBurning()
+        {
+            if (!burning) return;
+
+            if (Time.time >= burnUntil)
+            {
+                burning = false;
+                burnDps = 0f;
+                if (flashUntil <= 0f) ApplyMaterial(tierMaterial);
+                return;
+            }
+
+            if (Time.time >= nextWispTime)
+            {
+                nextWispTime = Time.time + 0.12f;
+                FlameJet.Wisp(HitPoint);
+            }
+
+            if (Time.time < nextBurnTick) return;
+
+            float step = Mathf.Max(0.05f, config.burnTickInterval);
+            nextBurnTick = Time.time + step;
+
+            // Урон идёт ТИКАМИ, а не каждый кадр: при двух сотнях горящих
+            // покадровое начисление — это две сотни вызовов урона в кадр
+            // ради той же самой цифры.
+            health.TakeDamage(burnDps * step, transform.position);
+        }
+
+        /// <summary>Копия материала тира со свечением огня. Текстуру сохраняем.</summary>
+        Material BurnTwin()
+        {
+            if (tierMaterial == null) return null;
+            if (BurnMaterials.TryGetValue(tierMaterial, out var ready) && ready != null) return ready;
+
+            var twin = new Material(tierMaterial) { name = tierMaterial.name + "_Горит" };
+
+            // Текстуру НЕ снимаем, в отличие от вспышки удара: горящий зомби
+            // должен оставаться собой, иначе толпа огня читается как толпа
+            // одинаковых оранжевых силуэтов.
+            if (twin.HasProperty("_EmissionColor"))
+            {
+                twin.EnableKeyword("_EMISSION");
+                twin.SetColor("_EmissionColor", config.burnGlowColor);
+            }
+            if (twin.HasProperty("_BaseColor"))
+                twin.SetColor("_BaseColor", Color.Lerp(twin.GetColor("_BaseColor"), config.burnGlowColor, 0.35f));
+
+            BurnMaterials[tierMaterial] = twin;
+            return twin;
         }
 
         /// <summary>
@@ -508,6 +621,7 @@ namespace WarfareSurvivor
             }
 
             PulseEmission();
+            UpdateBurning();
 
             if (dying)
             {
@@ -521,6 +635,17 @@ namespace WarfareSurvivor
             if (Time.time < knockbackUntil)
             {
                 FlyBack();
+                return;
+            }
+
+            // Оглушённый стоит: не идёт, не бьёт, не плюёт. Замах при этом
+            // сбрасываем — иначе зомби, оглушённый посреди плевка, доплюнет,
+            // и оглушение окажется без последствий ровно в том случае,
+            // ради которого его и берут.
+            if (Stunned)
+            {
+                CancelSpit();
+                SetMoving(false);
                 return;
             }
 

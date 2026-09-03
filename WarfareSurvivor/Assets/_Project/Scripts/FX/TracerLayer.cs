@@ -26,6 +26,18 @@ namespace WarfareSurvivor
             public float DashMeters;
             public float Width;
             public Color Color;
+
+            /// <summary>
+            /// Рисовать отрезок ЦЕЛИКОМ и неподвижно.
+            ///
+            /// Обычный отрезок этого слоя летит: голова едет от начала к концу
+            /// за время жизни, и позади неё тянется хвост заданной длины —
+            /// так устроена трасса пули. Молнии это не подходит: разряд
+            /// возникает сразу весь. Пока флага не было, каждое звено ломаной
+            /// росло от собственного начала, и разряд выглядел цепочкой
+            /// сосисок вместо линии.
+            /// </summary>
+            public bool Whole;
         }
 
         static TracerLayer instance;
@@ -218,16 +230,29 @@ namespace WarfareSurvivor
 
         public static void Fire(Vector3 from, Vector3 to)
         {
+            Fire(from, to, 1f);
+        }
+
+        /// <summary>
+        /// Выстрел заданного калибра: множитель растягивает и пулю, и хвост.
+        ///
+        /// Множитель, а не свой набор чисел на класс: соотношение пули,
+        /// хвоста и вспышки подобрано так, чтобы выстрел читался, и класс,
+        /// который начнёт задавать их порознь, это соотношение сломает.
+        /// </summary>
+        public static void Fire(Vector3 from, Vector3 to, float scale)
+        {
             if (instance == null || !instance.config.tracersEnabled) return;
             var cfg = instance.config;
+            scale = Mathf.Max(0.1f, scale);
 
             var direction = (to - from).normalized;
 
             // Вспышка у ствола: короткий широкий отрезок, живущий доли трассы.
             if (cfg.muzzleFlashLength > 0f)
-                instance.Add(from, from + direction * cfg.muzzleFlashLength,
-                    cfg.muzzleFlashLife, cfg.muzzleFlashLength,
-                    cfg.tracerWidth * cfg.muzzleFlashWidth, cfg.tracerColor);
+                instance.Add(from, from + direction * (cfg.muzzleFlashLength * scale),
+                    cfg.muzzleFlashLife, cfg.muzzleFlashLength * scale,
+                    cfg.tracerWidth * cfg.muzzleFlashWidth * scale, cfg.tracerColor);
 
             // Трасса из ДВУХ отрезков: тусклый длинный хвост и яркая
             // короткая пуля на его голове.
@@ -241,13 +266,206 @@ namespace WarfareSurvivor
             var tail = cfg.tracerColor * Mathf.Clamp01(cfg.tracerTailDim);
             tail.a = cfg.tracerColor.a;
 
-            instance.Add(from, to, cfg.tracerLife, cfg.tracerDashMeters,
-                cfg.tracerWidth * Mathf.Max(0.05f, cfg.tracerTailWidth), tail);
+            instance.Add(from, to, cfg.tracerLife, cfg.tracerDashMeters * scale,
+                cfg.tracerWidth * Mathf.Max(0.05f, cfg.tracerTailWidth) * scale, tail);
 
-            instance.Add(from, to, cfg.tracerLife, Mathf.Max(0.05f, cfg.tracerBulletMeters),
-                cfg.tracerWidth * Mathf.Max(0.05f, cfg.tracerBulletWidth), cfg.tracerColor);
+            instance.Add(from, to, cfg.tracerLife, Mathf.Max(0.05f, cfg.tracerBulletMeters) * scale,
+                cfg.tracerWidth * Mathf.Max(0.05f, cfg.tracerBulletWidth) * scale, cfg.tracerColor);
 
             instance.Sparks(to, direction);
+        }
+
+        /// <summary>
+        /// Разряд молнии от точки до точки.
+        ///
+        /// Рисуется теми же отрезками, что и трассы, и попадает в ту же общую
+        /// сетку — то есть не добавляет ни одного вызова отрисовки.
+        ///
+        /// Ломаная строится ДРОБЛЕНИЕМ СЕРЕДИНЫ: отрезок делится пополам,
+        /// середина сбивается вбок, и так несколько раз. Каждый следующий
+        /// уровень сбивает вдвое слабее, потому что и отрезки вдвое короче, —
+        /// отсюда та самая мелкая рвань, по которой молния и узнаётся.
+        /// Первая версия ломала линию тремя длинными коленами и читалась
+        /// трассой пули.
+        ///
+        /// ВЕТВИ обязательны. Отростки, уходящие в сторону и гаснущие, не дойдя
+        /// никуда, — единственная черта, которой нет ни у одного другого
+        /// эффекта в игре: луч, трасса и след все идут из точки в точку.
+        /// Без них разряд остаётся кривой линией.
+        ///
+        /// Два слоя по одной ломаной: широкий тусклый ореол и тонкое белое
+        /// ядро поверх. Горячим разряд делает именно перепад между размытым
+        /// краем и белой сердцевиной.
+        /// </summary>
+        public static void Bolt(Vector3 from, Vector3 to)
+        {
+            if (instance == null || !instance.config.tracersEnabled) return;
+            instance.DrawBolt(from, to, instance.config.lightningColor);
+        }
+
+        /// <summary>
+        /// Прямой отрезок, живущий на месте: след снаряда.
+        ///
+        /// Именно неподвижный. Обычный отрезок этого слоя летит от начала
+        /// к концу — так устроена трасса пули, — и след из таких отрезков
+        /// уезжал бы вперёд от самого снаряда.
+        /// </summary>
+        public static void Streak(Vector3 from, Vector3 to, float width, Color color, float life)
+        {
+            if (instance == null || !instance.config.tracersEnabled) return;
+
+            float length = Vector3.Distance(from, to);
+            if (length < 0.001f) return;
+
+            instance.Add(from, to, life, length, width, color, whole: true);
+        }
+
+        /// <summary>Разряд своего цвета. Прозрачность в ноль — берём цвет из конфига.</summary>
+        public static void Bolt(Vector3 from, Vector3 to, Color glow)
+        {
+            if (instance == null || !instance.config.tracersEnabled) return;
+            if (glow.a <= 0.001f) glow = instance.config.lightningColor;
+            instance.DrawBolt(from, to, glow);
+        }
+
+        // Буферы под ломаную. Два: ветвь строится, пока основной разряд ещё
+        // нужен, и общий буфер она бы затёрла.
+        static readonly Vector3[] MainPoints = new Vector3[33];
+        static readonly Vector3[] BranchPoints = new Vector3[9];
+
+        void DrawBolt(Vector3 from, Vector3 to, Color glowColor)
+        {
+            var delta = to - from;
+            float length = delta.magnitude;
+            if (length < 0.05f) return;
+
+            // Дробим ПО ДЛИНЕ, а не всегда до упора: скачок цепи в три метра
+            // не нуждается в шестнадцати коленах, а каждое колено — это два
+            // отрезка в общем пуле. Восемь электриков по четыре звена
+            // переполнили бы его, а переполнение вытесняет трассы пуль.
+            int levels = Mathf.Clamp(Mathf.RoundToInt(Mathf.Log(length / 0.45f, 2f)), 2, 4);
+            int count = Jag(MainPoints, from, to, levels);
+
+            var glow = glowColor;
+            var core = new Color(1f, 1f, 1f, glowColor.a);
+
+            for (int i = 1; i < count; i++)
+                Segment(MainPoints[i - 1], MainPoints[i], config.lightningWidth, glow, core, 1f);
+
+            // Ветви — только на длинных разрядах и по одному слою.
+            //
+            // Ореол у ветви не нужен: она и так тусклая и тонкая, а второй
+            // слой удваивает её цену. Свою работу — рвать силуэт разряда —
+            // делает уже само ядро.
+            int branches = length > 3f ? 2 : 1;
+            for (int b = 0; b < branches; b++)
+            {
+                int node = Random.Range(1, count - 1);
+                var start = MainPoints[node];
+
+                var forward = (to - start);
+                forward.y = 0f;
+                if (forward.sqrMagnitude < 0.01f) continue;
+
+                var turn = Quaternion.Euler(Random.Range(-35f, 35f),
+                                            Random.Range(-70f, 70f),
+                                            0f);
+                var end = start + turn * forward * Random.Range(0.35f, 0.7f);
+
+                int bc = Jag(BranchPoints, start, end, levels: 2);
+                for (int i = 1; i < bc; i++)
+                {
+                    // Ветвь ГАСНЕТ к своему концу: обрубленная на полной
+                    // яркости читается второй молнией, а не отростком.
+                    float fade = 1f - (i / (float)(bc - 1)) * 0.85f;
+                    CoreOnly(BranchPoints[i - 1], BranchPoints[i],
+                             config.lightningWidth * 0.6f, core, fade);
+                }
+            }
+        }
+
+        /// <summary>Дробит отрезок на рваную ломаную. Возвращает число точек.</summary>
+        int Jag(Vector3[] buffer, Vector3 from, Vector3 to, int levels)
+        {
+            buffer[0] = from;
+            buffer[1] = to;
+            int count = 2;
+
+            float jag = Mathf.Clamp(config.lightningJag, 0f, 0.4f);
+
+            for (int level = 0; level < levels; level++)
+            {
+                int next = count * 2 - 1;
+                if (next > buffer.Length) break;
+
+                // Идём С КОНЦА, раздвигая точки на месте: иначе новые
+                // середины затирают ещё не прочитанные узлы.
+                for (int i = count - 1; i > 0; i--)
+                {
+                    var a = buffer[i - 1];
+                    var b = buffer[i];
+                    buffer[i * 2] = b;
+
+                    var step = b - a;
+                    float len = step.magnitude;
+                    var mid = (a + b) * 0.5f;
+
+                    if (len > 0.0001f)
+                    {
+                        var dir = step / len;
+                        var side = Vector3.Cross(dir, Vector3.up);
+                        if (side.sqrMagnitude < 0.0001f) side = Vector3.right;
+                        side.Normalize();
+                        var up = Vector3.Cross(side, dir);
+
+                        mid += (side * Random.Range(-1f, 1f) + up * Random.Range(-1f, 1f)) * len * jag;
+                    }
+
+                    buffer[i * 2 - 1] = mid;
+                }
+
+                count = next;
+            }
+
+            return count;
+        }
+
+        /// <summary>
+        /// Одно звено разряда в два слоя.
+        ///
+        /// Концы ПРОДЛЕНЫ за узел. Текстура отрезка гаснет к краям — она
+        /// рисовалась под одиночную трассу пули, — и на стыке двух звеньев
+        /// получается провал яркости: ломаная разваливается на отдельные
+        /// чёрточки, ровно так первая версия и выглядела.
+        /// </summary>
+        /// <summary>Звено в один слой — для ветвей, которым ореол не нужен.</summary>
+        void CoreOnly(Vector3 a, Vector3 b, float width, Color core, float brightness)
+        {
+            var step = b - a;
+            float length = step.magnitude;
+            if (length < 0.001f) return;
+
+            var overhang = step * 0.4f;
+            var c = core; c.a *= brightness;
+            Add(a - overhang, b + overhang, config.lightningLife, length * 1.8f, width, c, whole: true);
+        }
+
+        void Segment(Vector3 a, Vector3 b, float width, Color glow, Color core, float brightness)
+        {
+            var step = b - a;
+            float length = step.magnitude;
+            if (length < 0.001f) return;
+
+            var overhang = step * 0.4f;
+            var start = a - overhang;
+            var end = b + overhang;
+            float drawn = length * 1.8f;
+
+            var g = glow; g.a *= brightness;
+            var c = core; c.a *= brightness;
+
+            Add(start, end, config.lightningLife, drawn, width * 3.5f, g, whole: true);
+            Add(start, end, config.lightningLife, drawn, width, c, whole: true);
         }
 
         void Sparks(Vector3 point, Vector3 incoming)
@@ -266,6 +484,11 @@ namespace WarfareSurvivor
 
         void Add(Vector3 from, Vector3 to, float life, float dashMeters, float width, Color color)
         {
+            Add(from, to, life, dashMeters, width, color, whole: false);
+        }
+
+        void Add(Vector3 from, Vector3 to, float life, float dashMeters, float width, Color color, bool whole)
+        {
             // Потолок выбран — вытесняем из головы списка. Пропускать новую
             // трассу нельзя: пропадёт обратная связь ровно тогда, когда
             // стреляют чаще всего.
@@ -280,7 +503,8 @@ namespace WarfareSurvivor
                 Life = life,
                 DashMeters = dashMeters,
                 Width = width,
-                Color = color
+                Color = color,
+                Whole = whole
             };
         }
 
@@ -344,11 +568,11 @@ namespace WarfareSurvivor
 
                 // Короткий отрезок, который ЛЕТИТ. Сплошная черта от ствола до
                 // цели читается непрерывным лучом, а не выстрелом.
-                float headDistance = length * t01;
+                float headDistance = item.Whole ? length : length * t01;
                 // Длина отрезка в МЕТРАХ, а не долей пути: доля означала бы,
                 // что дальний выстрел рисуется длинной чертой, а ближний
                 // коротышкой — один и тот же снаряд меняет размер вчетверо.
-                float tailDistance = Mathf.Max(0f, headDistance - item.DashMeters);
+                float tailDistance = item.Whole ? 0f : Mathf.Max(0f, headDistance - item.DashMeters);
 
                 var head = item.From + direction * headDistance;
                 var tail = item.From + direction * tailDistance;

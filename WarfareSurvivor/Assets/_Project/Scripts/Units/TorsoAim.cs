@@ -31,6 +31,18 @@ namespace WarfareSurvivor
         /// </summary>
         public float PoseYaw { get; private set; }
 
+        /// <summary>
+        /// Развал оружия, заданный ЧИСЛОМ, когда мерить не по чему.
+        ///
+        /// У стрелка есть метка дула, и развал снимается с неё каждый кадр.
+        /// У ближнего боя такой метки нет, а разворот в анимации всё равно
+        /// есть: у копейщика древко смотрит на 29 градусов вбок от корпуса.
+        /// Стоя это гасится разворотом всей фигуры, а на бегу разворачивать
+        /// нельзя — ноги должны идти по движению, — и остаётся доворот груди,
+        /// которому надо сообщить, на сколько именно оружие развалено.
+        /// </summary>
+        public float PoseYawFallback { get; set; }
+
         /// <summary>Куда целимся. null — корпус плавно возвращается прямо.</summary>
         public Transform Target { get; set; }
 
@@ -67,7 +79,7 @@ namespace WarfareSurvivor
         {
             if (torso == null) return;
 
-            PoseYaw = 0f;
+            PoseYaw = PoseYawFallback;
             if (Barrel != null)
             {
                 var pose = Barrel.forward;

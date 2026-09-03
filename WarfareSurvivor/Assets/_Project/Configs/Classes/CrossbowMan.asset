@@ -1,0 +1,76 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 047e0fb614137482896a8550eead25b4, type: 3}
+  m_Name: CrossbowMan
+  m_EditorClassIdentifier: Assembly-CSharp::WarfareSurvivor.SurvivorClassSO
+  displayName: "\u0410\u0440\u0431\u0430\u043B\u0435\u0442\u0447\u0438\u043A"
+  prefab: {fileID: 4004322837743000134, guid: 001ced20a70d2436896f41b1bfbd8ab1, type: 3}
+  role: 1
+  aimYawOffset: 0
+  synergies: []
+  maxHealth: 100
+  attackRange: 7
+  attackInterval: 1.5
+  damage: 10
+  attackAnimationSpeed: 1
+  shockShape: 0
+  shockAngle: 120
+  shockImpact: 0
+  stunChance: 0.25
+  stunDuration: 1.2
+  splashRadius: 0
+  blastRadius: 0
+  burstCount: 0
+  burstInterval: 0.09
+  shotScale: 1
+  boltPierce: 3
+  boltRange: 14
+  shieldEveryNth: 0
+  shieldDamageScale: 1
+  shieldPush: 5
+  shieldPushDuration: 0.3
+  shieldArc: 110
+  shieldRange: 0
+  shieldMaxTargets: 0
+  coneAngle: 0
+  coneRange: 0
+  coneTipDamage: 0.35
+  burnDuration: 0
+  burnDamagePerSecond: 0
+  chainTargets: 0
+  chainJumpRange: 3
+  chainFalloff: 0.25
+  chainColor: {r: 0.68, g: 0.35, b: 1, a: 0.95}
+  pierceWidth: 0
+  pierceLength: 0
+  pierceMaxTargets: 0
+  knockbackDistance: 0
+  attackHitTime: 0.5
+  knockbackDuration: 0.25
+  squadSpeedPerUnit: 0
+  sparkRadiusPerUnit: 0
+  squadDamagePerUnit: 0
+  squadAttackSpeedPerUnit: 0
+  sparkValuePerUnit: 0
+  icon: {fileID: 21300000, guid: 4e2bde2d1e0594a3aa87c2bf6523d72f, type: 3}
+  healPerTick: 0
+  healInterval: 2.5
+  offerInTierUp: 0
+  cardAddUnit: {fileID: 0}
+  cardDamage: {fileID: 0}
+  cardHealth: {fileID: 0}
+  showAttackArc: 0
+  arcDegrees: 140
+  arcInner: 0.74
+  arcStretch: 1.2
+  arcHeight: 1.05
+  arcTilt: 14

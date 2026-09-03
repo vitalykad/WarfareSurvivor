@@ -66,6 +66,12 @@ namespace WarfareSurvivor
 
             if (viewCamera == null) viewCamera = Camera.main;
             anchor = transform.position;
+
+            // Стенд собирает отряд сам и позовёт SpawnFrom, когда игрок
+            // закончит. Спавнить сейчас нельзя: бойцов пришлось бы удалять
+            // и создавать заново, а строй и радиусы считаются один раз.
+            if (config.bench != null && config.bench.askOnStart) return;
+
             SpawnSquad();
         }
 
@@ -88,6 +94,21 @@ namespace WarfareSurvivor
         /// </summary>
         readonly Dictionary<SurvivorClassSO, float> damageBonus = new Dictionary<SurvivorClassSO, float>();
         readonly Dictionary<SurvivorClassSO, float> healthBonus = new Dictionary<SurvivorClassSO, float>();
+
+        /// <summary>
+        /// Итог синергий всего отряда. Пересчитывается по смене состава,
+        /// читать можно свободно и откуда угодно.
+        /// </summary>
+        public SquadSynergies Synergies
+        {
+            get
+            {
+                synergies.Refresh(living);
+                return synergies;
+            }
+        }
+
+        readonly SquadSynergies synergies = new SquadSynergies();
 
         public float DamageBonusFor(SurvivorClassSO klass) => Bonus(damageBonus, klass);
         public float HealthBonusFor(SurvivorClassSO klass) => Bonus(healthBonus, klass);
@@ -119,6 +140,123 @@ namespace WarfareSurvivor
 
                 var health = living[i].GetComponent<Health>();
                 if (health != null) health.RaiseMax(multiplier);
+            }
+        }
+
+        /// <summary>
+        /// Во сколько раз отряд быстрее базовой скорости.
+        ///
+        /// Складывается из вклада каждого бойца, который ускоряет отряд, —
+        /// и вклад этот РАСТЁТ от улучшений, взятых на его класс. Иначе
+        /// карточка усиления для такого класса множила бы ноль урона
+        /// и не делала ничего, как это было у медика.
+        ///
+        /// Считается по живым: погиб носильщик — отряд замедлился. Это и
+        /// делает роль ощутимой, а не просто циферкой в начале забега.
+        /// </summary>
+        public float SpeedMultiplier
+        {
+            get
+            {
+                float bonus = 0f;
+                for (int i = 0; i < living.Count; i++)
+                {
+                    var member = living[i];
+                    if (member == null || member.Class == null || !member.Class.BoostsSpeed) continue;
+                    bonus += member.Class.squadSpeedPerUnit * DamageBonusFor(member.Class);
+                }
+
+                // Потолок не нужен, а вот пол нужен: отрицательных прибавок
+                // пока нет, но замедляющая роль в документе есть.
+                return Mathf.Max(0.1f, 1f + bonus);
+            }
+        }
+
+        /// <summary>
+        /// Во сколько раз шире базового отряд собирает искры.
+        ///
+        /// Считается тем же порядком, что и скорость: вклад каждого живого
+        /// разведчика, помноженный на улучшения его класса. Складывается,
+        /// а не перемножается — по той же причине.
+        /// </summary>
+        public float SparkRadiusMultiplier
+        {
+            get
+            {
+                float bonus = 0f;
+                for (int i = 0; i < living.Count; i++)
+                {
+                    var member = living[i];
+                    if (member == null || member.Class == null || !member.Class.WidensPickup) continue;
+                    bonus += member.Class.sparkRadiusPerUnit * DamageBonusFor(member.Class);
+                }
+                return Mathf.Max(0.1f, 1f + bonus);
+            }
+        }
+
+        /// <summary>
+        /// Во сколько раз отряд бьёт сильнее базового — общий пассивный бафф.
+        ///
+        /// Это НЕ то же, что <see cref="DamageBonusFor"/>: тот бонус — вложенное
+        /// игроком в один класс, а этот идёт от бойцов, чьё дело — усиливать
+        /// чужой урон, и достаётся всему строю, включая пополнение.
+        ///
+        /// На лечение не распространяется: медик лечит, а не бьёт, и вливать
+        /// в него «бафф урона» значило бы усиливать его вслепую.
+        /// </summary>
+        public float DamageMultiplier
+        {
+            get
+            {
+                float bonus = 0f;
+                for (int i = 0; i < living.Count; i++)
+                {
+                    var member = living[i];
+                    if (member == null || member.Class == null || !member.Class.BoostsDamage) continue;
+                    bonus += member.Class.squadDamagePerUnit * DamageBonusFor(member.Class);
+                }
+                return Mathf.Max(0.1f, 1f + bonus);
+            }
+        }
+
+        /// <summary>
+        /// Во сколько раз отряд атакует чаще базового — общий пассивный разгон.
+        ///
+        /// Делит паузу между атаками, а не умножает урон: два разных
+        /// саппорта не должны складываться в одно и то же число, иначе
+        /// выбор между ними перестаёт быть выбором.
+        /// </summary>
+        public float AttackSpeedMultiplier
+        {
+            get
+            {
+                float bonus = 0f;
+                for (int i = 0; i < living.Count; i++)
+                {
+                    var member = living[i];
+                    if (member == null || member.Class == null || !member.Class.BoostsAttackSpeed) continue;
+                    bonus += member.Class.squadAttackSpeedPerUnit * DamageBonusFor(member.Class);
+                }
+                return Mathf.Max(0.1f, 1f + bonus);
+            }
+        }
+
+        /// <summary>
+        /// Во сколько раз отряд получает больше опыта с каждой подобранной
+        /// искры.
+        /// </summary>
+        public float SparkValueMultiplier
+        {
+            get
+            {
+                float bonus = 0f;
+                for (int i = 0; i < living.Count; i++)
+                {
+                    var member = living[i];
+                    if (member == null || member.Class == null || !member.Class.BoostsSparkValue) continue;
+                    bonus += member.Class.sparkValuePerUnit * DamageBonusFor(member.Class);
+                }
+                return Mathf.Max(0.1f, 1f + bonus);
             }
         }
 
@@ -160,6 +298,7 @@ namespace WarfareSurvivor
 
             living.Add(member);
             living.Sort((a, b) => ((int)a.Class.role).CompareTo((int)b.Class.role));
+            synergies.Invalidate();
 
             UnitRadius = Mathf.Max(UnitRadius, MeasureUnitRadius(member));
             formationDirty = true;
@@ -167,6 +306,22 @@ namespace WarfareSurvivor
         }
 
         // --- создание -------------------------------------------------------
+
+        /// <summary>Состав, набранный на стенде. Пусто — берём из конфига.</summary>
+        List<SquadEntry> handpicked;
+
+        /// <summary>
+        /// Создаёт отряд из состава, набранного на стенде.
+        ///
+        /// Конфиг при этом НЕ переписывается: стенд — инструмент, а
+        /// squadComposition — настройка игры, и молча затирать её набором
+        /// из последнего теста нельзя.
+        /// </summary>
+        public void SpawnFrom(List<SquadEntry> entries)
+        {
+            handpicked = entries;
+            SpawnSquad();
+        }
 
         void SpawnSquad()
         {
@@ -191,6 +346,7 @@ namespace WarfareSurvivor
                 member.Lost += OnMemberLost;
                 LayerUtility.Apply(member.gameObject, LayerUtility.Survivors);
                 living.Add(member);
+                synergies.Invalidate();
 
                 unitRadius = Mathf.Max(unitRadius, MeasureUnitRadius(member));
             }
@@ -242,9 +398,11 @@ namespace WarfareSurvivor
         {
             var plan = new List<SurvivorClassSO>();
 
-            // Состав берётся из конфига СВОЕЙ сцены: у забега он свой,
-            // и разводить их флагами внутри отряда больше не нужно.
-            var source = config.squadComposition;
+            // Набранное на стенде важнее конфига: если игрок только что
+            // собрал отряд руками, показать ему другой — значит соврать.
+            var source = handpicked != null && handpicked.Count > 0
+                ? handpicked.ToArray()
+                : config.squadComposition;
 
             if (source == null || source.Length == 0)
             {
@@ -284,6 +442,7 @@ namespace WarfareSurvivor
             member.Lost -= OnMemberLost;
             living.Remove(member);
             formationDirty = true;
+            synergies.Invalidate();
         }
 
         /// <summary>
@@ -403,7 +562,7 @@ namespace WarfareSurvivor
             if (input.sqrMagnitude < 0.0001f && config.debugAutoDrive) input = AutoDriveInput();
             MoveDirection = ToWorldDirection(input);
 
-            anchor += MoveDirection * (config.squadSpeed * Time.deltaTime);
+            anchor += MoveDirection * (config.squadSpeed * SpeedMultiplier * Time.deltaTime);
             transform.position = anchor;
 
             for (int i = 0; i < living.Count; i++)

@@ -138,14 +138,14 @@ namespace WarfareSurvivor
         {
             if (Time.unscaledTime < shovelReady) return;
             shovelReady = Time.unscaledTime + Interval;
-            Play(shovelHit, shovelStart);
+            Play(shovelHit, shovelStart, config != null ? config.shovelVolume : 1f);
         }
 
         void PlayPistol()
         {
             if (Time.unscaledTime < pistolReady) return;
             pistolReady = Time.unscaledTime + Interval;
-            Play(pistolShot, pistolStart);
+            Play(pistolShot, pistolStart, config != null ? config.pistolVolume : 1f);
         }
 
         float Interval => config != null ? Mathf.Max(0f, config.sfxMinInterval) : 0.05f;
@@ -158,7 +158,7 @@ namespace WarfareSurvivor
         /// складываются в один громкий щелчок вместо частой дроби —
         /// то же самое сложение фаз, что даёт «металлический» призвук.
         /// </summary>
-        void Play(AudioClip clip, float startAt)
+        void Play(AudioClip clip, float startAt, float scale)
         {
             if (clip == null || sfx == null || sfx.Length == 0) return;
 
@@ -187,6 +187,12 @@ namespace WarfareSurvivor
             }
 
             source.clip = clip;
+
+            // Громкость выставляется НА КАЖДОМ ПУСКЕ, а не один раз при
+            // настройке: у звуков она теперь разная, и голос, только что
+            // игравший выстрел, иначе проиграл бы удар вполсилы.
+            float effects = config != null && config.sfxOn ? Mathf.Clamp01(config.sfxVolume) : 0f;
+            source.volume = effects * Mathf.Clamp01(scale);
 
             // Перематываем на начало собственно звука. PlayOneShot так
             // не умеет — оттого и держим пул источников, а не один.

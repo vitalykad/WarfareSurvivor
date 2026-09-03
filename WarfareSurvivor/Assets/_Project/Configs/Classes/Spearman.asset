@@ -1,0 +1,76 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 047e0fb614137482896a8550eead25b4, type: 3}
+  m_Name: Spearman
+  m_EditorClassIdentifier: Assembly-CSharp::WarfareSurvivor.SurvivorClassSO
+  displayName: "\u041A\u043E\u043F\u0435\u0439\u0449\u0438\u043A"
+  prefab: {fileID: 7514476081002296282, guid: 4f2ddf89310804d7d82904e6f8f765d8, type: 3}
+  role: 2
+  aimYawOffset: -29
+  synergies: []
+  maxHealth: 130
+  attackRange: 6
+  attackInterval: 1.1
+  damage: 22
+  attackAnimationSpeed: 1
+  shockShape: 0
+  shockAngle: 120
+  shockImpact: 0
+  stunChance: 0.25
+  stunDuration: 1.2
+  splashRadius: 0
+  blastRadius: 0
+  burstCount: 0
+  burstInterval: 0.09
+  shotScale: 1
+  boltPierce: 0
+  boltRange: 0
+  shieldEveryNth: 0
+  shieldDamageScale: 1
+  shieldPush: 5
+  shieldPushDuration: 0.3
+  shieldArc: 110
+  shieldRange: 0
+  shieldMaxTargets: 0
+  coneAngle: 0
+  coneRange: 0
+  coneTipDamage: 0.35
+  burnDuration: 0
+  burnDamagePerSecond: 0
+  chainTargets: 0
+  chainJumpRange: 3
+  chainFalloff: 0.25
+  chainColor: {r: 0.68, g: 0.35, b: 1, a: 0.95}
+  pierceWidth: 1.4
+  pierceLength: 5
+  pierceMaxTargets: 3
+  knockbackDistance: 0
+  attackHitTime: 0.5
+  knockbackDuration: 0.22
+  squadSpeedPerUnit: 0
+  sparkRadiusPerUnit: 0
+  squadDamagePerUnit: 0
+  squadAttackSpeedPerUnit: 0
+  sparkValuePerUnit: 0
+  icon: {fileID: 21300000, guid: 75b70b63a16064a819e22c13c1a9b80f, type: 3}
+  healPerTick: 0
+  healInterval: 2.5
+  offerInTierUp: 0
+  cardAddUnit: {fileID: 0}
+  cardDamage: {fileID: 0}
+  cardHealth: {fileID: 0}
+  showAttackArc: 0
+  arcDegrees: 140
+  arcInner: 0.74
+  arcStretch: 1.2
+  arcHeight: 1.05
+  arcTilt: 14
