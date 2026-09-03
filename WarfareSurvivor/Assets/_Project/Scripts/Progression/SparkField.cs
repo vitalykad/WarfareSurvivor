@@ -24,6 +24,10 @@ namespace WarfareSurvivor
 
         [SerializeField, Tooltip("Центр отряда: от него добыча отлетает наружу.")]
         Transform squadCenter;
+
+        [SerializeField, Tooltip("Отряд: у него спрашивается радиус сбора. " +
+                                 "Можно не заполнять — найдётся сам.")]
+        SquadController squad;
         [SerializeField] Material sparkMaterial;
 
         [SerializeField, Tooltip("Камера: к ней разворачиваются бутылки.")]
@@ -66,6 +70,10 @@ namespace WarfareSurvivor
             pool = new GameObject("Искры").transform;
             pool.SetParent(transform, false);
 
+            // Ссылку в сцене можно и не проставлять: отряд на арене один,
+            // а поле искр без него всё равно бессмысленно.
+            if (squad == null) squad = FindAnyObjectByType<SquadController>();
+
             if (spawner != null) spawner.Killed += OnKilled;
         }
 
@@ -88,10 +96,20 @@ namespace WarfareSurvivor
         public void Drop(Vector3 position, int value)
         {
             // Потолок искр держим не ради кадра, а ради читаемости поля:
-            // тысяча светляков превращает арену в кашу. Самую старую
-            // засчитываем, а не выбрасываем — прогресс терять нельзя,
-            // иначе игрок наказан за то, что бой шёл слишком хорошо.
-            if (sparks.Count >= Mathf.Max(8, config.maxSparks)) CollectAt(0);
+            // тысяча светляков превращает арену в кашу. Самая старая
+            // ПРОПАДАЕТ, не засчитываясь.
+            //
+            // Раньше она засчитывалась — рассуждение было «прогресс терять
+            // нельзя». Но замер показал, во что это выливается: отряд стоит
+            // на месте, снайперы бьют на восемнадцать метров, поле забивается
+            // за минуту, и дальше каждое убийство молча засчитывает бутылку
+            // в двадцати метрах от бойцов. Тир-апы шли сами собой при
+            // неподвижном отряде — два за девять секунд.
+            //
+            // Добыча должна доставаться за то, что за ней сходили. Иначе
+            // подбор перестаёт быть решением, а вместе с ним обесценивается
+            // и движение — единственное, чем игрок вообще управляет.
+            if (sparks.Count >= Mathf.Max(8, config.maxSparks)) Recycle(0);
 
             // Приподнимаем на половину стороны: центр плоскости должен
             // оказаться над землёй, иначе нижняя половина уходит под неё.
@@ -136,8 +154,24 @@ namespace WarfareSurvivor
                 away = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
             }
 
+            // Разлёт считается ОТ ЦЕНТРА ОТРЯДА, а не от трупа.
+            //
+            // Раньше бросок прибавлялся к тому месту, где зомби упал, и
+            // расстояния складывались: погиб в четырёх метрах — бутылка
+            // улетала на семь-десять. Замер это и показал: при разлёте
+            // «3-6 м» лежащая добыча оказывалась в среднем в 6.4 м от
+            // ближайшего бойца, то есть заведомо дальше любого радиуса
+            // притяжения. Поле копилось быстрее, чем подбиралось.
+            //
+            // Теперь настройка значит ровно то, что написано: кольцо
+            // такого-то радиуса вокруг строя. Дальше своего места добыча
+            // при этом не подтягивается — убитый вдалеке роняет там, где
+            // упал, а не под ноги игроку.
             float distance = Random.Range(config.sparkScatterMin, Mathf.Max(config.sparkScatterMin, config.sparkScatterMax));
-            var target = from + away.normalized * distance;
+            float corpse = away.magnitude;
+            float radius = Mathf.Max(corpse, Mathf.Min(distance, Mathf.Max(config.sparkScatterMin, config.sparkScatterMax)));
+
+            var target = CrowdCenter() + away.normalized * radius;
             target.y = ground;
             return target;
         }
@@ -213,7 +247,11 @@ namespace WarfareSurvivor
         {
             if (config == null || sparks.Count == 0) return;
 
-            float attract = config.sparkAttractRadius * config.sparkAttractRadius;
+            // Разведчики расширяют радиус ПРИТЯЖЕНИЯ. Радиус касания
+            // остаётся прежним: он не про дальность сбора, а про то,
+            // когда полёт закончился.
+            float reach = config.sparkAttractRadius * (squad != null ? squad.SparkRadiusMultiplier : 1f);
+            float attract = reach * reach;
             float pickup = config.sparkPickupRadius * config.sparkPickupRadius;
             float step = config.sparkFlySpeed * Time.deltaTime;
 
@@ -344,11 +382,35 @@ namespace WarfareSurvivor
             return best;
         }
 
+        /// <summary>
+        /// Недоплаченные доли надбавки. Копятся между подборами.
+        ///
+        /// Без этого прибавка к опыту пропадала бы целиком: бутылка стоит
+        /// единицу, полторы единицы округляются обратно в единицу, и класс,
+        /// который «увеличивает опыт», не давал бы ничего. Дробь копится
+        /// и выдаётся целой — за пять подборов с надбавкой в 20% игрок
+        /// получает свою шестую бутылку.
+        /// </summary>
+        float change;
+
         void CollectAt(int index)
         {
             int value = sparks[index].Value;
             Recycle(index);
-            Collected?.Invoke(value);
+
+            float multiplier = squad != null ? squad.SparkValueMultiplier : 1f;
+            if (multiplier != 1f)
+            {
+                // Крошечная поблажка на счёт дробей: без неё сто подборов
+                // с надбавкой 30% давали 129 очков вместо 130 — доли
+                // копились чуть медленнее целого из-за округления float.
+                float exact = value * multiplier + change + 0.0001f;
+                int paid = Mathf.Max(0, Mathf.FloorToInt(exact));
+                change = exact - paid;
+                value = paid;
+            }
+
+            if (value > 0) Collected?.Invoke(value);
         }
 
         void Recycle(int index)
