@@ -17,6 +17,7 @@ Survivors-like про **группу выживших**, а не про одно
 - Что собрано и работает прямо сейчас: [GAMEPLAY.md](GAMEPLAY.md)
 - Петля и план под тест VOODOO: [PROTOTYPE.md](PROTOTYPE.md)
 - Ростер ролей и правила набора толпы (ветка `roles`): [ROLES.md](ROLES.md)
+- Где что крутится при настройке сцены и классов: [TUNING.md](TUNING.md)
 
 ---
 
