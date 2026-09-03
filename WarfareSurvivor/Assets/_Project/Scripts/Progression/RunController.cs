@@ -94,10 +94,41 @@ namespace WarfareSurvivor
             Time.timeScale = 1f;
         }
 
-        void Start() => StartWave(0);
+        /// <summary>Стенд ещё спрашивает состав — забег не начался.</summary>
+        bool waitingForSetup;
+
+        void Start()
+        {
+            // Стенд включён — сначала сборка отряда, потом бой. Волну
+            // не начинаем и время останавливаем: за спиной у экрана
+            // не должно происходить ничего.
+            if (config.bench != null && config.bench.askOnStart)
+            {
+                waitingForSetup = true;
+                Time.timeScale = 0f;
+                spawner.SetPaused(true);
+                SquadSetupPanel.Show(config, BeginRun);
+                return;
+            }
+
+            StartWave(0);
+        }
+
+        void BeginRun(List<SquadEntry> chosen)
+        {
+            waitingForSetup = false;
+            Time.timeScale = 1f;
+
+            squad.SpawnFrom(chosen);
+            StartWave(0);
+        }
 
         void Update()
         {
+            // Пока стенд открыт, отряда ещё нет — и проверка «отряд кончился»
+            // засчитала бы поражение на первом же кадре.
+            if (waitingForSetup) return;
+
             if (Current == Phase.Won || Current == Phase.Lost) return;
 
             // Проверяем ДО фазы: отряд может кончиться и в паузе между волнами,
@@ -249,7 +280,15 @@ namespace WarfareSurvivor
             int step = Mathf.Max(1, Mathf.RoundToInt(1f / Mathf.Max(0.01f, config.tierUpAddUnitChance)));
 
             bool roomLeft = squad.MemberCount < config.squadSlotCap;
-            bool addUnitTurn = sinceAddUnit >= step - 1;
+
+            // Чередование существует ради того, чтобы часть наборов уходила
+            // целиком под вопрос «кого именно усиливать». Когда класс в наборе
+            // ОДИН, такого вопроса нет: пропуск пополнения не создаёт выбора,
+            // а отнимает его — остаются две одинаковые карточки, одни и те же
+            // из раза в раз. Поэтому при единственном классе пополнение
+            // предлагается всегда.
+            int classCount = AllClasses().Count;
+            bool addUnitTurn = sinceAddUnit >= step - 1 || classCount <= 1;
 
             if (roomLeft && addUnitTurn)
             {
@@ -365,16 +404,62 @@ namespace WarfareSurvivor
             Body = ClassBody(klass)
         };
 
+        /// <summary>
+        /// Карточка «усилить». У лечащих классов та же прибавка читается
+        /// как лечение: она и работает на лечение, потому что урона у них нет.
+        /// Писать «+20% урона» на карточке медика значит обещать то, чего
+        /// не будет, — игрок берёт её и не видит никакой разницы.
+        /// </summary>
         TierUpOffer DamageOffer(SurvivorClassSO klass) => new TierUpOffer
         {
             Kind = OfferKind.Damage,
             Class = klass,
             Art = klass.cardDamage,
-            Title = "+" + Percent(config.tierUpDamageStep) + " урона",
+            Title = "+" + Percent(config.tierUpDamageStep) + UpgradeNoun(klass),
             Subtitle = klass.displayName,
-            Body = "Бьют сильнее все бойцы этого класса,\nвключая тех, кто придёт потом.\n\nсейчас " +
-                   Percent(squad.DamageBonusFor(klass) - 1f) + " сверх базового"
+            Body = UpgradeBody(klass) +
+                   "\n\nсейчас " + Percent(squad.DamageBonusFor(klass) - 1f) + " сверх базового"
         };
+
+        /// <summary>
+        /// Чем именно усиливается класс.
+        ///
+        /// Прибавка в игре ОДНА, а читается по-разному: боец бьёт сильнее,
+        /// медик лечит лучше, носильщик разгоняет отряд быстрее. Заводить
+        /// на каждое своё поле и свой вид карточки незачем — вопрос,
+        /// на который отвечает карточка, один: «во что вложиться в этот
+        /// класс», и ответ у класса тоже один.
+        ///
+        /// Порядок проверок значим: класс может и лечить, и ускорять, и
+        /// подписать его надо тем, ради чего его берут.
+        /// </summary>
+        static string UpgradeNoun(SurvivorClassSO klass)
+        {
+            if (klass.Heals) return " лечения";
+            if (klass.BoostsSpeed) return " скорости";
+            if (klass.WidensPickup) return " сбора";
+            if (klass.BoostsDamage) return " к баффу";
+            if (klass.BoostsAttackSpeed) return " к темпу";
+            if (klass.BoostsSparkValue) return " к навару";
+            return " урона";
+        }
+
+        static string UpgradeBody(SurvivorClassSO klass)
+        {
+            if (klass.Heals)
+                return "Лечат сильнее все медики этого класса,\nвключая тех, кто придёт потом.";
+            if (klass.BoostsSpeed)
+                return "Сильнее разгоняют отряд все бойцы\nэтого класса, включая будущих.";
+            if (klass.WidensPickup)
+                return "Дальше чуют добычу все разведчики\nэтого класса, включая будущих.";
+            if (klass.BoostsDamage)
+                return "Сильнее подстёгивают весь отряд все\nбойцы этого класса, включая будущих.";
+            if (klass.BoostsAttackSpeed)
+                return "Сильнее разгоняют атаку всего отряда\nвсе бойцы этого класса, включая будущих.";
+            if (klass.BoostsSparkValue)
+                return "Больше выжимают из каждой бутылки\nвсе бойцы этого класса, включая будущих.";
+            return "Бьют сильнее все бойцы этого класса,\nвключая тех, кто придёт потом.";
+        }
 
         TierUpOffer HealthOffer(SurvivorClassSO klass) => new TierUpOffer
         {
@@ -413,17 +498,53 @@ namespace WarfareSurvivor
         List<SurvivorClassSO> AllClasses()
         {
             var pool = new List<SurvivorClassSO>();
-            if (config.squadComposition != null)
-                foreach (var entry in config.squadComposition)
-                {
-                    // Класс без нарисованных карточек в набор не идёт: пустая
-                    // картинка читается как поломка, а не как новый боец.
-                    // Взять такой класс можно только стартовым составом.
-                    if (entry.Class == null || !entry.Class.offerInTierUp) continue;
-                    if (!pool.Contains(entry.Class)) pool.Add(entry.Class);
-                }
+            if (config.squadComposition == null) return pool;
+
+            foreach (var entry in config.squadComposition)
+            {
+                if (entry.Class == null) continue;
+
+                // Класс, которым отряд ВЫШЕЛ, предлагается всегда — даже без
+                // своих карточек. Если игрок водит восьмерых молотобойцев,
+                // а тир-ап их не предлагает, усилить то, чем играешь, нечем,
+                // и забег становится непроверяемым.
+                bool started = entry.Count > 0;
+
+                // Класс без нарисованных карточек в набор не идёт — но
+                // только если его нет и в отряде. Пустой картинки при этом
+                // не бывает: панель рисует текстовую карточку с заголовком
+                // и цифрами. Чужой рисунок был бы хуже — медик с лицом
+                // полицейского читается вторым полицейским, то есть
+                // дубликатом, а не другим бойцом.
+                if (!started && !entry.Class.offerInTierUp) continue;
+
+                // ПОДСТАНОВКА. Класс, которого в отряде нет, уступает место
+                // тому, кем его заменили на старте: если вместо фермера
+                // с лопатой вышли молотобойцы, предлагать фермера незачем —
+                // он занял бы место карточки, до которой игроку нет дела.
+                //
+                // Замена ищется ПО РОЛИ: заменять стрелка ближним боем
+                // означало бы менять не облик бойца, а состав колец строя,
+                // и набор перестал бы отражать то, чем игрок играет.
+                if (!started && Replaced(entry.Class)) continue;
+
+                if (!pool.Contains(entry.Class)) pool.Add(entry.Class);
+            }
 
             return pool;
+        }
+
+        /// <summary>Есть ли в стартовом составе другой класс той же роли.</summary>
+        bool Replaced(SurvivorClassSO klass)
+        {
+            foreach (var entry in config.squadComposition)
+            {
+                if (entry.Class == null || entry.Count <= 0) continue;
+                if (entry.Class == klass) continue;
+                if (entry.Class.role == klass.role) return true;
+            }
+
+            return false;
         }
 
         int CostOf(int taken) =>

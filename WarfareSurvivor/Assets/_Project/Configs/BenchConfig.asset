@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 771bb7e3870a64955a3f608edd177b9a, type: 3}
+  m_Name: BenchConfig
+  m_EditorClassIdentifier: Assembly-CSharp::WarfareSurvivor.BenchConfig
+  askOnStart: 1
+  classes:
+  - {fileID: 11400000, guid: 39094c1227c7444489b0b52ccf9a099a, type: 2}
+  - {fileID: 11400000, guid: ab5af75ff07ec4c639c2ac5264a3308e, type: 2}
+  - {fileID: 11400000, guid: b918375cf7edc44c78c84a24a1759210, type: 2}
+  - {fileID: 11400000, guid: 23c753e4a92f249ebb90c15ef28f4883, type: 2}
+  - {fileID: 11400000, guid: 7697e257f7c2b4c7c9af826a213b0375, type: 2}
+  - {fileID: 11400000, guid: 879c4c623535e4c908b3b51c7aebdde6, type: 2}
+  - {fileID: 11400000, guid: be3a7e1284a59460d9d64987d31a8d97, type: 2}
+  - {fileID: 11400000, guid: d7934318956704e09acd034c08018278, type: 2}
+  - {fileID: 11400000, guid: 4d82dae378b3a421ab96efbf7de53589, type: 2}
+  - {fileID: 11400000, guid: c7a1ac29273104b048646d7cceab3f39, type: 2}
+  - {fileID: 11400000, guid: 014e78c62d34f40d0930f5fdb93f2c58, type: 2}
+  - {fileID: 11400000, guid: 9bb917bc59f224da5b2e27aa3c5e7799, type: 2}
+  - {fileID: 11400000, guid: 515486751003840b2a4ae7b3cf0c1348, type: 2}
+  - {fileID: 11400000, guid: 214174ac926544670af71c1a1ed40e3f, type: 2}
+  - {fileID: 11400000, guid: 626208014da524a00b5ee0123e9acebc, type: 2}
+  - {fileID: 11400000, guid: 675d2bcae62aa44cb93bcc3531c5395b, type: 2}
+  - {fileID: 11400000, guid: 0f9b989b438594ed9837b5ff6dd59906, type: 2}
+  maxPerClass: 12
+  minTotal: 1
+  lastPick:
+  - Class: {fileID: 11400000, guid: 515486751003840b2a4ae7b3cf0c1348, type: 2}
+    Count: 6
+  - Class: {fileID: 11400000, guid: be3a7e1284a59460d9d64987d31a8d97, type: 2}
+    Count: 2

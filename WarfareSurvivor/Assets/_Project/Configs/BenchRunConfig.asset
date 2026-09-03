@@ -1,0 +1,307 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 220fe60dcb8b7418696490ff2000211e, type: 3}
+  m_Name: BenchRunConfig
+  m_EditorClassIdentifier: Assembly-CSharp::WarfareSurvivor.ArenaConfig
+  cameraPitch: 58
+  cameraYaw: 0
+  cameraFieldOfView: 28
+  cameraDistance: 50
+  cameraDistancePerMember: 0.7
+  cameraDistanceMax: 75
+  cameraNearClip: 5
+  cameraFarClip: 140
+  cameraSmoothTime: 0.18
+  cameraZoomTime: 1.6
+  sunColor: {r: 1, g: 0.89, b: 0.72, a: 1}
+  sunIntensity: 1.3
+  sunPitch: 74.6
+  sunYaw: 329.8
+  ambientSky: {r: 0.45, g: 0.55, b: 0.7, a: 1}
+  ambientHorizon: {r: 0.48, g: 0.45, b: 0.42, a: 1}
+  ambientGround: {r: 0.35, g: 0.28, b: 0.2, a: 1}
+  squadComposition:
+  - Class: {fileID: 11400000, guid: d7934318956704e09acd034c08018278, type: 2}
+    Count: 5
+  - Class: {fileID: 11400000, guid: 626208014da524a00b5ee0123e9acebc, type: 2}
+    Count: 0
+  - Class: {fileID: 11400000, guid: b918375cf7edc44c78c84a24a1759210, type: 2}
+    Count: 0
+  - Class: {fileID: 11400000, guid: 515486751003840b2a4ae7b3cf0c1348, type: 2}
+    Count: 0
+  - Class: {fileID: 11400000, guid: 9bb917bc59f224da5b2e27aa3c5e7799, type: 2}
+    Count: 0
+  - Class: {fileID: 11400000, guid: 0f9b989b438594ed9837b5ff6dd59906, type: 2}
+    Count: 0
+  - Class: {fileID: 11400000, guid: 214174ac926544670af71c1a1ed40e3f, type: 2}
+    Count: 0
+  - Class: {fileID: 11400000, guid: 675d2bcae62aa44cb93bcc3531c5395b, type: 2}
+    Count: 0
+  - Class: {fileID: 11400000, guid: be3a7e1284a59460d9d64987d31a8d97, type: 2}
+    Count: 0
+  - Class: {fileID: 11400000, guid: 014e78c62d34f40d0930f5fdb93f2c58, type: 2}
+    Count: 0
+  - Class: {fileID: 11400000, guid: 4d82dae378b3a421ab96efbf7de53589, type: 2}
+    Count: 0
+  - Class: {fileID: 11400000, guid: c7a1ac29273104b048646d7cceab3f39, type: 2}
+    Count: 0
+  - Class: {fileID: 11400000, guid: 23c753e4a92f249ebb90c15ef28f4883, type: 2}
+    Count: 0
+  - Class: {fileID: 11400000, guid: 7697e257f7c2b4c7c9af826a213b0375, type: 2}
+    Count: 0
+  - Class: {fileID: 11400000, guid: 879c4c623535e4c908b3b51c7aebdde6, type: 2}
+    Count: 0
+  - Class: {fileID: 11400000, guid: ab5af75ff07ec4c639c2ac5264a3308e, type: 2}
+    Count: 0
+  - Class: {fileID: 11400000, guid: 39094c1227c7444489b0b52ccf9a099a, type: 2}
+    Count: 2
+  bench: {fileID: 11400000, guid: 2982169881fb04b89839f9d0a084fbdd, type: 2}
+  squadSpeed: 5.5
+  formationRingSpacingMin: 1.5
+  formationRingSpacingStep: 0
+  formationRingGap: 0.6
+  memberSpeedMultiplier: 1.6
+  separationRadius: 2.2
+  separationStrength: 3.5
+  bodyTurnSpeed: 720
+  torsoAimMaxAngle: 75
+  torsoAimSpeed: 480
+  aimedAngleThreshold: 5
+  backwardSwitchAngle: 90
+  stanceHysteresis: 15
+  stanceMinHoldTime: 0.7
+  retargetInterval: 0.2
+  healthBarVisibleTime: 3
+  zombieSpeed: 2.6
+  zombieContactRange: 1.1
+  zombieContactDamage: 6
+  zombieContactInterval: 0.8
+  zombieTiers: 4
+  zombieHitsPerTier: 25
+  minZombieTier: 3
+  zombieTierTint: 0
+  zombieTierColorLow: {r: 0.42, g: 0.75, b: 0.3, a: 1}
+  zombieTierColorHigh: {r: 0.95, g: 0.88, b: 0.25, a: 1}
+  zombieScaleLow: 1.2
+  zombieScaleHigh: 1.6
+  survivorCorpseTime: 1.4
+  zombieCorpseTime: 1.2
+  zombieDeathSpeed: 2.2
+  useBakedZombies: 0
+  bakedZombies: {fileID: 11400000, guid: 65a969dcc580044ef8b8b060dddc3dc8, type: 2}
+  zombieSeparationRadius: 0.45
+  zombieSeparationStrength: 0.5
+  ruinCount: 32
+  ruinAreaRadius: 45
+  ruinKeepClearRadius: 8
+  ruinScaleMin: 0.22
+  ruinScaleMax: 0.55
+  ruinSeed: 20260821
+  firstSpawnDelay: 0.2
+  spawnInterval: 1.3
+  groupSizeMin: 5
+  groupSizeMax: 9
+  spawnRadius: 14
+  spawnMargin: 4
+  groupAngleSpread: 25
+  maxAliveZombies: 200
+  tierUnlockInterval: 25
+  hitFlashDuration: 0.12
+  hitFlashColor: {r: 1, g: 1, b: 1, a: 1}
+  maxDamagePopups: 48
+  popupLifetime: 0.7
+  popupRiseSpeed: 1.8
+  popupScale: 0.14
+  maxHealPluses: 24
+  healPlusLifetime: 0.9
+  healPlusRiseSpeed: 2.2
+  healPlusSway: 0.5
+  healPlusScale: 0.85
+  healPlusColor: {r: 0.35, g: 1, b: 0.5, a: 1}
+  healPlusBoost: 1.6
+  healPlusHeight: 2.2
+  healPlusPerHeal: 4
+  healPlusSpread: 0.45
+  healPlusStagger: 0.09
+  acidZoneColor: {r: 0.75, g: 0.05, b: 0.05, a: 0.35}
+  acidZoneRimColor: {r: 1, g: 0.25, b: 0.15, a: 0.9}
+  maxAcidZones: 16
+  spitterMarkRadius: 0
+  spitterMarkColor: {r: 0.85, g: 0.75, b: 0.1, a: 0.3}
+  spitterMarkRimColor: {r: 1, g: 0.9, b: 0.2, a: 0.95}
+  acidDropColor: {r: 0.45, g: 1, b: 0.2, a: 1}
+  acidDropBoost: 3.4
+  acidSpitSize: 1.35
+  acidArcHeight: 0.32
+  acidSplashCount: 10
+  acidSplashTime: 0.42
+  acidSmokeInterval: 0.012
+  acidSmokeOffset: 0.3
+  acidSmokeSize: 1.25
+  acidSmokeTime: 0.75
+  acidSpitStretch: 1
+  acidSpitWobble: 0.16
+  acidSpitWobbleSpeed: 20
+  acidSparkInterval: 0.05
+  acidSparkTime: 0.3
+  damageVignetteColor: {r: 0.8, g: 0.05, b: 0.05, a: 1}
+  damageVignettePerHit: 0.4
+  damageVignetteMax: 0.65
+  damageVignetteFade: 1.6
+  acidFlashTime: 0.16
+  acidFlashScale: 1.3
+  acidFlashColor: {r: 0.8, g: 1, b: 0.55, a: 1}
+  acidRingTime: 0.42
+  acidRingScale: 2
+  acidRingColor: {r: 0.6, g: 1, b: 0.35, a: 0.9}
+  maxAcidBlasts: 16
+  shockWaveTime: 0.28
+  shockWaveWidth: 0.14
+  shockWaveColor: {r: 0.95, g: 0.88, b: 0.72, a: 0.85}
+  maxShockWaves: 12
+  rocketSpeed: 14
+  rocketArc: 0.18
+  rocketFirePuffs: 8
+  maxRockets: 12
+  boltSpeed: 26
+  boltHitRadius: 0.35
+  maxBolts: 32
+  boltThickness: 5
+  boltLengthScale: 1.6
+  boltTrailWidth: 0.16
+  boltTrailLife: 0.14
+  boltTrailColor: {r: 1, g: 0.9, b: 0.65, a: 0.75}
+  stunStarCount: 3
+  stunStarSize: 0.55
+  stunStarHeight: 0.75
+  stunOrbitRadius: 0.55
+  stunOrbitSpeed: 3.2
+  stunStarColor: {r: 1, g: 0.92, b: 0.55, a: 1}
+  maxStunStars: 96
+  flameCoreColor: {r: 1, g: 0.95, b: 0.7, a: 1}
+  flameColor: {r: 1, g: 0.55, b: 0.12, a: 0.95}
+  flameEmberColor: {r: 0.55, g: 0.13, b: 0.05, a: 0.6}
+  flameSize: 1.1
+  flameLife: 0.45
+  flamePuffsPerSecond: 26
+  flameWarmUp: 0.55
+  flameCoolDown: 0.9
+  flameTickInterval: 0.15
+  flameDrag: 2.5
+  maxFlamePuffs: 120
+  burnTickInterval: 0.35
+  burnGlowColor: {r: 1, g: 0.35, b: 0.06, a: 1}
+  lightningColor: {r: 0.55, g: 0.75, b: 1, a: 0.9}
+  lightningWidth: 0.16
+  lightningLife: 0.18
+  lightningJag: 0.16
+  acidHazeScale: 1.7
+  acidHazeColor: {r: 0.35, g: 0.9, b: 0.2, a: 0.22}
+  maxAcidDrops: 64
+  acidCloudPuffs: 8
+  acidCloudTime: 1.8
+  acidCloudSpread: 0.75
+  acidCloudScale: 1.1
+  acidCloudColor: {r: 0.45, g: 0.95, b: 0.25, a: 0.95}
+  maxAcidCloudPuffs: 110
+  survivorFlashDuration: 0.22
+  survivorFlashColor: {r: 1, g: 0.35, b: 0.3, a: 1}
+  tracersEnabled: 1
+  tracerLife: 0.11
+  tracerDashMeters: 2.5
+  tracerWidth: 0.35
+  tracerBulletMeters: 0.32
+  tracerBulletWidth: 0.9
+  tracerTailDim: 0.35
+  tracerTailWidth: 0.7
+  tracerColor: {r: 1, g: 0.86, b: 0.45, a: 1}
+  tracerBoost: 4
+  maxTracers: 1024
+  sparkCount: 4
+  sparkLife: 0.16
+  sparkLengthMeters: 0.6
+  sparkSpread: 0.6
+  muzzleFlashLength: 0.5
+  muzzleFlashWidth: 2.6
+  muzzleFlashLife: 0.05
+  targetFrameRate: 60
+  vSyncCount: 0
+  showFrameMeter: 1
+  frameMeterDetailed: 0
+  frameMeterLogInterval: 5
+  frameMeterWindow: 1
+  debugSweep: 0
+  sweepMode: 6
+  simulateZombies: 1
+  simulateSurvivors: 1
+  updateBakedFrames: 1
+  uiFont: {fileID: 12800000, guid: e39bb5b09f9274bd7ae7f47a28aaf8f2, type: 3}
+  musicOn: 0
+  sfxOn: 0
+  musicVolume: 0.45
+  sfxVolume: 0.8
+  pistolVolume: 0.45
+  shovelVolume: 1
+  sfxMinInterval: 0.05
+  runWaves:
+  - Name: "\u041F\u0435\u0440\u0432\u0430\u044F"
+    Duration: 20
+    SpawnInterval: 2
+    GroupMin: 2
+    GroupMax: 3
+    MinTier: 1
+    MaxTier: 1
+    MaxAlive: 14
+  - Name: "\u0412\u0442\u043E\u0440\u0430\u044F"
+    Duration: 75
+    SpawnInterval: 1
+    GroupMin: 3
+    GroupMax: 5
+    MinTier: 2
+    MaxTier: 2
+    MaxAlive: 40
+  - Name: "\u0422\u0440\u0435\u0442\u044C\u044F"
+    Duration: 120
+    SpawnInterval: 0.7
+    GroupMin: 3
+    GroupMax: 5
+    MinTier: 2
+    MaxTier: 3
+    MaxAlive: 40
+  waveBreak: 4
+  squadSlotCap: 20
+  sparkPerKill: 1
+  tierUpCostBase: 8
+  tierUpCostGrowth: 1.15
+  tierUpOptions: 3
+  tierUpAddUnitChance: 0.5
+  tierUpDamageStep: 0.2
+  tierUpHealthStep: 0.25
+  sparkScatterMin: 3
+  sparkScatterMax: 6
+  sparkScatterTime: 0.4
+  sparkScatterHop: 1.2
+  sparkAttractRadius: 2.5
+  sparkPickupRadius: 1.2
+  sparkFlySpeed: 12
+  sparkBobHeight: 0.12
+  sparkBobSpeed: 2.2
+  sparkSwayAngle: 14
+  sparkSwaySpeed: 1.5
+  maxSparks: 150
+  rampStep: 25
+  rampMax: 400
+  rampStepSeconds: 5
+  sweepStageSeconds: 10
+  debugSquadInvincible: 0
+  debugAutoDrive: 0
+  debugAutoDriveRadius: 7
