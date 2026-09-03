@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: cc5f233f8e35e2b45b3ea5d9a1b1e8e9
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 402664
+  packageName: Dwarf Melee Animations FREE
+  packageVersion: 1.0
+  assetPath: Assets/Kevin Iglesias/Dwarf Animations/Unity Demo Scenes/Dwarf Melee
+    Animations/Shaders/DwarfMeleeAnimationsScene.shader
+  uploadId: 981972
