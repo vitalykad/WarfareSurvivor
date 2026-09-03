@@ -30,12 +30,13 @@ MonoBehaviour:
   ambientHorizon: {r: 0.48, g: 0.45, b: 0.42, a: 1}
   ambientGround: {r: 0.35, g: 0.28, b: 0.2, a: 1}
   squadComposition:
-  - Class: {fileID: 11400000, guid: d7934318956704e09acd034c08018278, type: 2}
-    Count: 0
   - Class: {fileID: 11400000, guid: 626208014da524a00b5ee0123e9acebc, type: 2}
+    Count: 0
+  - Class: {fileID: 11400000, guid: d7934318956704e09acd034c08018278, type: 2}
     Count: 8
   - Class: {fileID: 11400000, guid: b918375cf7edc44c78c84a24a1759210, type: 2}
     Count: 0
+  bench: {fileID: 0}
   squadSpeed: 5.5
   formationRingSpacingMin: 1.5
   formationRingSpacingStep: 0
@@ -135,6 +136,46 @@ MonoBehaviour:
   acidRingScale: 2
   acidRingColor: {r: 0.6, g: 1, b: 0.35, a: 0.9}
   maxAcidBlasts: 16
+  shockWaveTime: 0.28
+  shockWaveWidth: 0.14
+  shockWaveColor: {r: 0.95, g: 0.88, b: 0.72, a: 0.85}
+  maxShockWaves: 12
+  rocketSpeed: 14
+  rocketArc: 0.18
+  rocketFirePuffs: 8
+  maxRockets: 12
+  boltSpeed: 26
+  boltHitRadius: 0.35
+  maxBolts: 32
+  boltThickness: 5
+  boltLengthScale: 1.6
+  boltTrailWidth: 0.16
+  boltTrailLife: 0.14
+  boltTrailColor: {r: 1, g: 0.9, b: 0.65, a: 0.75}
+  stunStarCount: 3
+  stunStarSize: 0.55
+  stunStarHeight: 0.75
+  stunOrbitRadius: 0.55
+  stunOrbitSpeed: 3.2
+  stunStarColor: {r: 1, g: 0.92, b: 0.55, a: 1}
+  maxStunStars: 96
+  flameCoreColor: {r: 1, g: 0.95, b: 0.7, a: 1}
+  flameColor: {r: 1, g: 0.55, b: 0.12, a: 0.95}
+  flameEmberColor: {r: 0.55, g: 0.13, b: 0.05, a: 0.6}
+  flameSize: 1.1
+  flameLife: 0.45
+  flamePuffsPerSecond: 26
+  flameWarmUp: 0.55
+  flameCoolDown: 0.9
+  flameTickInterval: 0.15
+  flameDrag: 2.5
+  maxFlamePuffs: 120
+  burnTickInterval: 0.35
+  burnGlowColor: {r: 1, g: 0.35, b: 0.06, a: 1}
+  lightningColor: {r: 0.55, g: 0.75, b: 1, a: 0.9}
+  lightningWidth: 0.16
+  lightningLife: 0.18
+  lightningJag: 0.16
   acidHazeScale: 1.7
   acidHazeColor: {r: 0.35, g: 0.9, b: 0.2, a: 0.22}
   maxAcidDrops: 64
@@ -156,7 +197,7 @@ MonoBehaviour:
   tracerTailWidth: 0.7
   tracerColor: {r: 1, g: 0.86, b: 0.45, a: 1}
   tracerBoost: 4
-  maxTracers: 96
+  maxTracers: 1024
   sparkCount: 4
   sparkLife: 0.16
   sparkLengthMeters: 0.6
@@ -176,10 +217,12 @@ MonoBehaviour:
   simulateSurvivors: 1
   updateBakedFrames: 1
   uiFont: {fileID: 12800000, guid: e39bb5b09f9274bd7ae7f47a28aaf8f2, type: 3}
-  musicOn: 1
-  sfxOn: 1
+  musicOn: 0
+  sfxOn: 0
   musicVolume: 0.45
   sfxVolume: 0.8
+  pistolVolume: 0.45
+  shovelVolume: 1
   sfxMinInterval: 0.05
   runWaves:
   - Name: "\u041F\u0435\u0440\u0432\u0430\u044F"

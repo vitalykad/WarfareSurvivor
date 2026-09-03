@@ -15,13 +15,54 @@ MonoBehaviour:
   displayName: "\u0424\u0435\u0440\u043C\u0435\u0440 \u0441 \u043B\u043E\u043F\u0430\u0442\u043E\u0439"
   prefab: {fileID: 7514476081002296282, guid: eb7c8380149cb49e1b3a8bbd54bb35b0, type: 3}
   role: 2
+  aimYawOffset: 0
+  synergies:
+  - {fileID: 11400000, guid: 68366975c06dd4eeda8d47f9c4b68f29, type: 2}
   maxHealth: 150
   attackRange: 3.2
   attackInterval: 0.5
   damage: 25
+  attackAnimationSpeed: 1
+  shockShape: 0
+  shockAngle: 120
+  shockImpact: 0
+  stunChance: 0.25
+  stunDuration: 1.2
+  splashRadius: 0
+  blastRadius: 0
+  burstCount: 0
+  burstInterval: 0.09
+  shotScale: 1
+  boltPierce: 0
+  boltRange: 0
+  shieldEveryNth: 0
+  shieldDamageScale: 1
+  shieldPush: 5
+  shieldPushDuration: 0.3
+  shieldArc: 110
+  shieldRange: 0
+  shieldMaxTargets: 0
+  coneAngle: 0
+  coneRange: 0
+  coneTipDamage: 0.35
+  burnDuration: 0
+  burnDamagePerSecond: 0
+  chainTargets: 0
+  chainJumpRange: 3
+  chainFalloff: 0.25
+  chainColor: {r: 0.68, g: 0.35, b: 1, a: 0.95}
+  pierceWidth: 0
+  pierceLength: 0
+  pierceMaxTargets: 0
   knockbackDistance: 3
   attackHitTime: 0.5
   knockbackDuration: 0.22
+  squadSpeedPerUnit: 0
+  sparkRadiusPerUnit: 0
+  squadDamagePerUnit: 0
+  squadAttackSpeedPerUnit: 0
+  sparkValuePerUnit: 0
+  icon: {fileID: 21300000, guid: 37d3315d7151c40f5a0dc06a3fca31e2, type: 3}
   healPerTick: 0
   healInterval: 2.5
   offerInTierUp: 1
