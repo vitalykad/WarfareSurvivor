@@ -211,7 +211,8 @@ namespace WarfareSurvivor
             // карточка не появилась, больше нечем.
             var report = new System.Text.StringBuilder("[Тир-ап] набор:");
             foreach (var o in options) report.Append(' ').Append(o.Kind).Append('/').Append(o.Title).Append(';');
-            report.Append(" бойцов ").Append(squad.MemberCount).Append('/').Append(config.squadSlotCap)
+            report.Append(" бойцов ").Append(squad.MemberCount).Append('/')
+                  .Append(config.squadSlotCap > 0 ? config.squadSlotCap.ToString() : "без потолка")
                   .Append(", классов в конфиге ").Append(AllClasses().Count)
                   .Append(", шанс пополнения ").Append(config.tierUpAddUnitChance);
             Debug.Log(report.ToString());
@@ -279,7 +280,8 @@ namespace WarfareSurvivor
             // треть — через два.
             int step = Mathf.Max(1, Mathf.RoundToInt(1f / Mathf.Max(0.01f, config.tierUpAddUnitChance)));
 
-            bool roomLeft = squad.MemberCount < config.squadSlotCap;
+            // Ноль в потолке значит «потолка нет».
+            bool roomLeft = config.squadSlotCap <= 0 || squad.MemberCount < config.squadSlotCap;
 
             // Чередование существует ради того, чтобы часть наборов уходила
             // целиком под вопрос «кого именно усиливать». Когда класс в наборе

@@ -308,7 +308,8 @@ namespace WarfareSurvivor
 
         void Add(SurvivorClassSO klass, int delta)
         {
-            int max = bench != null ? Mathf.Max(1, bench.maxPerClass) : 12;
+            // Ноль в настройке значит «без потолка».
+            int max = bench != null && bench.maxPerClass > 0 ? bench.maxPerClass : int.MaxValue;
             int now = Count(klass);
             picked[klass] = Mathf.Clamp(now + delta, 0, max);
             Refresh();

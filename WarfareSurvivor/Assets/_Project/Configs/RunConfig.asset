@@ -250,7 +250,7 @@ MonoBehaviour:
     MaxTier: 3
     MaxAlive: 40
   waveBreak: 4
-  squadSlotCap: 20
+  squadSlotCap: 0
   sparkPerKill: 1
   tierUpCostBase: 8
   tierUpCostGrowth: 1.15

@@ -32,16 +32,10 @@ MonoBehaviour:
   hidden:
   - {fileID: 11400000, guid: 9bb917bc59f224da5b2e27aa3c5e7799, type: 2}
   - {fileID: 11400000, guid: 675d2bcae62aa44cb93bcc3531c5395b, type: 2}
-  maxPerClass: 12
+  maxPerClass: 0
   minTotal: 1
   lastPick:
-  - Class: {fileID: 11400000, guid: be3a7e1284a59460d9d64987d31a8d97, type: 2}
-    Count: 2
   - Class: {fileID: 11400000, guid: 515486751003840b2a4ae7b3cf0c1348, type: 2}
-    Count: 6
-  - Class: {fileID: 11400000, guid: 23c753e4a92f249ebb90c15ef28f4883, type: 2}
-    Count: 2
-  - Class: {fileID: 11400000, guid: b918375cf7edc44c78c84a24a1759210, type: 2}
-    Count: 2
-  - Class: {fileID: 11400000, guid: 4d82dae378b3a421ab96efbf7de53589, type: 2}
-    Count: 8
+    Count: 12
+  - Class: {fileID: 11400000, guid: 39094c1227c7444489b0b52ccf9a099a, type: 2}
+    Count: 1

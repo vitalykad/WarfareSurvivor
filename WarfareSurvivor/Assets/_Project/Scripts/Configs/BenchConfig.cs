@@ -42,8 +42,9 @@ namespace WarfareSurvivor
             return false;
         }
 
-        [Tooltip("Сколько бойцов одного класса можно взять на старте.")]
-        [Min(1)] public int maxPerClass = 12;
+        [Tooltip("Сколько бойцов одного класса можно взять на старте. " +
+                 "Ноль — сколько угодно.")]
+        [Min(0)] public int maxPerClass;
 
         [Tooltip("Сколько всего бойцов нужно набрать, чтобы кнопка «В бой» " +
                  "стала доступна.")]
