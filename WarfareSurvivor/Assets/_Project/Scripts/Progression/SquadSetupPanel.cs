@@ -337,30 +337,93 @@ namespace WarfareSurvivor
             callback?.Invoke(chosen);
         }
 
+        /// <summary>Ключ памяти стенда.</summary>
+        const string MemoryKey = "bench.lastPick";
+
         /// <summary>
-        /// Запоминает набранное в файл настроек стенда.
+        /// Запоминает набранное — и в настройках проекта, и в памяти игрока.
         ///
-        /// Только в редакторе: на устройстве ассет не переживёт перезапуск,
-        /// а попытка его писать — лишняя работа в кадре старта.
+        /// Двумя способами, потому что каждый по отдельности дырявый.
+        /// Ассет виден в инспекторе и уезжает в гит вместе с проектом, но
+        /// в собранной игре его не записать, а в редакторе правка из плей-мода
+        /// может не дожить до диска: выход из игры перезагружает домен,
+        /// и помеченный грязным ассет, который никто не успел сохранить,
+        /// откатывается. Это и случалось — набор терялся через раз.
+        /// PlayerPrefs же работает и в сборке, и переживает перезагрузку
+        /// домена, но человеку его не видно.
+        ///
+        /// Классы пишутся ИМЕНЕМ АССЕТА, а не порядковым номером: список
+        /// классов на стенде меняется, и номера съезжают молча — стенд
+        /// подставил бы вместо снайпера первого попавшегося соседа.
         /// </summary>
         void Remember(List<SquadEntry> chosen)
         {
+            var line = new System.Text.StringBuilder();
+            foreach (var entry in chosen)
+            {
+                if (entry.Class == null || entry.Count <= 0) continue;
+                if (line.Length > 0) line.Append(';');
+                line.Append(entry.Class.name).Append(':').Append(entry.Count);
+            }
+
+            PlayerPrefs.SetString(MemoryKey, line.ToString());
+            PlayerPrefs.Save();
+
 #if UNITY_EDITOR
             if (bench == null) return;
             bench.lastPick = chosen.ToArray();
             UnityEditor.EditorUtility.SetDirty(bench);
+
+            // Сохраняем СРАЗУ: пометки «грязный» мало, см. выше.
+            UnityEditor.AssetDatabase.SaveAssets();
 #endif
         }
 
         void Restore()
         {
             if (bench == null) return;
+
+            // Память игрока свежее ассета: в неё пишет каждый запуск,
+            // включая тот, после которого редактор закрыли не сохраняясь.
+            var saved = PlayerPrefs.GetString(MemoryKey, string.Empty);
+            if (!string.IsNullOrEmpty(saved) && RestoreFrom(saved)) return;
+
             foreach (var klass in bench.classes)
             {
                 if (klass == null) continue;
                 int remembered = bench.RememberedCount(klass);
                 if (remembered > 0) picked[klass] = remembered;
             }
+        }
+
+        /// <summary>
+        /// Разбирает строку памяти. Возвращает false, если из неё не вышло
+        /// ни одного живого класса, — тогда стенд откатывается на ассет.
+        /// Классы могли переименовать, спрятать или удалить, и упираться
+        /// в мёртвую запись незачем.
+        /// </summary>
+        bool RestoreFrom(string saved)
+        {
+            bool any = false;
+
+            foreach (var pair in saved.Split(';'))
+            {
+                int colon = pair.LastIndexOf(':');
+                if (colon <= 0) continue;
+
+                string assetName = pair.Substring(0, colon);
+                if (!int.TryParse(pair.Substring(colon + 1), out int count) || count <= 0) continue;
+
+                foreach (var klass in bench.classes)
+                {
+                    if (klass == null || klass.name != assetName) continue;
+                    picked[klass] = count;
+                    any = true;
+                    break;
+                }
+            }
+
+            return any;
         }
 
         void Refresh()
