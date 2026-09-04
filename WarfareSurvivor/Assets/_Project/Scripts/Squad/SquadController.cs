@@ -311,6 +311,19 @@ namespace WarfareSurvivor
         List<SquadEntry> handpicked;
 
         /// <summary>
+        /// Состав, которым отряд ВЫШЕЛ на самом деле.
+        ///
+        /// Спрашивать об этом надо у отряда, а не у конфига: на стенде
+        /// состав набран руками и с конфигом не совпадает. Тир-ап, читавший
+        /// конфиг напрямую, из-за этого предлагал карточки классов, которых
+        /// в отряде нет вовсе.
+        /// </summary>
+        public IReadOnlyList<SquadEntry> Composition =>
+            handpicked != null && handpicked.Count > 0
+                ? (IReadOnlyList<SquadEntry>)handpicked
+                : config.squadComposition;
+
+        /// <summary>
         /// Создаёт отряд из состава, набранного на стенде.
         ///
         /// Конфиг при этом НЕ переписывается: стенд — инструмент, а

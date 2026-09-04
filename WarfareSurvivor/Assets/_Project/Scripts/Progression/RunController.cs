@@ -500,9 +500,10 @@ namespace WarfareSurvivor
         List<SurvivorClassSO> AllClasses()
         {
             var pool = new List<SurvivorClassSO>();
-            if (config.squadComposition == null) return pool;
+            var composition = squad.Composition;
+            if (composition == null) return pool;
 
-            foreach (var entry in config.squadComposition)
+            foreach (var entry in composition)
             {
                 if (entry.Class == null) continue;
 
@@ -539,7 +540,7 @@ namespace WarfareSurvivor
         /// <summary>Есть ли в стартовом составе другой класс той же роли.</summary>
         bool Replaced(SurvivorClassSO klass)
         {
-            foreach (var entry in config.squadComposition)
+            foreach (var entry in squad.Composition)
             {
                 if (entry.Class == null || entry.Count <= 0) continue;
                 if (entry.Class == klass) continue;
