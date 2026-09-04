@@ -27,6 +27,21 @@ namespace WarfareSurvivor
                  "классы» в инспекторе — руками сюда лазить незачем.")]
         public SurvivorClassSO[] classes = new SurvivorClassSO[0];
 
+        [Tooltip("Кого на стенд не пускать. Список переживает кнопку " +
+                 "«Собрать все классы»: без него спрятанный класс " +
+                 "возвращался бы на стенд при каждом пересборе списка, " +
+                 "и выглядело бы это как самовольная правка настроек.")]
+        public SurvivorClassSO[] hidden = new SurvivorClassSO[0];
+
+        /// <summary>Класс убран со стенда вручную.</summary>
+        public bool Hidden(SurvivorClassSO klass)
+        {
+            if (klass == null || hidden == null) return false;
+            for (int i = 0; i < hidden.Length; i++)
+                if (hidden[i] == klass) return true;
+            return false;
+        }
+
         [Tooltip("Сколько бойцов одного класса можно взять на старте.")]
         [Min(1)] public int maxPerClass = 12;
 

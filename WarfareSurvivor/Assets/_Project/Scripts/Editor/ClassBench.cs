@@ -29,7 +29,7 @@ namespace WarfareSurvivor
             foreach (var guid in AssetDatabase.FindAssets("t:SurvivorClassSO"))
             {
                 var klass = AssetDatabase.LoadAssetAtPath<SurvivorClassSO>(AssetDatabase.GUIDToAssetPath(guid));
-                if (klass != null && klass.prefab != null) found.Add(klass);
+                if (klass != null && klass.prefab != null && !bench.Hidden(klass)) found.Add(klass);
             }
 
             // По ролям, внутри роли — по имени: стенд раскладывает карточки
