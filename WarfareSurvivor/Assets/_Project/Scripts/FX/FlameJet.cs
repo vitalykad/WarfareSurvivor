@@ -116,22 +116,30 @@ namespace WarfareSurvivor
             // Умирая, ближние клубы остаются огнём и просто тают; в дым
             // уходят только дальние. Иначе три четверти струи с рождения
             // были бурыми, и огнемёт читался дымовой шашкой.
-            var dead = Color.Lerp(born, config.flameEmberColor, Mathf.Lerp(0.25f, 0.9f, along));
+            // Старея, клуб краснеет, а не буреет: бурый на песке читается
+            // пылью. Уголь в конфиге — это КРАСНЫЙ уголь, и в него уходят
+            // только дальние клубы, ближние лишь тают.
+            var dead = Color.Lerp(born, config.flameEmberColor, Mathf.Lerp(0.3f, 1f, along));
             dead.a = 0f;
 
             // Крупно и с запасом: клубы должны ПЕРЕКРЫВАТЬСЯ, иначе вместо
             // облака выходит редкая дымка. С предумноженной альфой наложение
             // не выбеливает — оно сгущает цвет, и это то, что нужно.
             float size = config.flameSize * Mathf.Lerp(0.45f, 1f, heat);
-            float from = size * Mathf.Lerp(0.35f, 0.8f, along) * Random.Range(0.85f, 1.15f);
-            float to = size * Mathf.Lerp(1f, 2.4f, along) * Random.Range(0.85f, 1.15f);
+            // Рост к концу ограничен: если дальние клубы вдвое крупнее
+            // ближних, тёмный кончик перекрывает всё облако, и огонь
+            // читается пылью.
+            float from = size * Mathf.Lerp(0.45f, 0.8f, along) * Random.Range(0.85f, 1.15f);
+            float to = size * Mathf.Lerp(1.1f, 1.6f, along) * Random.Range(0.85f, 1.15f);
 
             // Дальние клубы живут дольше и летят медленнее: облако у конца
             // должно висеть и расплываться, а не улетать за струю.
             float life = config.flameLife * Random.Range(0.9f, 1.3f) * Mathf.Lerp(0.8f, 1.4f, along);
             float speed = reach / Mathf.Max(0.05f, config.flameLife) * Random.Range(0.35f, 0.55f) * (1f - along * 0.5f);
 
-            var direction = (forward + side * Random.Range(-0.25f, 0.25f) * along).normalized;
+            // Вбок почти не расходятся: струя должна оставаться струёй,
+            // а не растекаться в лужу красного тумана по всему двору.
+            var direction = (forward + side * Random.Range(-0.12f, 0.12f) * along).normalized;
             Spawn(at, direction * speed + Vector3.up * Random.Range(0.3f, 1f),
                   from, to, Random.Range(1.15f, 1.45f), life, born, dead);
         }
@@ -160,8 +168,8 @@ namespace WarfareSurvivor
         /// </summary>
         static Color RampAt(float along)
         {
-            const float coreEnd = 0.2f;
-            const float bodyEnd = 0.72f;
+            const float coreEnd = 0.35f;
+            const float bodyEnd = 0.8f;
             if (along < coreEnd) return Color.Lerp(config.flameCoreColor, config.flameColor, along / coreEnd);
             if (along < bodyEnd) return config.flameColor;
             return Color.Lerp(config.flameColor, config.flameEmberColor, (along - bodyEnd) / (1f - bodyEnd));
@@ -258,6 +266,10 @@ namespace WarfareSurvivor
             // ядро держит цвет на песке, редкий край прибавляет свет.
             var shader = Shader.Find("WarfareSurvivor/GlowSprite");
             material = new Material(shader) { name = "Flame", mainTexture = Blob() };
+
+            // Без подсветки: с ней оранжевый уезжает в жёлтый и сливается
+            // с песком. Огню на этой земле нужен не свет, а насыщенность.
+            material.SetFloat("_Boost", 1.15f);
             return material;
         }
 
@@ -283,9 +295,11 @@ namespace WarfareSurvivor
                     float r = Mathf.Sqrt(u * u + v * v);
                     float density = r >= 1f ? 0f : 0.5f + 0.5f * Mathf.Cos(r * Mathf.PI);
 
-                    // Ещё площе, чем у кислоты: огонь плотнее облака, и
+                    // Куда площе, чем у кислоты: огонь плотнее облака, и
                     // плотная часть должна доходить почти до края клуба.
-                    float a = Mathf.Pow(density, 0.5f);
+                    // На полурадиусе — 0.8, у самого края — ещё 0.5: иначе
+                    // струя из тридцати клубов просвечивает песком, как туман.
+                    float a = Mathf.Pow(density, 0.3f);
                     pixels[y * size + x] = new Color(1f, 1f, 1f, a);
                 }
 

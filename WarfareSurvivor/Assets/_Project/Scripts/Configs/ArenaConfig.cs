@@ -697,23 +697,23 @@ namespace WarfareSurvivor
         [Header("Пламя огнемётчика")]
 
         [Tooltip("Цвет ядра клуба — самый горячий, в первый миг жизни.")]
-        public Color flameCoreColor = new Color(1f, 0.95f, 0.7f, 1f);
+        public Color flameCoreColor = new Color(1f, 0.85f, 0.4f, 1f);
 
         [Tooltip("Основной цвет пламени.")]
-        public Color flameColor = new Color(1f, 0.55f, 0.12f, 0.95f);
+        public Color flameColor = new Color(1f, 0.45f, 0.05f, 1f);
 
-        [Tooltip("Цвет угасающего клуба. Тёмный: на оранжевом песке " +
-                 "светлый уголь не отличить от земли.")]
-        public Color flameEmberColor = new Color(0.55f, 0.13f, 0.05f, 0.6f);
+        [Tooltip("Цвет угасающего клуба. КРАСНЫЙ, а не бурый: бурый на песке " +
+                 "читается пылью, а светлый не отличить от земли.")]
+        public Color flameEmberColor = new Color(0.75f, 0.14f, 0.05f, 0.75f);
 
         [Tooltip("Размер клуба, метров.")]
         public float flameSize = 1.1f;
 
         [Tooltip("Сколько живёт клуб, секунд.")]
-        public float flameLife = 0.45f;
+        public float flameLife = 0.55f;
 
         [Tooltip("Сколько клубов в секунду выбрасывает работающая струя.")]
-        public float flamePuffsPerSecond = 40f;
+        public float flamePuffsPerSecond = 60f;
 
         [Tooltip("За сколько секунд струя разгорается на полную длину.\n\n" +
                  "Это не украшение: пока огнемёт разогревается, он не достаёт " +
@@ -737,7 +737,7 @@ namespace WarfareSurvivor
         public float flameDrag = 2.5f;
 
         [Tooltip("Потолок клубов пламени в кадре.")]
-        public int maxFlamePuffs = 200;
+        public int maxFlamePuffs = 400;
 
         [Tooltip("Ширина струи у кончика на полном жаре, метров. Конус класса " +
                  "задаёт, КОГО задевает струя, а это — как широко она " +
