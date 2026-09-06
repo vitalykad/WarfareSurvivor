@@ -131,7 +131,7 @@ namespace WarfareSurvivor
             // а не тонуть в нём.
             float size = config.flameSize * Mathf.Lerp(0.5f, 1f, heat);
             float grow = Mathf.Lerp(1.25f, 0.9f, hot);
-            float from = size * Mathf.Lerp(0.75f, 0.4f, hot) * Random.Range(0.85f, 1.15f);
+            float from = size * Mathf.Lerp(0.6f, 0.32f, hot) * Random.Range(0.8f, 1.2f);
             float to = from * grow * Random.Range(0.9f, 1.2f);
 
             // Дым живёт лишь немногим дольше огня: если дать ему жить вдвое,
@@ -143,10 +143,15 @@ namespace WarfareSurvivor
             // а не растекаться в лужу тумана по всему двору.
             var direction = (forward + side * Random.Range(-0.12f, 0.12f) * along).normalized;
 
-            // Дым всплывает заметно выше огня — им струя и заканчивается.
-            float lift = Mathf.Lerp(1.4f, 0.35f, hot);
+            // Дым всплывает выше огня, но недалеко: улетая, он растягивается
+            // в бледные перья вокруг отряда и застилает сам огонь.
+            float lift = Mathf.Lerp(0.7f, 0.35f, hot);
+
+            // Вытянуты вдоль полёта, но умеренно: круглый клуб читается
+            // пузырём, а сильно вытянутый — пером, и струя превращается
+            // в размазанные крылья. Полторы длины к ширине — предел.
             Spawn(at, direction * speed + Vector3.up * lift,
-                  from, to, Random.Range(1.05f, 1.25f), life, born, dead);
+                  from, to, Random.Range(1.2f, 1.45f), life, born, dead);
         }
 
         /// <summary>Огонёк на горящем: тот же клуб, мельче и вверх.</summary>
@@ -186,8 +191,8 @@ namespace WarfareSurvivor
         public static Color HeatColor(float hot)
         {
             if (hot > 0.6f) return Color.Lerp(config.flameColor, config.flameCoreColor, (hot - 0.6f) / 0.4f);
-            if (hot > 0.22f) return Color.Lerp(config.flameEmberColor, config.flameColor, (hot - 0.22f) / 0.38f);
-            return Color.Lerp(config.flameSmokeColor, config.flameEmberColor, hot / 0.22f);
+            if (hot > 0.14f) return Color.Lerp(config.flameEmberColor, config.flameColor, (hot - 0.14f) / 0.46f);
+            return Color.Lerp(config.flameSmokeColor, config.flameEmberColor, hot / 0.14f);
         }
 
         static void Spawn(Vector3 at, Vector3 velocity, float from, float to, float stretch, float life,
@@ -378,12 +383,14 @@ namespace WarfareSurvivor
                     // Написанная по шейдерной привычке, она давала в центре
                     // клуба альфу 0.22 вместо единицы — весь огонь выходил
                     // бледной дымкой, сколько клубов ни добавляй.
-                    float a = 1f - Smooth(0.86f, 1f, r);
+                    float a = 1f - Smooth(0.62f, 1f, r);
 
                     // Внутри светлее к середине — так у клуба виден объём.
-                    // Затемнение к краю умеренное: сильное превращает
-                    // красный огонь на оранжевом песке в бурую грязь.
-                    float shade = Mathf.Lerp(1f, 0.78f, Smooth(0.15f, 0.95f, r));
+                    // Затемнения к краю НЕТ. Тёмный ободок обводит каждый
+                    // клуб по кругу, и струя рассыпается на пузыри — ровно
+                    // то, чем она и выглядела. Форму держит силуэт целого
+                    // облака, а не контур каждого шарика.
+                    const float shade = 1f;
 
                     pixels[y * size + x] = new Color(shade, shade, shade, a);
                 }

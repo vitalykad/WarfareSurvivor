@@ -713,13 +713,13 @@ namespace WarfareSurvivor
         public Color flameSmokeColor = new Color(0.30f, 0.26f, 0.30f, 0.45f);
 
         [Tooltip("Размер клуба, метров.")]
-        public float flameSize = 1.15f;
+        public float flameSize = 1.5f;
 
         [Tooltip("Сколько живёт клуб, секунд.")]
         public float flameLife = 0.5f;
 
         [Tooltip("Сколько клубов в секунду выбрасывает работающая струя.")]
-        public float flamePuffsPerSecond = 70f;
+        public float flamePuffsPerSecond = 80f;
 
         [Tooltip("За сколько секунд струя разгорается на полную длину.\n\n" +
                  "Это не украшение: пока огнемёт разогревается, он не достаёт " +
@@ -743,7 +743,7 @@ namespace WarfareSurvivor
         public float flameDrag = 2.5f;
 
         [Tooltip("Потолок клубов пламени в кадре.")]
-        public int maxFlamePuffs = 400;
+        public int maxFlamePuffs = 500;
 
         [Tooltip("Ширина струи у кончика на полном жаре, метров. Конус класса " +
                  "задаёт, КОГО задевает струя, а это — как широко она " +

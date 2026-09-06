@@ -191,14 +191,14 @@ MonoBehaviour:
   flameColor: {r: 1, g: 0.58, b: 0.06, a: 1}
   flameEmberColor: {r: 0.88, g: 0.18, b: 0.03, a: 0.95}
   flameSmokeColor: {r: 0.3, g: 0.26, b: 0.3, a: 0.45}
-  flameSize: 1.15
+  flameSize: 1.5
   flameLife: 0.5
-  flamePuffsPerSecond: 70
+  flamePuffsPerSecond: 80
   flameWarmUp: 0.55
   flameCoolDown: 0.9
   flameTickInterval: 0.15
   flameDrag: 2.5
-  maxFlamePuffs: 400
+  maxFlamePuffs: 500
   flameJetWidth: 2.6
   flameCoreLength: 0.45
   flameWag: 0.25
