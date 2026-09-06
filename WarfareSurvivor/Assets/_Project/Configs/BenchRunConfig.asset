@@ -187,18 +187,19 @@ MonoBehaviour:
   stunOrbitSpeed: 3.2
   stunStarColor: {r: 1, g: 0.92, b: 0.55, a: 1}
   maxStunStars: 96
-  flameCoreColor: {r: 1, g: 0.85, b: 0.4, a: 1}
-  flameColor: {r: 1, g: 0.45, b: 0.05, a: 1}
-  flameEmberColor: {r: 0.75, g: 0.14, b: 0.05, a: 0.75}
-  flameSize: 1.1
-  flameLife: 0.55
-  flamePuffsPerSecond: 60
+  flameCoreColor: {r: 1, g: 0.99, b: 0.92, a: 1}
+  flameColor: {r: 1, g: 0.58, b: 0.06, a: 1}
+  flameEmberColor: {r: 0.88, g: 0.18, b: 0.03, a: 0.95}
+  flameSmokeColor: {r: 0.3, g: 0.26, b: 0.3, a: 0.45}
+  flameSize: 1.15
+  flameLife: 0.5
+  flamePuffsPerSecond: 70
   flameWarmUp: 0.55
   flameCoolDown: 0.9
   flameTickInterval: 0.15
   flameDrag: 2.5
   maxFlamePuffs: 400
-  flameJetWidth: 1.8
+  flameJetWidth: 2.6
   flameCoreLength: 0.45
   flameWag: 0.25
   burnTickInterval: 0.35
