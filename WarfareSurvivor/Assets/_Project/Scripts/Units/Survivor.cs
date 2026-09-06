@@ -1193,6 +1193,9 @@ namespace WarfareSurvivor
 
             float reach = range * flameHeat;
 
+            // Тело струи — лента от дула; языки ниже — только поверх неё.
+            FlameJet.Stream(this, MuzzlePosition(), forward, reach, klass.coneAngle, flameHeat);
+
             // Клубы копятся ДРОБНО: при десяти клубах в секунду и шестидесяти
             // кадрах целое число за кадр всегда ноль, и струи не было бы вовсе.
             flamePuffDebt += config.flamePuffsPerSecond * flameHeat * Time.deltaTime;
@@ -1248,7 +1251,9 @@ namespace WarfareSurvivor
                 float along = reach > 0.01f ? Mathf.Sqrt(distSqr) / reach : 0f;
                 float falloff = Mathf.Lerp(1f, tip, Mathf.Clamp01(along));
 
-                zombie.TakeHit(perSecond * falloff * tick);
+                // Тихий урон: без вспышки на каждый тик, иначе горящий
+                // стоит белым и огня на нём не видно.
+                zombie.Scorch(perSecond * falloff * tick);
 
                 // Поджиг слабее и на холодной струе, и на её конце: иначе
                 // едва тлеющий факел поджигал бы так же, как разогретый.

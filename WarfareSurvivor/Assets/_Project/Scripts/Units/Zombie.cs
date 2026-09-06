@@ -332,6 +332,9 @@ namespace WarfareSurvivor
             burnUntil = 0f;
             burnDps = 0f;
             stunUntil = 0f;
+            scorchPending = 0f;
+            scorchFlushTime = 0f;
+            quietHit = false;
             ApplyMaterial(tierMaterial);
 
             target = null;
@@ -369,6 +372,33 @@ namespace WarfareSurvivor
             if (dying) return;
             health.TakeDamage(damage, transform.position);
         }
+
+        /// <summary>
+        /// Урон от огня: тот же урон, но БЕЗ вспышки и с цифрами пачкой.
+        ///
+        /// Струя бьёт семь раз в секунду, горение — три. Через обычный
+        /// удар каждый тик белил зомби вспышкой и выпускал цифру: горящий
+        /// стоял белым силуэтом, а над головой у него рос столб из цифр.
+        /// Огонь при этом не читался вовсе — его перекрывала вспышка.
+        ///
+        /// Цифры копятся и вылетают одной раз в полсекунды: игроку важно,
+        /// СКОЛЬКО снимает огонь, а не сколько раз в секунду он это делает.
+        /// </summary>
+        public void Scorch(float damage)
+        {
+            if (dying || damage <= 0f) return;
+
+            quietHit = true;
+            health.TakeDamage(damage, transform.position);
+            quietHit = false;
+        }
+
+        /// <summary>Урон идёт тихим путём: без вспышки, цифра в копилку.</summary>
+        bool quietHit;
+
+        /// <summary>Накопленный урон огнём, ещё не показанный цифрой.</summary>
+        float scorchPending;
+        float scorchFlushTime;
 
         /// <summary>
         /// Поджигает. Повторное попадание ПРОДЛЕВАЕТ горение, а не складывает
@@ -439,7 +469,19 @@ namespace WarfareSurvivor
             // Урон идёт ТИКАМИ, а не каждый кадр: при двух сотнях горящих
             // покадровое начисление — это две сотни вызовов урона в кадр
             // ради той же самой цифры.
-            health.TakeDamage(burnDps * step, transform.position);
+            Scorch(burnDps * step);
+        }
+
+        /// <summary>Выпускает накопленную цифру огня. Зовётся из Update.</summary>
+        void FlushScorch()
+        {
+            if (scorchFlushTime <= 0f || Time.time < scorchFlushTime) return;
+
+            if (scorchPending >= 0.5f)
+                DamagePopup.Spawn(transform.position + Vector3.up * PopupHeight(), scorchPending);
+
+            scorchPending = 0f;
+            scorchFlushTime = 0f;
         }
 
         /// <summary>Копия материала тира со свечением огня. Текстуру сохраняем.</summary>
@@ -496,6 +538,13 @@ namespace WarfareSurvivor
 
         void OnDamaged(float amount, Vector3 point)
         {
+            if (quietHit)
+            {
+                scorchPending += amount;
+                if (scorchFlushTime <= 0f) scorchFlushTime = Time.time + 0.5f;
+                return;
+            }
+
             // Цифра вылетает из зомби, а не из бойца: игрок смотрит туда,
             // куда стреляет.
             DamagePopup.Spawn(point + Vector3.up * PopupHeight(), amount);
@@ -622,6 +671,7 @@ namespace WarfareSurvivor
 
             PulseEmission();
             UpdateBurning();
+            FlushScorch();
 
             if (dying)
             {
