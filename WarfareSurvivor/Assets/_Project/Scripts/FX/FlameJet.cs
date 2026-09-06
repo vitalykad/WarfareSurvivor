@@ -4,19 +4,23 @@ using UnityEngine;
 namespace WarfareSurvivor
 {
     /// <summary>
-    /// Пламя: струя огнемёта, языки вокруг неё и огоньки на горящих зомби.
+    /// Пламя: струя огнемёта, клубы вокруг неё и огоньки на горящих зомби.
     ///
-    /// Струя — это ЛЕНТА от дула к кончику, а не россыпь клубов. Первая
-    /// версия рисовала огонь мягкими круглыми клубами, и он читался
-    /// дымкой: у клуба нет ни формы, ни края. Огонь узнают по рваному
-    /// краю и языкам, а их даёт шум в шейдере — лента только несёт
-    /// силуэт, по которому этот шум ползёт от дула наружу.
+    /// Огонь рисуется МЯГКИМИ КЛУБАМИ — теми же косинусными куполами, что
+    /// и кислота плевуна, на том же шейдере. Одна коробка на все эффекты:
+    /// версия с шумом и тремя лентами цвета выглядела как из комикса
+    /// и рядом с кислотой читалась чужой.
     ///
-    /// Языки поверх ленты — те же силуэты, только вытянутые по направлению
-    /// полёта и сгорающие клочьями. Одна система на струю, взрыв ракеты
-    /// и горящего зомби нарочно: огонь на враге — это тот же огонь, только
-    /// меньше, и если рисовать их разным, поджиг перестаёт читаться
-    /// как следствие струи.
+    /// Форма взята с настоящего огнемёта: у дула струя узкая и белая, дальше
+    /// расходится в широкое рыхлое оранжевое облако, а на излёте темнеет
+    /// и растворяется в дым. Поэтому клуб окрашивается и размеряется по тому,
+    /// ГДЕ вдоль струи он родился, а не только по возрасту: у дула — мелкий
+    /// и белый, у конца — крупный и тёмный. У дула поверх клубов лежит тонкий
+    /// светлый луч — то самое белое ядро, по которому огнемёт и узнают.
+    ///
+    /// Одна система на струю, взрыв ракеты и горящего зомби нарочно: огонь
+    /// на враге — это тот же огонь, только меньше, и если рисовать их разным,
+    /// поджиг перестаёт читаться как следствие струи.
     /// </summary>
     public class FlameJet : MonoBehaviour
     {
@@ -26,15 +30,11 @@ namespace WarfareSurvivor
         static Camera view;
         static Transform root;
         static Material material;
-        static Material streamMaterial;
-        static Mesh tongueMesh;
+        static Mesh puffMesh;
         static int nextVictim;
 
-        // Каждый язык шумит со своего места, иначе они — копии друг друга.
-        static readonly System.Random offsets = new System.Random(7);
-
         Mesh mesh;
-        readonly Vector3[] tongues = new Vector3[4];
+        readonly Color[] corners = new Color[4];
 
         Vector3 velocity;
         float bornTime;
@@ -42,7 +42,8 @@ namespace WarfareSurvivor
         float startSize;
         float endSize;
         float stretch;
-        Vector2 noiseShift;
+        Color bornColor;
+        Color deadColor;
 
         public static void Configure(ArenaConfig cfg, Camera camera)
         {
@@ -55,46 +56,14 @@ namespace WarfareSurvivor
                 All.Clear();
                 Streams.Clear();
             }
-
-            ApplyLook();
-        }
-
-        /// <summary>
-        /// Переносит настройки пламени из конфига в материал.
-        ///
-        /// Вызывается при старте и при каждом появлении струи: цвета
-        /// и пороги крутят в инспекторе прямо во время игры, и ждать
-        /// перезапуска сцены, чтобы увидеть результат, — значит крутить
-        /// вслепую.
-        /// </summary>
-        static void ApplyLook()
-        {
-            if (config == null) return;
-            Tune(FlameMaterial());
-            Tune(StreamMaterial());
-        }
-
-        static void Tune(Material m)
-        {
-            m.SetVector("_NoiseScale", new Vector4(config.flameNoiseScale.x, config.flameNoiseScale.y, 0f, 0f));
-            m.SetFloat("_Flow", config.flameFlow);
-            m.SetFloat("_BandMid", config.flameBandMid);
-            m.SetFloat("_BandCore", config.flameBandCore);
-            m.SetFloat("_Soft", config.flameSoftness);
-            m.SetColor("_CoreColor", config.flameCoreColor);
-            m.SetColor("_MidColor", config.flameColor);
-            m.SetColor("_EdgeColor", config.flameEmberColor);
         }
 
         // --- струя ----------------------------------------------------------
 
         /// <summary>
         /// Струя работающего огнемёта. Зовётся КАЖДЫЙ КАДР, пока он горит:
-        /// лента перестраивается под текущее направление и жар, а если
-        /// её перестали кормить — гаснет сама.
-        ///
-        /// Владелец — ключ: у каждого огнемётчика своя лента, и сколько
-        /// их в отряде, столько и лент.
+        /// луч у дула перестраивается под направление и жар, а если его
+        /// перестали кормить — гаснет сам.
         /// </summary>
         public static void Stream(object owner, Vector3 origin, Vector3 forward,
                                   float reach, float angleDegrees, float heat)
@@ -103,84 +72,119 @@ namespace WarfareSurvivor
 
             if (!Streams.TryGetValue(owner, out var stream) || stream == null)
             {
-                stream = FlameStream.Create(root, StreamMaterial());
+                stream = FlameStream.Create(root, FlameMaterial());
                 Streams[owner] = stream;
-                ApplyLook();
             }
 
             stream.Feed(config, view, origin, forward, reach, angleDegrees, heat);
         }
 
-        // --- языки ----------------------------------------------------------
+        // --- клубы ----------------------------------------------------------
 
         /// <summary>
-        /// Один язык работающей струи.
+        /// Один клуб работающей струи.
         ///
-        /// Языки рождаются в дальней половине струи и летят дальше неё:
-        /// лента даёт телу огня форму, языки — движение и то, что
-        /// огонь не кончается ровно по линейке.
+        /// Рождается где-то вдоль струи, и место рождения решает всё: цвет,
+        /// размер, время жизни. Клубы летят ОТ БОЙЦА и растут по дороге —
+        /// огнемёт узнаётся по движению наружу, неподвижный конус читается
+        /// нарисованной зоной, как у кислоты.
         /// </summary>
         public static void Puff(Vector3 origin, Vector3 forward, float reach, float angleDegrees, float heat)
         {
             if (config == null || root == null) return;
 
-            // Языки рождаются ВНУТРИ ленты, в её дальней половине, и летят
-            // дальше по струе. Первая версия раскидывала их по всему конусу
-            // класса, и огонь читался веером вокруг отряда, а не струёй.
-            float along = 0.55f + 0.4f * Mathf.Sqrt(Random.value);
-            float width = FlameStream.WidthAt(config, reach, angleDegrees, heat, Mathf.Clamp01(along));
-
             forward.y = 0f;
+            if (forward.sqrMagnitude < 0.0001f) return;
             forward.Normalize();
+
+            // Равномерно по длине: у дула клубов столько же, сколько у конца,
+            // но у дула они мелкие и плотные, у конца — крупные и редкие
+            // на вид. Так и выглядит факел: узкая яркая ножка, широкая шапка.
+            float along = Random.Range(0.08f, 1f);
+            float width = FlameStream.WidthAt(config, reach, angleDegrees, heat, along);
+
             var side = Vector3.Cross(Vector3.up, forward);
-            var at = origin + forward * (reach * along) + side * Random.Range(-width * 0.5f, width * 0.5f);
+            var at = origin + forward * (reach * along)
+                            + side * Random.Range(-width * 0.5f, width * 0.5f)
+                            + Vector3.up * (0.1f * along);
 
-            // Медленно и недалеко: язык — это лепесток, отслоившийся от
-            // струи, а не снаряд. Быстрые языки улетали за метры от неё
-            // и ложились на землю пятнами, которые читались лужами.
-            float life = config.flameLife * Random.Range(0.6f, 0.9f);
-            float speed = reach / Mathf.Max(0.05f, config.flameLife) * Random.Range(0.15f, 0.3f);
+            // Цвет по месту: белое ядро у дула, оранжевое тело, тёмный уголь
+            // на излёте. К смерти каждый клуб ещё темнеет и растворяется —
+            // это и есть дым.
+            var born = RampAt(along);
+
+            // Умирая, ближние клубы остаются огнём и просто тают; в дым
+            // уходят только дальние. Иначе три четверти струи с рождения
+            // были бурыми, и огнемёт читался дымовой шашкой.
+            var dead = Color.Lerp(born, config.flameEmberColor, Mathf.Lerp(0.25f, 0.9f, along));
+            dead.a = 0f;
+
+            // Крупно и с запасом: клубы должны ПЕРЕКРЫВАТЬСЯ, иначе вместо
+            // облака выходит редкая дымка. С предумноженной альфой наложение
+            // не выбеливает — оно сгущает цвет, и это то, что нужно.
             float size = config.flameSize * Mathf.Lerp(0.45f, 1f, heat);
+            float from = size * Mathf.Lerp(0.35f, 0.8f, along) * Random.Range(0.85f, 1.15f);
+            float to = size * Mathf.Lerp(1f, 2.4f, along) * Random.Range(0.85f, 1.15f);
 
-            // Чуть в сторону: языки на краю струи расходятся, как у факела.
-            var direction = (forward + side * Random.Range(-0.35f, 0.35f)).normalized;
+            // Дальние клубы живут дольше и летят медленнее: облако у конца
+            // должно висеть и расплываться, а не улетать за струю.
+            float life = config.flameLife * Random.Range(0.9f, 1.3f) * Mathf.Lerp(0.8f, 1.4f, along);
+            float speed = reach / Mathf.Max(0.05f, config.flameLife) * Random.Range(0.35f, 0.55f) * (1f - along * 0.5f);
 
-            Spawn(at, direction * speed + Vector3.up * Random.Range(0.4f, 1f),
-                  size * Random.Range(0.6f, 0.9f),
-                  size * Random.Range(0.9f, 1.25f),
-                  Random.Range(1.15f, 1.5f),
-                  life);
+            var direction = (forward + side * Random.Range(-0.25f, 0.25f) * along).normalized;
+            Spawn(at, direction * speed + Vector3.up * Random.Range(0.3f, 1f),
+                  from, to, Random.Range(1.15f, 1.45f), life, born, dead);
         }
 
-        /// <summary>Огонёк на горящем: тот же язык, мельче и вверх.</summary>
+        /// <summary>Огонёк на горящем: тот же клуб, мельче и вверх.</summary>
         public static void Wisp(Vector3 at)
         {
             if (config == null || root == null) return;
 
+            var born = Color.Lerp(config.flameCoreColor, config.flameColor, 0.6f);
+            var dead = config.flameEmberColor;
+            dead.a = 0f;
+
             Spawn(at + Random.insideUnitSphere * 0.25f,
                   Vector3.up * Random.Range(0.9f, 1.6f),
-                  config.flameSize * 0.4f,
-                  config.flameSize * 0.75f,
-                  Random.Range(1.3f, 1.8f),
-                  config.flameLife * 0.9f);
+                  config.flameSize * 0.3f,
+                  config.flameSize * 0.8f,
+                  Random.Range(1.2f, 1.6f),
+                  config.flameLife * 0.9f, born, dead);
         }
 
-        static void Spawn(Vector3 at, Vector3 velocity, float from, float to, float stretch, float life)
+        /// <summary>
+        /// Цвет струи на доле её длины: белое ядро коротко, оранжевое тело
+        /// держится до самого конца, уголь — только на излёте. Как на снимке
+        /// настоящего огнемёта: тёмное там лишь то, что уже отгорело.
+        /// </summary>
+        static Color RampAt(float along)
         {
-            var tongue = Rent();
-            if (tongue == null) return;
+            const float coreEnd = 0.2f;
+            const float bodyEnd = 0.72f;
+            if (along < coreEnd) return Color.Lerp(config.flameCoreColor, config.flameColor, along / coreEnd);
+            if (along < bodyEnd) return config.flameColor;
+            return Color.Lerp(config.flameColor, config.flameEmberColor, (along - bodyEnd) / (1f - bodyEnd));
+        }
 
-            tongue.transform.position = at;
-            tongue.velocity = velocity;
-            tongue.startSize = from;
-            tongue.endSize = to;
-            tongue.stretch = stretch;
-            tongue.bornTime = Time.time;
-            tongue.dieTime = Time.time + Mathf.Max(0.05f, life);
-            tongue.noiseShift = new Vector2((float)offsets.NextDouble() * 8f, (float)offsets.NextDouble() * 8f);
-            tongue.Face();
-            tongue.Shape(0f);
-            tongue.gameObject.SetActive(true);
+        static void Spawn(Vector3 at, Vector3 velocity, float from, float to, float stretch, float life,
+                          Color born, Color dead)
+        {
+            var puff = Rent();
+            if (puff == null) return;
+
+            puff.transform.position = at;
+            puff.velocity = velocity;
+            puff.startSize = from;
+            puff.endSize = to;
+            puff.stretch = stretch;
+            puff.bornTime = Time.time;
+            puff.dieTime = Time.time + Mathf.Max(0.05f, life);
+            puff.bornColor = born;
+            puff.deadColor = dead;
+            puff.Face();
+            puff.Shape(0f);
+            puff.gameObject.SetActive(true);
         }
 
         static FlameJet Rent()
@@ -202,7 +206,7 @@ namespace WarfareSurvivor
 
         static FlameJet Create()
         {
-            var go = new GameObject("FlameTongue");
+            var go = new GameObject("FlamePuff");
             go.transform.SetParent(root, false);
 
             var filter = go.AddComponent<MeshFilter>();
@@ -212,223 +216,85 @@ namespace WarfareSurvivor
             renderer.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
             renderer.sharedMaterial = FlameMaterial();
 
-            var tongue = go.AddComponent<FlameJet>();
-
-            // Меш у каждого языка свой: в нём живут сдвиг шума и эрозия,
-            // а они у языков разные.
-            tongue.mesh = Object.Instantiate(TongueMesh());
-            tongue.mesh.name = "FlameTongue";
-            tongue.mesh.MarkDynamic();
-            filter.sharedMesh = tongue.mesh;
+            var puff = go.AddComponent<FlameJet>();
+            puff.mesh = Object.Instantiate(PuffMesh());
+            puff.mesh.name = "FlamePuff";
+            puff.mesh.MarkDynamic();
+            filter.sharedMesh = puff.mesh;
 
             go.SetActive(false);
-            return tongue;
+            return puff;
         }
 
-        /// <summary>
-        /// Квад языка: основание в нуле, растёт вверх по локальной оси Y.
-        /// Пивот у основания, а не в центре: язык растёт от точки, где
-        /// родился, а не раздувается вокруг неё.
-        /// </summary>
-        static Mesh TongueMesh()
+        /// <summary>Квад клуба с центром в нуле: растёт вокруг точки рождения.</summary>
+        static Mesh PuffMesh()
         {
-            if (tongueMesh != null) return tongueMesh;
+            if (puffMesh != null) return puffMesh;
 
-            tongueMesh = new Mesh { name = "FlameTongueBase" };
-            tongueMesh.vertices = new[]
+            puffMesh = new Mesh { name = "FlamePuffBase" };
+            puffMesh.vertices = new[]
             {
-                new Vector3(-0.5f, 0f, 0f), new Vector3(0.5f, 0f, 0f),
-                new Vector3(-0.5f, 1f, 0f), new Vector3(0.5f, 1f, 0f)
+                new Vector3(-0.5f, -0.5f, 0f), new Vector3(0.5f, -0.5f, 0f),
+                new Vector3(-0.5f,  0.5f, 0f), new Vector3(0.5f,  0.5f, 0f)
             };
-            tongueMesh.uv = new[]
+            puffMesh.uv = new[]
             {
                 new Vector2(0f, 0f), new Vector2(1f, 0f),
                 new Vector2(0f, 1f), new Vector2(1f, 1f)
             };
-            tongueMesh.colors = new[] { Color.white, Color.white, Color.white, Color.white };
-            tongueMesh.SetUVs(1, new List<Vector3> { Vector3.zero, Vector3.zero, Vector3.zero, Vector3.zero });
-            tongueMesh.triangles = new[] { 0, 2, 1, 2, 3, 1 };
-            tongueMesh.RecalculateBounds();
-            return tongueMesh;
+            puffMesh.colors = new[] { Color.white, Color.white, Color.white, Color.white };
+            puffMesh.triangles = new[] { 0, 2, 1, 2, 3, 1 };
+            puffMesh.RecalculateBounds();
+            return puffMesh;
         }
 
-        // --- материал и текстуры --------------------------------------------
+        // --- материал и текстура --------------------------------------------
 
         static Material FlameMaterial()
         {
             if (material != null) return material;
 
-            var shader = Shader.Find("WarfareSurvivor/Flame");
-            if (shader == null)
-            {
-                Debug.LogError("[FlameJet] Не нашёлся шейдер WarfareSurvivor/Flame — " +
-                               "проверь, что он включён в сборку (ShaderInclusion).");
-                shader = Shader.Find("WarfareSurvivor/GlowSprite");
-            }
-
-            material = new Material(shader) { name = "Flame", mainTexture = Teardrop() };
-            material.SetTexture("_Noise", Noise());
+            // Тот же шейдер, что у кислоты: предумноженная альфа, плотное
+            // ядро держит цвет на песке, редкий край прибавляет свет.
+            var shader = Shader.Find("WarfareSurvivor/GlowSprite");
+            material = new Material(shader) { name = "Flame", mainTexture = Blob() };
             return material;
         }
 
         /// <summary>
-        /// Материал ленты: тот же шейдер, но силуэт струи, а не капли.
-        /// Капля на ленте давала сплошную белую полосу по оси — ядро
-        /// у капли тянется во всю длину. У струи ядро должно мерцать.
+        /// Косинусный купол — как у клуба кислоты, и показатель ниже единицы
+        /// по той же причине: плотная часть занимает почти весь клуб, иначе
+        /// облако выходит дымкой, а не огнём.
         /// </summary>
-        static Material StreamMaterial()
-        {
-            if (streamMaterial != null) return streamMaterial;
-
-            streamMaterial = new Material(FlameMaterial()) { name = "FlameStream", mainTexture = JetMask() };
-            return streamMaterial;
-        }
-
-        /// <summary>
-        /// Силуэт струи: x — поперёк, y — от дула к кончику.
-        ///
-        /// Потолок маски НИЖЕ единицы нарочно: ядро в шейдере появляется
-        /// там, где маска перекрывает шум с запасом, и при потолке в 0.95
-        /// оно вспыхивает лишь на впадинах шума — то есть мерцает, как
-        /// сердцевина настоящего факела, а не лежит белой полосой.
-        /// </summary>
-        static Texture2D JetMask()
+        static Texture2D Blob()
         {
             const int size = 64;
             var texture = new Texture2D(size, size, TextureFormat.RGBA32, mipChain: true)
             {
-                name = "FlameJetMask", wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear
+                name = "FlameBlob", wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear
             };
 
             var pixels = new Color32[size * size];
             for (int y = 0; y < size; y++)
-            {
-                float v = (y + 0.5f) / size;
-
-                // От дула плотно, к кончику всё реже: у конца остаётся
-                // только край и середина, ядро гаснет раньше.
-                float along = Mathf.Lerp(0.95f, 0.45f, Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.3f, 1f, v)));
-
                 for (int x = 0; x < size; x++)
                 {
-                    float u = Mathf.Abs((x + 0.5f) / size * 2f - 1f);
-                    float across = Mathf.Pow(Mathf.Clamp01(1f - u), 0.8f);
-                    pixels[y * size + x] = new Color(1f, 1f, 1f, across * along);
-                }
-            }
+                    float u = (x + 0.5f) / size * 2f - 1f;
+                    float v = (y + 0.5f) / size * 2f - 1f;
+                    float r = Mathf.Sqrt(u * u + v * v);
+                    float density = r >= 1f ? 0f : 0.5f + 0.5f * Mathf.Cos(r * Mathf.PI);
 
-            texture.SetPixels32(pixels);
-            texture.Apply();
-            return texture;
-        }
-
-        /// <summary>
-        /// Силуэт языка: капля остриём вверх. Альфа — единица по оси,
-        /// ноль по краю: по ней шейдер режет цветные ленты, и ядро
-        /// ложится вдоль оси, а край темнеет.
-        /// </summary>
-        static Texture2D Teardrop()
-        {
-            const int size = 64;
-            var texture = new Texture2D(size, size, TextureFormat.RGBA32, mipChain: true)
-            {
-                name = "FlameTeardrop", wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear
-            };
-
-            var pixels = new Color32[size * size];
-            for (int y = 0; y < size; y++)
-            {
-                float v = (y + 0.5f) / size;
-
-                // Ширина: круглое основание, самое широкое в нижней трети,
-                // к вершине сходится в остриё.
-                // Показатель ниже единицы — как у купола кислоты: широкое
-                // тело почти до самого верха, остриё короткое.
-                float width = Mathf.Pow(Mathf.Sin(Mathf.PI * Mathf.Clamp01((v + 0.12f) / 1.2f)), 0.5f);
-
-                for (int x = 0; x < size; x++)
-                {
-                    float u = Mathf.Abs((x + 0.5f) / size * 2f - 1f);
-                    float across = width > 0.001f ? u / width : 2f;
-                    float a = Mathf.Clamp01(1f - across * across);
-
-                    // К острию силуэт слабеет: там остаётся только край,
-                    // а ядро гаснет раньше, чем язык кончается.
-                    a *= 1f - v * 0.35f;
+                    // Ещё площе, чем у кислоты: огонь плотнее облака, и
+                    // плотная часть должна доходить почти до края клуба.
+                    float a = Mathf.Pow(density, 0.5f);
                     pixels[y * size + x] = new Color(1f, 1f, 1f, a);
                 }
-            }
 
             texture.SetPixels32(pixels);
             texture.Apply();
             return texture;
         }
 
-        /// <summary>
-        /// Бесшовный шум: три октавы, склеенные по краям. Бесшовность
-        /// обязательна — шум ТЕЧЁТ, и любой шов проезжал бы по языку
-        /// раз в секунду ровной полосой.
-        /// </summary>
-        public static Texture2D Noise()
-        {
-            const int size = 128;
-            var texture = new Texture2D(size, size, TextureFormat.RGBA32, mipChain: true)
-            {
-                name = "FlameNoise", wrapMode = TextureWrapMode.Repeat, filterMode = FilterMode.Bilinear
-            };
-
-            var values = new float[size * size];
-            float min = float.MaxValue, max = float.MinValue;
-
-            for (int y = 0; y < size; y++)
-                for (int x = 0; x < size; x++)
-                {
-                    float u = (float)x / size;
-                    float v = (float)y / size;
-
-                    // Четыре выборки по углам тора, смешанные билинейно:
-                    // так края сходятся сами.
-                    float n = Fbm(u, v) * (1f - u) * (1f - v)
-                            + Fbm(u + 1f, v) * u * (1f - v)
-                            + Fbm(u, v + 1f) * (1f - u) * v
-                            + Fbm(u + 1f, v + 1f) * u * v;
-
-                    values[y * size + x] = n;
-                    min = Mathf.Min(min, n);
-                    max = Mathf.Max(max, n);
-                }
-
-            var pixels = new Color32[size * size];
-            for (int i = 0; i < values.Length; i++)
-            {
-                float n = Mathf.InverseLerp(min, max, values[i]);
-                byte b = (byte)Mathf.RoundToInt(n * 255f);
-                pixels[i] = new Color32(b, b, b, 255);
-            }
-
-            texture.SetPixels32(pixels);
-            texture.Apply();
-            return texture;
-        }
-
-        static float Fbm(float u, float v)
-        {
-            // Две октавы, а не три, и крупный период: мелкий шум давал
-            // рваные, «живописные» языки, а игра рисована плоско и крупно —
-            // клубы кислоты у плевуна гладкие, в два тона. Огонь должен
-            // быть из той же коробки: большие округлые лепестки.
-            const float period = 2f;
-            float sum = 0f, amp = 1f, freq = period;
-            for (int o = 0; o < 2; o++)
-            {
-                sum += Mathf.PerlinNoise(u * freq + 11.3f, v * freq + 7.1f) * amp;
-                amp *= 0.5f;
-                freq *= 2f;
-            }
-            return sum;
-        }
-
-        // --- жизнь языка ----------------------------------------------------
+        // --- жизнь клуба ----------------------------------------------------
 
         void LateUpdate()
         {
@@ -448,9 +314,9 @@ namespace WarfareSurvivor
         }
 
         /// <summary>
-        /// Разворот к камере с наклоном по полёту: язык вытянут туда, куда
-        /// летит. Круглый клуб не показывает направления вовсе — а огнемёт
-        /// узнают именно по тому, что огонь идёт НАРУЖУ.
+        /// К камере, с лёгким наклоном по полёту: клуб чуть вытянут туда,
+        /// куда летит. Чуть — потому что сильно вытянутый клуб перестаёт
+        /// быть куполом и снова становится языком из комикса.
         /// </summary>
         void Face()
         {
@@ -467,35 +333,36 @@ namespace WarfareSurvivor
             float size = Mathf.Lerp(startSize, endSize, life);
             transform.localScale = new Vector3(size, size * stretch, 1f);
 
-            // Эрозия растёт с возрастом: язык не тает, а сгорает клочьями.
-            float erosion = Mathf.Pow(life, 1.3f) * 0.95f;
-            var t = new Vector3(noiseShift.x, noiseShift.y, erosion);
-            for (int i = 0; i < 4; i++) tongues[i] = t;
-            mesh.SetUVs(1, tongues);
+            // Цвет уходит к дыму, прозрачность — по квадрату: клуб держится
+            // плотным большую часть жизни и растворяется в самом конце.
+            var color = Color.Lerp(bornColor, deadColor, life);
+            color.a = bornColor.a * (1f - life * life);
+
+            for (int i = 0; i < corners.Length; i++) corners[i] = color;
+            mesh.colors = corners;
         }
     }
 
     /// <summary>
-    /// Лента струи: полоса от дула к кончику, развёрнутая к камере вокруг
-    /// своей оси. Расширяется по конусу класса, у кончика мотается
-    /// и сгорает в языки — эрозия растёт вдоль ленты.
+    /// Луч у дула: тонкая светлая полоса, развёрнутая к камере вокруг своей
+    /// оси. Это белое ядро настоящего огнемёта — оно короткое и гаснет
+    /// там, где струя расходится в облако.
     /// </summary>
     public class FlameStream : MonoBehaviour
     {
-        const int Segments = 14;
+        const int Segments = 10;
 
         Mesh mesh;
         float lastFed = -1f;
+        float noiseShift;
 
         readonly Vector3[] vertices = new Vector3[(Segments + 1) * 2];
         readonly Vector2[] uv = new Vector2[(Segments + 1) * 2];
-        readonly Vector3[] tongue = new Vector3[(Segments + 1) * 2];
         readonly Color[] colors = new Color[(Segments + 1) * 2];
-        float noiseShift;
 
         public static FlameStream Create(Transform root, Material material)
         {
-            var go = new GameObject("FlameStream");
+            var go = new GameObject("FlameCore");
             go.transform.SetParent(root, false);
 
             var filter = go.AddComponent<MeshFilter>();
@@ -507,7 +374,7 @@ namespace WarfareSurvivor
 
             var stream = go.AddComponent<FlameStream>();
             stream.noiseShift = Random.value * 8f;
-            stream.mesh = new Mesh { name = "FlameStream" };
+            stream.mesh = new Mesh { name = "FlameCore" };
             stream.mesh.MarkDynamic();
 
             var triangles = new int[Segments * 6];
@@ -522,7 +389,6 @@ namespace WarfareSurvivor
             stream.mesh.vertices = stream.vertices;
             stream.mesh.uv = stream.uv;
             stream.mesh.colors = stream.colors;
-            stream.mesh.SetUVs(1, stream.tongue);
             stream.mesh.triangles = triangles;
             filter.sharedMesh = stream.mesh;
 
@@ -531,8 +397,8 @@ namespace WarfareSurvivor
         }
 
         /// <summary>
-        /// Ширина струи на доле её длины. Одна формула на ленту и языки:
-        /// языки должны рождаться внутри ленты, а не рядом с ней.
+        /// Ширина струи на доле её длины. Одна формула на луч и клубы:
+        /// клубы должны рождаться внутри струи, а не рядом с ней.
         ///
         /// У кончика — по конусу класса, но не шире настройки: картинка
         /// чуть уже зоны поражения, чтобы край не обещал урона, которого нет.
@@ -541,8 +407,11 @@ namespace WarfareSurvivor
         {
             float coneWidth = 2f * reach * Mathf.Tan(Mathf.Clamp(angleDegrees, 1f, 170f) * 0.5f * Mathf.Deg2Rad);
             float tipWidth = Mathf.Min(coneWidth, config.flameJetWidth) * Mathf.Lerp(0.55f, 1f, heat);
-            float baseWidth = Mathf.Min(0.35f, tipWidth * 0.5f);
-            return Mathf.Lerp(baseWidth, tipWidth, t);
+            float baseWidth = Mathf.Min(0.3f, tipWidth * 0.4f);
+
+            // Расходится не по прямой, а по корню: узкая ножка держится
+            // дольше, шапка распахивается ближе к концу — как на снимке.
+            return Mathf.Lerp(baseWidth, tipWidth, Mathf.Sqrt(Mathf.Clamp01(t)));
         }
 
         public void Feed(ArenaConfig config, Camera view, Vector3 origin, Vector3 forward,
@@ -561,18 +430,24 @@ namespace WarfareSurvivor
             if (side.sqrMagnitude < 0.0001f) side = Vector3.Cross(forward, Vector3.up);
             side.Normalize();
 
-            // Мотание: у дула струя прибита к стволу, у кончика гуляет.
+            // Луч короче струи: он гаснет там, где начинается облако.
+            float coreLength = Mathf.Clamp01(config.flameCoreLength);
+            float length = reach * coreLength;
             float wag = config.flameWag;
             float time = Time.time;
+
+            var core = config.flameCoreColor;
+            var white = Color.Lerp(core, Color.white, 0.6f);
 
             for (int s = 0; s <= Segments; s++)
             {
                 float t = (float)s / Segments;
-                float width = WidthAt(config, reach, angleDegrees, heat, t);
 
-                var centre = origin + forward * (reach * t) + Vector3.up * (0.15f * t);
+                // Толщина луча — доля от ширины струи в этом месте.
+                float width = WidthAt(config, reach, angleDegrees, heat, t * coreLength) * 0.55f;
+
+                var centre = origin + forward * (length * t) + Vector3.up * (0.1f * t);
                 centre += side * (Mathf.Sin(time * 7.3f + t * 6f + noiseShift) * wag * t * t);
-                centre += Vector3.up * (Mathf.Sin(time * 9.1f + t * 5f) * wag * 0.4f * t);
 
                 var half = side * (width * 0.5f);
                 int i = s * 2;
@@ -582,28 +457,23 @@ namespace WarfareSurvivor
                 uv[i] = new Vector2(0f, t);
                 uv[i + 1] = new Vector2(1f, t);
 
-                // Эрозия: с середины ленты силуэт начинает сгорать, к кончику
-                // от него остаются одни языки.
-                float erosion = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.4f, 1.05f, t)) * 0.95f;
-                tongue[i] = tongue[i + 1] = new Vector3(noiseShift, 0f, erosion);
-
-                // У самого дула — прозрачно: струя выходит из ствола, а не
-                // рисуется поверх него.
-                float fadeIn = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0f, 0.12f, t));
-                colors[i] = colors[i + 1] = new Color(1f, 1f, 1f, fadeIn);
+                // Белый у дула, к концу луча — цвет ядра и прозрачность:
+                // луч растворяется в облаке, а не обрывается.
+                float fadeIn = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0f, 0.15f, t));
+                float fadeOut = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.45f, 1f, t));
+                var color = Color.Lerp(white, core, t);
+                color.a = fadeIn * fadeOut * Mathf.Lerp(0.6f, 1f, heat);
+                colors[i] = colors[i + 1] = color;
             }
 
             mesh.vertices = vertices;
             mesh.uv = uv;
             mesh.colors = colors;
-            mesh.SetUVs(1, tongue);
             mesh.RecalculateBounds();
         }
 
         void LateUpdate()
         {
-            // Перестали кормить — гаснем. Кадр-другой без вызова случается
-            // при смене цели, поэтому не сразу.
             if (Time.time - lastFed > 0.1f) gameObject.SetActive(false);
         }
     }

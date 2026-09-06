@@ -33,7 +33,6 @@ namespace WarfareSurvivor.EditorTools
             "WarfareSurvivor/MeleeArc",                    // дуга замаха
             "WarfareSurvivor/AcidZone",                    // зона поражения плевка
             "WarfareSurvivor/GlowSprite",                  // капли кислоты, след за добычей
-            "WarfareSurvivor/Flame",                       // струя и языки огнемёта
             "Universal Render Pipeline/Simple Lit"         // для сравнения на стенде
         };
 

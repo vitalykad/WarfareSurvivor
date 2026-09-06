@@ -713,7 +713,7 @@ namespace WarfareSurvivor
         public float flameLife = 0.45f;
 
         [Tooltip("Сколько клубов в секунду выбрасывает работающая струя.")]
-        public float flamePuffsPerSecond = 14f;
+        public float flamePuffsPerSecond = 40f;
 
         [Tooltip("За сколько секунд струя разгорается на полную длину.\n\n" +
                  "Это не украшение: пока огнемёт разогревается, он не достаёт " +
@@ -737,7 +737,7 @@ namespace WarfareSurvivor
         public float flameDrag = 2.5f;
 
         [Tooltip("Потолок клубов пламени в кадре.")]
-        public int maxFlamePuffs = 120;
+        public int maxFlamePuffs = 200;
 
         [Tooltip("Ширина струи у кончика на полном жаре, метров. Конус класса " +
                  "задаёт, КОГО задевает струя, а это — как широко она " +
@@ -745,24 +745,10 @@ namespace WarfareSurvivor
                  "струи не обещал урона, которого нет.")]
         public float flameJetWidth = 1.8f;
 
-        [Tooltip("Сколько повторов шума укладывается в язык: поперёк и вдоль. " +
-                 "Меньше — крупнее языки, больше — мельче и суетливее.")]
-        public Vector2 flameNoiseScale = new Vector2(1.2f, 1.6f);
-
-        [Tooltip("Как быстро огонь течёт от дула к кончику, повторов шума в секунду.")]
-        public float flameFlow = 1.3f;
-
-        [Tooltip("Порог второй цветной ленты (середина). Чем выше, тем уже " +
-                 "оранжевая часть и шире тёмный край.")]
-        [Range(0f, 1f)] public float flameBandMid = 0.15f;
-
-        [Tooltip("Порог ядра — светлой сердцевины. Выше — ядро тоньше.")]
-        [Range(0f, 1f)] public float flameBandCore = 0.42f;
-
-        [Tooltip("Мягкость границ между лентами. Ноль — жёсткие ступени, " +
-                 "как в мультфильме; больше — плавнее, но на мелких языках " +
-                 "уходит в кашу.")]
-        [Range(0f, 0.2f)] public float flameSoftness = 0.05f;
+        [Tooltip("Какую долю струи занимает светлый луч у дула. Это белое " +
+                 "ядро настоящего огнемёта: короткое, гаснет там, где струя " +
+                 "расходится в облако.")]
+        [Range(0.1f, 1f)] public float flameCoreLength = 0.45f;
 
         [Tooltip("Насколько струю мотает из стороны в сторону у кончика, метров. " +
                  "Ноль — прямая, как луч.")]
