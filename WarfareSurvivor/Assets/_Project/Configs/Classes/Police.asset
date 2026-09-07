@@ -31,7 +31,7 @@ MonoBehaviour:
   blastRadius: 0
   burstCount: 0
   burstInterval: 0.09
-  shotScale: 1
+  shotScale: 1.9
   boltPierce: 0
   boltRange: 0
   shieldEveryNth: 0
@@ -43,6 +43,8 @@ MonoBehaviour:
   shieldMaxTargets: 0
   coneAngle: 0
   coneRange: 0
+  flameEffect: {fileID: 0}
+  flameEffectScale: 1
   coneTipDamage: 0.35
   burnDuration: 0
   burnDamagePerSecond: 0
