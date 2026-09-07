@@ -1137,6 +1137,9 @@ namespace WarfareSurvivor
         /// <summary>Насколько разогрет огнемёт, 0..1.</summary>
         float flameHeat;
         float flamePuffDebt;
+
+        /// <summary>Готовый эффект струи, если он задан классу.</summary>
+        GameObject flameEffectInstance;
         float nextFlameTick;
         float nextFlameSound;
 
@@ -1184,6 +1187,7 @@ namespace WarfareSurvivor
             if (flameHeat <= 0.001f)
             {
                 flamePuffDebt = 0f;
+                StopFlameEffect();
                 return;
             }
 
@@ -1193,16 +1197,16 @@ namespace WarfareSurvivor
 
             float reach = range * flameHeat;
 
-            // Тело струи — лента от дула; языки ниже — только поверх неё.
-            FlameJet.Stream(this, MuzzlePosition(), forward, reach, klass.coneAngle, flameHeat);
-
-            // Клубы копятся ДРОБНО: при десяти клубах в секунду и шестидесяти
-            // кадрах целое число за кадр всегда ноль, и струи не было бы вовсе.
-            flamePuffDebt += config.flamePuffsPerSecond * flameHeat * Time.deltaTime;
-            while (flamePuffDebt >= 1f)
+            // Готовый эффект вместо своих клубов, если он задан классу.
+            if (klass.flameEffect != null)
             {
-                flamePuffDebt -= 1f;
-                FlameJet.Puff(MuzzlePosition(), forward, reach, klass.coneAngle, flameHeat);
+                DriveFlameEffect(MuzzlePosition(), forward, flameHeat);
+            }
+            else
+            {
+                // Тело струи — лента от дула; клубы ниже — только поверх неё.
+                FlameJet.Stream(this, MuzzlePosition(), forward, reach, klass.coneAngle, flameHeat);
+                PuffFlame(forward, reach);
             }
 
             if (Time.time >= nextFlameSound)
@@ -1216,6 +1220,62 @@ namespace WarfareSurvivor
             float tick = Mathf.Max(0.03f, config.flameTickInterval);
             nextFlameTick = Time.time + tick;
             BurnCone(forward, reach, tick);
+        }
+
+        /// <summary>
+        /// Гасит готовый эффект: он держится сам и без этого горел бы вечно.
+        /// Частицы при этом доживают — обрубать хвост посреди полёта значит
+        /// показать, что огонь выключили рубильником.
+        /// </summary>
+        void StopFlameEffect()
+        {
+            if (flameEffectInstance == null) return;
+            foreach (var ps in flameEffectInstance.GetComponentsInChildren<ParticleSystem>(true))
+                ps.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+        }
+
+        /// <summary>
+        /// Ведёт готовый эффект струи: ставит к дулу, разворачивает по цели
+        /// и правит размер по жару.
+        ///
+        /// Эффект — РЕБЁНОК бойца, но позиция и поворот задаются в мировых:
+        /// боец на бегу разворачивается по движению, а струя должна смотреть
+        /// туда, куда он целится.
+        /// </summary>
+        void DriveFlameEffect(Vector3 origin, Vector3 forward, float heat)
+        {
+            if (flameEffectInstance == null)
+            {
+                flameEffectInstance = Instantiate(klass.flameEffect, transform);
+                flameEffectInstance.name = "Струя";
+                foreach (var t in flameEffectInstance.GetComponentsInChildren<Transform>(true))
+                    t.gameObject.layer = gameObject.layer;
+            }
+
+            flameEffectInstance.transform.position = origin;
+            flameEffectInstance.transform.rotation = Quaternion.LookRotation(forward, Vector3.up);
+
+            // Холодная струя короче и жиже — тем же множителем, что и своя.
+            float scale = Mathf.Max(0.01f, klass.flameEffectScale) * Mathf.Lerp(0.55f, 1f, heat);
+            flameEffectInstance.transform.localScale = Vector3.one * scale;
+
+            foreach (var ps in flameEffectInstance.GetComponentsInChildren<ParticleSystem>(true))
+                if (!ps.isEmitting) ps.Play(false);
+        }
+
+        /// <summary>Свои клубы: копятся ДРОБНО, иначе при десяти клубах
+        /// в секунду и шестидесяти кадрах целое число за кадр всегда ноль,
+        /// и струи не было бы вовсе.</summary>
+        void PuffFlame(Vector3 forward, float reach)
+        {
+            // Клубы копятся ДРОБНО: при десяти клубах в секунду и шестидесяти
+            // кадрах целое число за кадр всегда ноль, и струи не было бы вовсе.
+            flamePuffDebt += config.flamePuffsPerSecond * flameHeat * Time.deltaTime;
+            while (flamePuffDebt >= 1f)
+            {
+                flamePuffDebt -= 1f;
+                FlameJet.Puff(MuzzlePosition(), forward, reach, klass.coneAngle, flameHeat);
+            }
         }
 
         /// <summary>Наносит урон и поджигает всех в текущем конусе.</summary>

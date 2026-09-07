@@ -43,6 +43,8 @@ MonoBehaviour:
   shieldMaxTargets: 0
   coneAngle: 55
   coneRange: 5.5
+  flameEffect: {fileID: 7025019999686932498, guid: b364b81c09d19464a936523614d2c525, type: 3}
+  flameEffectScale: 1.8
   coneTipDamage: 0.35
   burnDuration: 3
   burnDamagePerSecond: 4
