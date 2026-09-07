@@ -167,7 +167,7 @@ MonoBehaviour:
   flameLife: 0.5
   flamePuffsPerSecond: 80
   flameWarmUp: 0.55
-  flameCoolDown: 0.9
+  flameCoolDown: 0.1
   flameTickInterval: 0.15
   flameDrag: 2.5
   maxFlamePuffs: 500
