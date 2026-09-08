@@ -457,8 +457,12 @@ namespace WarfareSurvivor
 
             if (Time.time >= nextWispTime)
             {
-                nextWispTime = Time.time + 0.12f;
-                FlameJet.Wisp(HitPoint);
+                // Огонь на теле берём из общего слоя — того же, что и струя.
+                // Свои клубы остаются запасным вариантом: слой поднимается
+                // только когда у огнемётчика есть префаб эффекта.
+                nextWispTime = Time.time + (FlameLayer.Ready ? 0.09f : 0.12f);
+                if (FlameLayer.Ready) FlameLayer.Burn(HitPoint, 1f);
+                else FlameJet.Wisp(HitPoint);
             }
 
             if (Time.time < nextBurnTick) return;

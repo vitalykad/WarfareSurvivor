@@ -36,6 +36,7 @@ namespace WarfareSurvivor
             public float SpeedMin, SpeedMax;
             public float SizeMin, SizeMax;
             public Vector3 Offset;      // смещение системы внутри префаба
+            public int Order;           // порядок в префабе: первая система — само пламя
         }
 
         readonly List<Nozzle> nozzles = new List<Nozzle>();
@@ -76,6 +77,7 @@ namespace WarfareSurvivor
                     SizeMin = main.startSize.mode == ParticleSystemCurveMode.TwoConstants ? main.startSize.constantMin : main.startSize.constant,
                     SizeMax = main.startSize.mode == ParticleSystemCurveMode.TwoConstants ? main.startSize.constantMax : main.startSize.constant,
                     Offset = ps.transform.localPosition,
+                    Order = instance.nozzles.Count,
                 };
 
                 // Своя эмиссия больше не нужна: частицы приходят от бойцов.
@@ -83,8 +85,11 @@ namespace WarfareSurvivor
                 em.SetBursts(new ParticleSystem.Burst[0]);
 
                 // Потолок общий на всех, а не на одного: шестнадцать струй
-                // живут теперь в одной системе.
-                main.maxParticles = Mathf.Max(main.maxParticles, 600);
+                // и каждое горящее тело живут теперь в одной системе. Упереться
+                // в потолок значит обглодать струи ради горящих или наоборот —
+                // запас берём с большим избытком, память на частицу копеечная.
+                main.maxParticles = Mathf.Max(main.maxParticles,
+                                              instance.nozzles.Count == 0 ? 2400 : 1200);
 
                 // Симулировать вне экрана незачем: слой один и виден почти
                 // всегда, но когда бой уходит за край — пусть отдыхает.
@@ -109,11 +114,74 @@ namespace WarfareSurvivor
             instance.Spit(owner, origin, forward, heat, scale, deltaTime);
         }
 
+        /// <summary>
+        /// Язык огня на горящем теле: тот же огонь, что и в струе, только
+        /// медленный и вверх.
+        ///
+        /// Раньше горящие зомби получали клубы собственной рисовки, а струя
+        /// шла из ассета. Рядом друг с другом это не читалось: на настоящем
+        /// огне самодельные клубы выглядели разноцветными кружочками. Теперь
+        /// текстура, цвет по времени жизни и кривая размера у них общие —
+        /// горящий выглядит подожжённым той же струёй, что его подожгла.
+        ///
+        /// Пламя берём из первой системы префаба, угольки — из самой мелкой.
+        /// Дым и ленты на теле не нужны: лента — это форма струи, а дым
+        /// такого размера накрыл бы зомби целиком.
+        /// </summary>
+        public static void Burn(Vector3 at, float scale)
+        {
+            if (instance == null) return;
+            instance.Lick(at, scale);
+        }
+
+        /// <summary>Есть ли куда выбрасывать: слой поднимается первой струёй.</summary>
+        public static bool Ready => instance != null;
+
         /// <summary>Боец перестал жечь — забываем его долги.</summary>
         public static void Forget(object owner)
         {
             if (instance == null || owner == null) return;
             instance.debts.Remove(owner);
+        }
+
+        void Lick(Vector3 at, float scale)
+        {
+            Nozzle flame = null, ember = null;
+            foreach (var n in nozzles)
+            {
+                if (n.System == null) continue;
+                if (n.Order == 0) flame = n;
+                if (ember == null || n.SizeMax < ember.SizeMax) ember = n;
+            }
+            if (flame == null) return;
+
+            // Клуб пламени: мельче струйного втрое — на теле метровый шар
+            // накрыл бы самого зомби, — и вверх, а не вперёд.
+            var puff = new ParticleSystem.EmitParams
+            {
+                position = at + Random.insideUnitSphere * (0.22f * scale),
+                velocity = new Vector3(Random.Range(-0.4f, 0.4f),
+                                       Random.Range(1.3f, 2.2f),
+                                       Random.Range(-0.4f, 0.4f)) * scale,
+                startSize = Random.Range(flame.SizeMin, flame.SizeMax) * scale * 0.34f,
+                applyShapeToPosition = false,
+            };
+            flame.System.Emit(puff, 1);
+
+            // Угольки летят выше и реже: сплошной поток искр от каждого
+            // горящего превратил бы толпу в фейерверк.
+            if (ember == null || ember == flame || Random.value > 0.45f) return;
+
+            var spark = new ParticleSystem.EmitParams
+            {
+                position = at + Random.insideUnitSphere * (0.3f * scale),
+                velocity = new Vector3(Random.Range(-0.8f, 0.8f),
+                                       Random.Range(2.2f, 3.6f),
+                                       Random.Range(-0.8f, 0.8f)) * scale,
+                startSize = Random.Range(ember.SizeMin, ember.SizeMax) * scale,
+                applyShapeToPosition = false,
+            };
+            ember.System.Emit(spark, 1);
         }
 
         void Spit(object owner, Vector3 origin, Vector3 forward, float heat, float scale, float deltaTime)
