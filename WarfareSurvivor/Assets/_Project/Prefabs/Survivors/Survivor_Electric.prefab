@@ -22,31 +22,31 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2ece645d33ff440fc963daf5f84c929a, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0.05712852
+      value: -0.13735774
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2ece645d33ff440fc963daf5f84c929a, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.3193606
+      value: 0.3227374
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2ece645d33ff440fc963daf5f84c929a, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -0.060450807
+      value: -0.37710395
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2ece645d33ff440fc963daf5f84c929a, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.16291021
+      value: -0.18012317
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2ece645d33ff440fc963daf5f84c929a, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0.116253465
+      value: -0.34397548
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2ece645d33ff440fc963daf5f84c929a, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0.33965474
+      value: 0.5822206
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2ece645d33ff440fc963daf5f84c929a, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0.91901034
+      value: 0.7143218
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2ece645d33ff440fc963daf5f84c929a, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -129,7 +129,7 @@ PrefabInstance:
     - target: {fileID: 5866666021909216657, guid: a6c11f450027340119ea4e1e9ad9afaf, type: 3}
       propertyPath: m_Controller
       value: 
-      objectReference: {fileID: 9100000, guid: b260bbb4002ad45bc8fe1b3a30917e9a, type: 2}
+      objectReference: {fileID: 9100000, guid: ca0286a22aadf46f3b9cd4a8571d30c8, type: 2}
     - target: {fileID: 5866666021909216657, guid: a6c11f450027340119ea4e1e9ad9afaf, type: 3}
       propertyPath: m_CullingMode
       value: 2
