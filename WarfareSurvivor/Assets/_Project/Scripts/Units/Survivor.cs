@@ -1200,7 +1200,12 @@ namespace WarfareSurvivor
             // Готовый эффект вместо своих клубов, если он задан классу.
             if (klass.flameEffect != null)
             {
-                DriveFlameEffect(MuzzlePosition(), forward, flameHeat);
+                // Через общий слой, а не своей копией эффекта: шестнадцать
+                // огнемётчиков со своими копиями — это шестьдесят четыре
+                // системы частиц, и кадр на телефоне этого не переживает.
+                FlameLayer.Configure(klass.flameEffect);
+                FlameLayer.Emit(this, MuzzlePosition(), forward, flameHeat,
+                                Mathf.Max(0.01f, klass.flameEffectScale), Time.deltaTime);
             }
             else
             {
@@ -1229,6 +1234,8 @@ namespace WarfareSurvivor
         /// </summary>
         void StopFlameEffect()
         {
+            FlameLayer.Forget(this);
+
             if (flameEffectInstance == null) return;
             foreach (var ps in flameEffectInstance.GetComponentsInChildren<ParticleSystem>(true))
                 ps.Stop(true, ParticleSystemStopBehavior.StopEmitting);
