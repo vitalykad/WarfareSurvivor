@@ -15,7 +15,7 @@ MonoBehaviour:
   displayName: "\u042D\u043B\u0435\u043A\u0442\u0440\u0438\u043A"
   prefab: {fileID: 7514476081002296282, guid: e1d620a5789e148aea909ed8864c5063, type: 3}
   role: 2
-  aimYawOffset: 0
+  aimYawOffset: 46
   synergies: []
   maxHealth: 110
   attackRange: 6
@@ -43,6 +43,8 @@ MonoBehaviour:
   shieldMaxTargets: 0
   coneAngle: 0
   coneRange: 0
+  flameEffect: {fileID: 0}
+  flameEffectScale: 1
   coneTipDamage: 0.35
   burnDuration: 0
   burnDamagePerSecond: 0
