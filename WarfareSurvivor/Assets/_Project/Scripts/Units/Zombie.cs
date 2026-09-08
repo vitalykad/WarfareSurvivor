@@ -216,7 +216,6 @@ namespace WarfareSurvivor
         float burnUntil;
         float burnDps;
         float nextBurnTick;
-        float nextWispTime;
         bool burning;
 
         float stunUntil;
@@ -416,7 +415,6 @@ namespace WarfareSurvivor
             {
                 burning = true;
                 nextBurnTick = Time.time + Mathf.Max(0.05f, config.burnTickInterval);
-                nextWispTime = Time.time;
                 ApplyMaterial(BurnTwin());
             }
         }
@@ -455,15 +453,14 @@ namespace WarfareSurvivor
                 return;
             }
 
-            if (Time.time >= nextWispTime)
-            {
-                // Огонь на теле берём из общего слоя — того же, что и струя.
-                // Свои клубы остаются запасным вариантом: слой поднимается
-                // только когда у огнемётчика есть префаб эффекта.
-                nextWispTime = Time.time + (FlameLayer.Ready ? 0.09f : 0.12f);
-                if (FlameLayer.Ready) FlameLayer.Burn(HitPoint, 1f);
-                else FlameJet.Wisp(HitPoint);
-            }
+            // Огня на теле нет намеренно. Пробовали и свои клубы, и языки
+            // из общего слоя — на горящем зомби ни то ни другое не читалось:
+            // фигура мелкая, огонь на ней сливается в цветное пятно и мешает
+            // видеть саму толпу. Что зомби горит, видно по свечению материала
+            // (burnGlowColor) и по цифрам урона — этого достаточно.
+            //
+            // Если понадобится вернуть: FlameLayer.Burn(HitPoint, 1f) с шагом
+            // около 0.09 с, запасной вариант — FlameJet.Wisp(HitPoint).
 
             if (Time.time < nextBurnTick) return;
 
