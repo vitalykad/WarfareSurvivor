@@ -80,6 +80,8 @@ namespace WarfareSurvivor
 
         int attackLayer = -1;
         bool hasAttackSpeed;
+        bool hasAttackTrigger;
+        bool hasShieldTrigger;
 
         /// <summary>Дуга замаха под ногами. Только у ближнего боя.</summary>
         MeleeArc meleeArc;
@@ -839,7 +841,8 @@ namespace WarfareSurvivor
             if (animator != null)
             {
                 if (hasAttackSpeed) animator.SetFloat(AttackSpeedParam, playback);
-                animator.SetTrigger(pendingShield ? AttackShieldParam : AttackParam);
+                if (pendingShield ? hasShieldTrigger : hasAttackTrigger)
+                    animator.SetTrigger(pendingShield ? AttackShieldParam : AttackParam);
             }
 
             // Урон не наносится сейчас: он наступит на середине замаха.
@@ -1608,6 +1611,13 @@ namespace WarfareSurvivor
             // к несуществующему параметру, и лог тонет в предупреждениях.
             hasAttackSpeed = HasParameter(AttackSpeedParam);
             if (hasAttackSpeed) animator.SetFloat(AttackSpeedParam, 1f);
+
+            // Замах есть не у всех: тот, кто держит оружие двумя руками,
+            // не машет им, а стоит в стойке и стреляет. Дёргать у такого
+            // несуществующий триггер значит сыпать предупреждением на
+            // каждый удар — а бьёт он несколько раз в секунду.
+            hasAttackTrigger = HasParameter(AttackParam);
+            hasShieldTrigger = HasParameter(AttackShieldParam);
         }
 
         bool HasParameter(int hash)
