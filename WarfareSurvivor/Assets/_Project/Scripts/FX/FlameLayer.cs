@@ -150,9 +150,14 @@ namespace WarfareSurvivor
 
                 for (int k = 0; k < count; k++)
                 {
-                    var spread = Quaternion.AngleAxis(Random.Range(-n.ConeAngle, n.ConeAngle), side)
-                               * Quaternion.AngleAxis(Random.Range(-n.ConeAngle, n.ConeAngle), Vector3.up);
-                    var direction = spread * forward;
+                    // Честный конус: отклоняем на случайный угол в случайную
+                    // сторону вокруг оси. Два отклонения подряд, по бортам
+                    // и по высоте, давали разброс вдвое шире заявленного —
+                    // струя от этого расплывалась веером.
+                    float tilt = Random.Range(0f, n.ConeAngle);
+                    float roll = Random.Range(0f, 360f);
+                    var direction = Quaternion.AngleAxis(roll, forward)
+                                  * Quaternion.AngleAxis(tilt, side) * forward;
 
                     var p = new ParticleSystem.EmitParams
                     {
