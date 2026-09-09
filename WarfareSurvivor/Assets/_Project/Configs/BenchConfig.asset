@@ -35,9 +35,5 @@ MonoBehaviour:
   maxPerClass: 0
   minTotal: 1
   lastPick:
-  - Class: {fileID: 11400000, guid: 0f9b989b438594ed9837b5ff6dd59906, type: 2}
-    Count: 5
-  - Class: {fileID: 11400000, guid: be3a7e1284a59460d9d64987d31a8d97, type: 2}
-    Count: 7
-  - Class: {fileID: 11400000, guid: 7697e257f7c2b4c7c9af826a213b0375, type: 2}
-    Count: 3
+  - Class: {fileID: 11400000, guid: 214174ac926544670af71c1a1ed40e3f, type: 2}
+    Count: 10

@@ -17,10 +17,10 @@ MonoBehaviour:
   role: 1
   aimYawOffset: 46
   synergies: []
-  maxHealth: 90
-  attackRange: 18
+  maxHealth: 20
+  attackRange: 16
   attackInterval: 2.6
-  damage: 90
+  damage: 20
   attackAnimationSpeed: 1
   shockShape: 0
   shockAngle: 120
@@ -43,6 +43,8 @@ MonoBehaviour:
   shieldMaxTargets: 0
   coneAngle: 0
   coneRange: 0
+  flameEffect: {fileID: 0}
+  flameEffectScale: 1
   coneTipDamage: 0.35
   burnDuration: 0
   burnDamagePerSecond: 0
